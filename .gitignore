@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment variables (jangan pernah commit secret/API key)
+.env
+.env*.local
+
+# Supabase
+.supabase/
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+
+# Editor/OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# State internal tooling Claude Code (bukan bagian proyek)
+.claude/scheduled_tasks.lock
