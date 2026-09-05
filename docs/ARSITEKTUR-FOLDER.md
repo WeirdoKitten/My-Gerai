@@ -66,6 +66,8 @@
 │   └── types/                                 # Tipe TypeScript bersama
 ├── drizzle/                                   # File migrasi database
 ├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi
+├── Dockerfile                                 # Image produksi untuk deploy via Dokploy (server Garuda)
+├── .dockerignore
 ├── tests/
 │   ├── unit/
 │   └── e2e/

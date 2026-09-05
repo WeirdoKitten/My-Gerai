@@ -14,7 +14,7 @@
 - [ ] Setup PostgreSQL self-hosted di server Garuda (via Dokploy) + Cloudflare Tunnel + environment variables. — perlu akses server User (Dokploy dashboard/SSH), lihat CHANGELOG.md 2026-09-05.
 - [x] Setup Drizzle ORM + migrasi awal berdasarkan [DATA-MODEL.md](DATA-MODEL.md). — skema (`src/lib/db/schema.ts`) & migrasi awal (`drizzle/0000_*.sql`) sudah digenerate & tervalidasi (`drizzle-kit generate`); **belum** di-push ke database sungguhan (menunggu Postgres di Garuda siap).
 - [x] ~~Terapkan RLS policy dasar~~ — **digantikan**: isolasi multi-tenant sekarang di level aplikasi (bukan RLS database), lihat [DATA-MODEL.md §Keamanan Multi-tenant](DATA-MODEL.md#keamanan-multi-tenant-isolasi-level-aplikasi). Aturannya sudah didokumentasikan; penerapan konkret (filter di tiap Server Action) menyusul di Fase 2-4 seiring fitur ditulis.
-- [ ] Setup deployment aplikasi Next.js ke server Garuda via Dokploy (staging). — perlu akses server User.
+- [ ] Setup deployment aplikasi Next.js ke server Garuda via Dokploy (staging). — `Dockerfile` (multi-stage, `output: "standalone"`) sudah dibuat & diverifikasi lokal (`docker build` + `docker run` + konek ke Postgres via `host.docker.internal` berhasil); deploy sungguhan ke Dokploy masih perlu dikerjakan User (akses dashboard/server tidak dimiliki Claude).
 - [x] Buat `.claude/settings.json` dengan permission dasar (izinkan command `pnpm`/`git` umum tanpa prompt berulang) — lihat [CLAUDE-SKILLS.md §Skill Bawaan vs Skill/Konfigurasi Custom](CLAUDE-SKILLS.md#skill-bawaan-vs-skillkonfigurasi-custom-claude).
 
 ## Fase 2 — Alur Inti Pembeli (dengan Payment Simulasi) ✅

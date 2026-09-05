@@ -2,6 +2,12 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-05 — Siapkan Dockerfile produksi untuk deploy via Dokploy
+
+**Dampak:** [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`Dockerfile`, `.dockerignore`, `next.config.ts`, `public/`)
+**Alasan:** User sudah push kode ke GitHub & minta tutorial deploy ke Dokploy — Dockerfile disiapkan dulu supaya Dokploy bisa build image secara predictable.
+**Ringkasan:** `next.config.ts` ditambah `output: "standalone"`. `Dockerfile` multi-stage (deps → builder → runner) mengikuti pola resmi Next.js untuk pnpm, image akhir cuma berisi server Node minimal (tanpa devDependencies). Diverifikasi nyata: `docker build` berhasil, container dijalankan (`docker run`) dan terbukti bisa serve halaman + konek ke Postgres lokal lewat `host.docker.internal`. Folder `public/` (sebelumnya belum ada) dibuat kosong (placeholder `.gitkeep`) supaya langkah `COPY` di Dockerfile tidak gagal.
+
 ## 2026-09-05 — Fase 2 selesai: alur inti Pembeli (katalog, keranjang, checkout, simulasi bayar)
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), kode (`src/app/(buyer)/**`, `src/server/`, `src/lib/{payment,cart,validation,utils}/`, `src/components/buyer/`, `src/lib/db/seed.ts`, `docker-compose.dev.yml`, `package.json`)
