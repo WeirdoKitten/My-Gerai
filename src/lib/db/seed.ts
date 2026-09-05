@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth/password";
 import { client, db } from "./client";
 import {
+  adminSessions,
   admins,
   merchants,
   orderItems,
@@ -31,12 +32,18 @@ if (
 async function main() {
   console.log("Menghapus data lama...");
   await db.execute(
-    sql`TRUNCATE TABLE ${sessions}, ${payouts}, ${payments}, ${orderItems}, ${orders}, ${products}, ${merchants}, ${admins}, ${platformConfig} RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE ${adminSessions}, ${sessions}, ${payouts}, ${payments}, ${orderItems}, ${orders}, ${products}, ${merchants}, ${admins}, ${platformConfig} RESTART IDENTITY CASCADE`,
   );
 
   console.log("Membuat data seed...");
 
   const passwordHash = await hashPassword(SEED_PASSWORD);
+
+  await db.insert(admins).values({
+    name: "Admin MyGerai",
+    phone: "081299999999",
+    passwordHash,
+  });
 
   const [merchant] = await db
     .insert(merchants)
@@ -51,15 +58,25 @@ async function main() {
     })
     .returning();
 
-  // Fixture untuk menguji jalur "menunggu approval Admin" (Fase 4 belum ada
-  // UI approve, jadi ini satu-satunya cara login-dengan-password-benar-tapi-
-  // belum-approved bisa diuji sampai Fase 4 dikerjakan).
+  // Fixture pending #1 — dipakai untuk uji APPROVE dari panel Admin.
   await db.insert(merchants).values({
     slug: "batagor-bu-siti",
     stallName: "Batagor Bu Siti",
     ownerName: "Siti Aminah",
     category: "Makanan",
     phone: "081200000002",
+    passwordHash,
+    status: "pending",
+  });
+
+  // Fixture pending #2 — dipakai untuk uji REJECT dari panel Admin (terpisah
+  // dari fixture #1 supaya approve & reject bisa diuji tanpa saling bentrok).
+  await db.insert(merchants).values({
+    slug: "cakue-mang-udin",
+    stallName: "Cakue Mang Udin",
+    ownerName: "Udin Saepudin",
+    category: "Makanan",
+    phone: "081200000004",
     passwordHash,
     status: "pending",
   });
@@ -128,14 +145,20 @@ async function main() {
   console.log("");
   console.log("Kredensial uji Pedagang (login di /login):");
   console.log(
-    `  Approved : 081200000001 / ${SEED_PASSWORD} -> masuk dashboard`,
+    `  Approved  : 081200000001 / ${SEED_PASSWORD} -> masuk dashboard`,
   );
   console.log(
-    `  Pending  : 081200000002 / ${SEED_PASSWORD} -> pesan menunggu approval`,
+    `  Pending #1: 081200000002 / ${SEED_PASSWORD} -> untuk uji APPROVE`,
   );
   console.log(
-    `  Approved2: 081200000003 / ${SEED_PASSWORD} -> Lapak kedua, untuk uji isolasi`,
+    `  Approved2 : 081200000003 / ${SEED_PASSWORD} -> Lapak kedua, untuk uji isolasi`,
   );
+  console.log(
+    `  Pending #2: 081200000004 / ${SEED_PASSWORD} -> untuk uji REJECT`,
+  );
+  console.log("");
+  console.log("Kredensial uji Admin (login di /admin/login):");
+  console.log(`  081299999999 / ${SEED_PASSWORD}`);
 }
 
 main()

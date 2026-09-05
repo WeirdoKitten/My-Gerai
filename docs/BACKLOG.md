@@ -42,13 +42,16 @@
 **Diverifikasi nyata**: Postgres lokal (migrasi tabel `sessions` + seed 3 Lapak fixture — approved/pending/approved-kedua untuk uji isolasi), alur penuh di browser sungguhan (Playwright) — registrasi, login (benar/salah/pending), guard dashboard tanpa sesi, CRUD Item + isolasi lintas-Lapak, Pesanan masuk→3x update status→selesai, unduh QR, logout (cookie & baris sesi terhapus), cek tidak ada `passwordHash`/`tokenHash` bocor ke client. **1 bug ditemukan & diperbaiki selama pengujian**: tombol aksi status Pesanan macet di "Memproses..." setelah update sukses (lupa reset state `submitting`) — lihat CHANGELOG.md. `tsc`/`lint`/`build` lulus. `/security-review` dijalankan — 1 temuan MEDIUM (rate-limiting login, dikecualikan aturan skill tapi tetap dicatat sebagai gap) + 1 LOW (validasi Zod `setProductStatus`, sudah diperbaiki langsung).
 **Belum**: rate-limiting login/registrasi (kandidat Fase 5, sama seperti rate-limiting checkout Fase 2), unit test formal.
 
-## Fase 4 — Admin & Konfigurasi
+## Fase 4 — Admin & Konfigurasi ✅
 
-- [ ] Login Admin.
-- [ ] Approve/reject Pedagang baru.
-- [ ] Halaman konfigurasi: ubah `platform_fee_amount`, `order_expiry_minutes` (dengan histori, lihat [DATA-MODEL.md](DATA-MODEL.md#platform_config-konfigurasi-aplikator)).
-- [ ] Halaman daftar transaksi & Saldo Pedagang per Lapak.
-- [ ] Pencatatan Pencairan manual.
+- [x] Login Admin. — `/admin/login`, sesi terpisah (`admin_sessions` + cookie `mygerai_admin_session`, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)), anti-enumeration sama seperti login Pedagang, diverifikasi hidup berdampingan dengan sesi Pedagang di browser yang sama.
+- [x] Approve/reject Pedagang baru. — `listMerchantsForAdmin`/`approveMerchant`/`rejectMerchant` (`src/server/merchants.ts`), transisi hanya dari `pending` (optimistic lock via `WHERE status='pending'`), reject wajib isi alasan (`rejection_reason`) yang ditampilkan ke Pedagang saat mereka login.
+- [x] Halaman konfigurasi: ubah `platform_fee_amount`, `order_expiry_minutes` (dengan histori, lihat [DATA-MODEL.md](DATA-MODEL.md#platform_config-konfigurasi-aplikator)). — `/admin/config`, hanya insert baris untuk key yang nilainya berubah; **snapshot immutability diverifikasi nyata**: Pesanan yang dibuat sebelum perubahan config tetap menyimpan `platform_fee_snapshot` lama walau config berubah setelahnya.
+- [x] Halaman daftar transaksi & Saldo Pedagang per Lapak. — `/admin/payouts`, saldo dihitung server-side (dua query `GROUP BY` terpisah digabung di JS, hindari fan-out JOIN).
+- [x] Pencatatan Pencairan manual. — guard overpayment ditegakkan **di server** (bukan cuma atribut HTML `max`, diverifikasi dengan menghapus atribut tsb via JS lalu submit tetap ditolak server); dibungkus `db.transaction` + `pg_advisory_xact_lock` per-Pedagang untuk menutup race TOCTOU submit ganda (temuan `/security-review`, lihat CHANGELOG.md).
+
+**Diverifikasi nyata**: migrasi `admin_sessions`+`rejection_reason` (`drizzle/0002_*.sql`) digenerate & diterapkan, seed diperbarui (akun Admin + 2 fixture Pedagang `pending` khusus uji approve/reject). Alur penuh dicoba di browser sungguhan (Playwright) — login Admin salah/benar, guard `/admin/*` tanpa sesi & dengan sesi Pedagang (bukti isolasi jenis sesi), approve 1 Pedagang (bisa login ke dashboard) & reject 1 Pedagang dengan alasan (pesan login berisi alasan spesifik, tidak dapat cookie sesi), config tanpa perubahan vs 1 perubahan (histori bertambah tepat 1 baris), **snapshot Biaya Layanan tidak berubah retroaktif** (dibuktikan dengan 2 Pesanan sebelum/sesudah perubahan config), saldo & pencairan (termasuk guard overpayment sisi server & uji race 2 submit bersamaan — tepat 1 yang berhasil setelah perbaikan), tidak ada `passwordHash`/`tokenHash` bocor di response Server Action atau bundle `.next/static`. `tsc --noEmit`/`pnpm lint`/`pnpm build` lulus. `/security-review` dijalankan — 1 temuan MEDIUM (race TOCTOU overpayment di `recordPayout`), **langsung diperbaiki** (transaksi + advisory lock) & diverifikasi ulang di browser.
+**Belum**: rate-limiting login Admin (kandidat Fase 5, sama seperti Pedagang), unit test formal.
 
 ## Fase 5 — Pengujian & Pengerasan (Hardening)
 

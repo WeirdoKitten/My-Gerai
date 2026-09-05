@@ -15,6 +15,13 @@
       "when": 1788607582455,
       "tag": "0001_romantic_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788610045128,
+      "tag": "0002_striped_xavin",
+      "breakpoints": true
     }
   ]
 }

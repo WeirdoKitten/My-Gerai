@@ -1,7 +1,8 @@
 "use server";
 
-import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, eq, gte, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import {
@@ -9,7 +10,6 @@ import {
   orderItems,
   orders,
   payments,
-  platformConfig,
   products,
 } from "@/lib/db/schema";
 import { mockPaymentProvider } from "@/lib/payment/mock-provider";
@@ -24,7 +24,9 @@ import {
   type CreateOrderInput,
   createOrderSchema,
 } from "@/lib/validation/checkout.schema";
+import { getActivePlatformConfig } from "@/server/config";
 import type {
+  AdminOrderListItem,
   BuyerOrderStatusView,
   CreateOrderResult,
   MerchantOrderListItem,
@@ -32,47 +34,6 @@ import type {
   SimulatePaymentResult,
   UpdateOrderStatusResult,
 } from "@/types/order";
-
-const DEFAULT_PLATFORM_FEE_AMOUNT = 1000;
-const DEFAULT_ORDER_EXPIRY_MINUTES = 15;
-
-/**
- * Nilai `platform_config` aktif saat ini. Kalau tabel belum di-seed sama
- * sekali, pakai default konstanta di atas supaya Pesanan tetap bisa dibuat.
- */
-async function getActivePlatformConfig(): Promise<{
-  platformFeeAmount: number;
-  orderExpiryMinutes: number;
-}> {
-  const now = new Date();
-
-  const feeRows = await db.query.platformConfig.findMany({
-    where: and(
-      eq(platformConfig.key, "platform_fee_amount"),
-      lte(platformConfig.effectiveFrom, now),
-    ),
-    orderBy: (row, { desc }) => [desc(row.effectiveFrom)],
-    limit: 1,
-  });
-
-  const expiryRows = await db.query.platformConfig.findMany({
-    where: and(
-      eq(platformConfig.key, "order_expiry_minutes"),
-      lte(platformConfig.effectiveFrom, now),
-    ),
-    orderBy: (row, { desc }) => [desc(row.effectiveFrom)],
-    limit: 1,
-  });
-
-  return {
-    platformFeeAmount: feeRows[0]
-      ? Number(feeRows[0].value)
-      : DEFAULT_PLATFORM_FEE_AMOUNT,
-    orderExpiryMinutes: expiryRows[0]
-      ? Number(expiryRows[0].value)
-      : DEFAULT_ORDER_EXPIRY_MINUTES,
-  };
-}
 
 /** Kode Pesanan unik per Lapak per hari (lokal), retry maks 5x kalau tabrakan. */
 async function generateUniqueOrderCode(merchantId: string): Promise<string> {
@@ -422,4 +383,34 @@ export async function updateOrderStatus(
     };
   }
   return { ok: true };
+}
+
+/** Daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi) — otorisasi via sesi Admin. */
+export async function listOrdersForAdmin(): Promise<AdminOrderListItem[]> {
+  const session = await getAdminSession();
+  if (!session) return [];
+
+  const allOrders = await db.query.orders.findMany({
+    orderBy: (row, { desc }) => [desc(row.createdAt)],
+  });
+  if (allOrders.length === 0) return [];
+
+  const merchantIds = [...new Set(allOrders.map((order) => order.merchantId))];
+  const merchantRows = await db.query.merchants.findMany({
+    where: inArray(merchants.id, merchantIds),
+  });
+  const stallNameById = new Map(merchantRows.map((m) => [m.id, m.stallName]));
+
+  return allOrders.map((order) => ({
+    id: order.id,
+    orderCode: order.orderCode,
+    stallName: stallNameById.get(order.merchantId) ?? "",
+    buyerName: order.buyerName,
+    status: order.status,
+    subtotal: order.subtotal,
+    platformFeeSnapshot: order.platformFeeSnapshot,
+    totalForMerchant: order.totalForMerchant,
+    createdAt: order.createdAt,
+    paidAt: order.paidAt,
+  }));
 }

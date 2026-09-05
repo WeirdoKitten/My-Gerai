@@ -77,6 +77,8 @@ export const merchants = pgTable("merchants", {
   photoUrl: text(),
   status: merchantStatusEnum().notNull().default("pending"),
   payoutAccountInfo: text(),
+  /** Wajib diisi Admin saat reject — ditampilkan ke Pedagang saat mereka coba login. */
+  rejectionReason: text(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -180,6 +182,21 @@ export const sessions = pgTable("sessions", {
   merchantId: uuid()
     .notNull()
     .references(() => merchants.id, { onDelete: "cascade" }),
+  tokenHash: text().notNull().unique(),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp({ withTimezone: true }).notNull(),
+});
+
+/**
+ * Sesi login Admin — tabel terpisah dari `sessions` (bukan polimorfik),
+ * konsisten dengan `merchants`/`admins` yang sudah sengaja dipisah sejak
+ * awal. Struktur & alasan sama persis dengan `sessions` di atas.
+ */
+export const adminSessions = pgTable("admin_sessions", {
+  id: uuid().primaryKey().defaultRandom(),
+  adminId: uuid()
+    .notNull()
+    .references(() => admins.id, { onDelete: "cascade" }),
   tokenHash: text().notNull().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp({ withTimezone: true }).notNull(),

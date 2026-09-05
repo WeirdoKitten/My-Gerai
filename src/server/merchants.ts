@@ -1,8 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import QRCode from "qrcode";
+import { getAdminSession } from "@/lib/auth/admin-session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import {
   createMerchantSession,
@@ -13,11 +14,20 @@ import { db } from "@/lib/db/client";
 import { merchants } from "@/lib/db/schema";
 import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
 import {
+  type ApproveMerchantInput,
+  approveMerchantSchema,
   type LoginMerchantInput,
   loginMerchantSchema,
   type RegisterMerchantInput,
+  type RejectMerchantInput,
   registerMerchantSchema,
+  rejectMerchantSchema,
 } from "@/lib/validation/merchant.schema";
+import type {
+  AdminMerchantView,
+  ApproveMerchantResult,
+  RejectMerchantResult,
+} from "@/types/admin";
 import type {
   LoginMerchantResult,
   QrLapakView,
@@ -31,15 +41,22 @@ const DUMMY_PASSWORD_HASH = hashPassword(
   "dummy-password-untuk-konsistensi-waktu",
 );
 
-const STATUS_MESSAGE_ID: Record<"pending" | "rejected" | "suspended", string> =
-  {
-    pending:
-      "Pendaftaran Lapak kamu sedang ditinjau Admin. Silakan coba login lagi setelah disetujui.",
-    rejected:
-      "Pendaftaran Lapak kamu ditolak Admin. Hubungi Aplikator untuk info lebih lanjut.",
-    suspended:
-      "Akun Lapak kamu sedang dinonaktifkan Aplikator. Hubungi Aplikator untuk info lebih lanjut.",
-  };
+/** Pesan status non-approved untuk Pedagang saat login — `rejected` menyertakan alasan asli dari Admin. */
+function buildStatusMessage(
+  status: "pending" | "rejected" | "suspended",
+  rejectionReason: string | null,
+): string {
+  switch (status) {
+    case "pending":
+      return "Pendaftaran Lapak kamu sedang ditinjau Admin. Silakan coba login lagi setelah disetujui.";
+    case "rejected":
+      return rejectionReason
+        ? `Pendaftaran Lapak kamu ditolak Admin. Alasan: ${rejectionReason}`
+        : "Pendaftaran Lapak kamu ditolak Admin. Hubungi Aplikator untuk info lebih lanjut.";
+    case "suspended":
+      return "Akun Lapak kamu sedang dinonaktifkan Aplikator. Hubungi Aplikator untuk info lebih lanjut.";
+  }
+}
 
 async function generateUniqueSlug(stallName: string): Promise<string> {
   const base = slugify(stallName) || "lapak";
@@ -121,7 +138,7 @@ export async function loginMerchant(
     return {
       ok: true,
       status: merchant.status,
-      message: STATUS_MESSAGE_ID[merchant.status],
+      message: buildStatusMessage(merchant.status, merchant.rejectionReason),
     };
   }
 
@@ -143,4 +160,99 @@ export async function getMerchantQrLapak(): Promise<QrLapakView | null> {
   const qrImageUrl = await QRCode.toDataURL(url);
 
   return { url, qrImageUrl };
+}
+
+/** Semua Pedagang (untuk panel Admin) — otorisasi via sesi Admin. */
+export async function listMerchantsForAdmin(): Promise<AdminMerchantView[]> {
+  const session = await getAdminSession();
+  if (!session) return [];
+
+  const rows = await db.query.merchants.findMany({
+    orderBy: (row, { desc }) => [desc(row.createdAt)],
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    stallName: row.stallName,
+    ownerName: row.ownerName,
+    category: row.category,
+    phone: row.phone,
+    status: row.status,
+    rejectionReason: row.rejectionReason,
+    createdAt: row.createdAt,
+  }));
+}
+
+export async function approveMerchant(
+  input: ApproveMerchantInput,
+): Promise<ApproveMerchantResult> {
+  const parsed = approveMerchantSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Data tidak valid." };
+  }
+  const session = await getAdminSession();
+  if (!session) {
+    return {
+      ok: false,
+      message: "Sesi Admin berakhir, silakan login kembali.",
+    };
+  }
+
+  const [updated] = await db
+    .update(merchants)
+    .set({ status: "approved", rejectionReason: null })
+    .where(
+      and(
+        eq(merchants.id, parsed.data.merchantId),
+        eq(merchants.status, "pending"),
+      ),
+    )
+    .returning();
+
+  if (!updated) {
+    return {
+      ok: false,
+      message: "Pedagang ini sudah tidak berstatus menunggu persetujuan.",
+    };
+  }
+  return { ok: true };
+}
+
+export async function rejectMerchant(
+  input: RejectMerchantInput,
+): Promise<RejectMerchantResult> {
+  const parsed = rejectMerchantSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
+    };
+  }
+  const session = await getAdminSession();
+  if (!session) {
+    return {
+      ok: false,
+      message: "Sesi Admin berakhir, silakan login kembali.",
+    };
+  }
+
+  const [updated] = await db
+    .update(merchants)
+    .set({ status: "rejected", rejectionReason: parsed.data.reason })
+    .where(
+      and(
+        eq(merchants.id, parsed.data.merchantId),
+        eq(merchants.status, "pending"),
+      ),
+    )
+    .returning();
+
+  if (!updated) {
+    return {
+      ok: false,
+      message: "Pedagang ini sudah tidak berstatus menunggu persetujuan.",
+    };
+  }
+  return { ok: true };
 }

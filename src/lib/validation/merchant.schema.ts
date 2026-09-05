@@ -19,3 +19,20 @@ export const loginMerchantSchema = z.object({
 });
 
 export type LoginMerchantInput = z.infer<typeof loginMerchantSchema>;
+
+export const approveMerchantSchema = z.object({
+  merchantId: z.uuid(),
+});
+
+export type ApproveMerchantInput = z.infer<typeof approveMerchantSchema>;
+
+export const rejectMerchantSchema = z.object({
+  merchantId: z.uuid(),
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Alasan wajib diisi (minimal 3 karakter).")
+    .max(500),
+});
+
+export type RejectMerchantInput = z.infer<typeof rejectMerchantSchema>;

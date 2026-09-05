@@ -65,3 +65,17 @@ export type MerchantOrderListItem = {
 };
 
 export type UpdateOrderStatusResult = { ok: boolean; message?: string };
+
+/** Bentuk hasil daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi). */
+export type AdminOrderListItem = {
+  id: string;
+  orderCode: string;
+  stallName: string;
+  buyerName: string;
+  status: Order["status"];
+  subtotal: number;
+  platformFeeSnapshot: number;
+  totalForMerchant: number;
+  createdAt: Date;
+  paidAt: Date | null;
+};
