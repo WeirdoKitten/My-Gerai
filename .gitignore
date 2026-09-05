@@ -15,6 +15,9 @@ dist/
 # Supabase
 .supabase/
 
+# Vercel
+.vercel/
+
 # Testing
 coverage/
 playwright-report/
@@ -34,6 +37,7 @@ pnpm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+next-env.d.ts
 
 # State internal tooling Claude Code (bukan bagian proyek)
 .claude/scheduled_tasks.lock

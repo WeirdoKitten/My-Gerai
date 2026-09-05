@@ -56,7 +56,7 @@
 
 7.2. Semua endpoint webhook (payment gateway) wajib memverifikasi signature/keaslian request sebelum memproses — meskipun di tahap simulasi (`MockPaymentProvider`), tulis kode dengan asumsi nanti akan diganti provider asli yang perlu verifikasi ini (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)).
 
-7.3. Data antar Lapak harus terisolasi (satu Pedagang tidak boleh bisa mengakses data/pesanan Pedagang lain) — diterapkan lewat Row Level Security, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md#keamanan-multi-tenant).
+7.3. Data antar Lapak harus terisolasi (satu Pedagang tidak boleh bisa mengakses data/pesanan Pedagang lain) — diterapkan di **level aplikasi** (setiap Server Action wajib memfilter berdasarkan identitas sesi login, database self-hosted hanya diakses lewat kode server tepercaya), lihat [DATA-MODEL.md §Keamanan Multi-tenant](DATA-MODEL.md#keamanan-multi-tenant-isolasi-level-aplikasi).
 
 ## 8. Kualitas Kerja Claude
 

@@ -56,4 +56,4 @@ Urutan: (1) modul eksternal (`react`, `next`, dst) → (2) alias internal (`@/li
 ## Struktur Fungsi Server Action
 
 - Satu Server Action = satu operasi bisnis yang jelas namanya (mis. `createOrder`, `markOrderReady`), bukan fungsi generik serba bisa.
-- Urutan di dalam: validasi input (Zod) → cek otorisasi (RLS + pengecekan tambahan bila perlu) → logika bisnis → tulis DB → return hasil yang sudah divalidasi bentuknya, bukan raw row database.
+- Urutan di dalam: validasi input (Zod) → cek otorisasi (identitas dari sesi login, filter kepemilikan eksplisit — lihat [DATA-MODEL.md §Keamanan Multi-tenant](DATA-MODEL.md#keamanan-multi-tenant-isolasi-level-aplikasi)) → logika bisnis → tulis DB → return hasil yang sudah divalidasi bentuknya, bukan raw row database.

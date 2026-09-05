@@ -22,7 +22,7 @@ Contoh: *"Sebagai Pedagang, saya ingin melihat notifikasi suara saat ada Pesanan
 
 | Kurang baik | Lebih baik |
 |---|---|
-| "Bikin halaman menu" | "Bikin halaman katalog Lapak (`/menu/[stallSlug]`) sesuai [ARSITEKTUR-FOLDER.md](ARSITEKTUR-FOLDER.md), ambil data Item dari Supabase, tampilkan yang `status=available` saja" |
+| "Bikin halaman menu" | "Bikin halaman katalog Lapak (`/menu/[stallSlug]`) sesuai [ARSITEKTUR-FOLDER.md](ARSITEKTUR-FOLDER.md), ambil data Item dari database, tampilkan yang `status=available` saja" |
 | "Kok lambat ya" | "Halaman checkout kerasa lambat pas buka pertama kali di HP saya (Android, koneksi 4G biasa) — tolong cek apakah ada yang bisa dioptimasi sesuai [BEST-PRACTICES.md §Performa](BEST-PRACTICES.md#performa)" |
 | "Tambahin fitur diskon" | "Saya mau tambah fitur diskon per Item. Sebelum dikerjakan, tolong ajukan pertanyaan kalau ada yang belum jelas (misal: diskon nominal atau persen? berlaku per Item atau per Pesanan?) baru bikin rencananya" |
 

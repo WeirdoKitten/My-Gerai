@@ -48,7 +48,7 @@ Semua keputusan produk/arsitektur ada di `docs/`. **Ini satu-satunya sumber kebe
 
 ## Stack Ringkas (detail & alasan di [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md))
 
-Next.js (App Router) + TypeScript + Tailwind CSS + Supabase (Postgres, Auth, Realtime, Storage) + Drizzle ORM + Zod + Biome + Vitest/Playwright + pnpm. Hosting: Vercel + Supabase Cloud. Payment gateway masa depan: Tripay (perorangan, KTP saja) — untuk sekarang disimulasikan.
+Next.js (App Router) + TypeScript + Tailwind CSS + PostgreSQL (self-hosted) + Drizzle ORM + Zod + Biome + Vitest/Playwright + pnpm. Auth/Realtime/Storage dibangun custom (bukan Supabase). Hosting: server sendiri (Garuda) via Dokploy + Cloudflare Tunnel. Payment gateway masa depan: Tripay (perorangan, KTP saja) — untuk sekarang disimulasikan.
 
 ## Alur Kerja Default untuk Task Apa Pun
 
@@ -61,3 +61,13 @@ Next.js (App Router) + TypeScript + Tailwind CSS + Supabase (Postgres, Auth, Rea
 7. Update ground truth terkait + [CHANGELOG.md](CHANGELOG.md) + centang [docs/BACKLOG.md](docs/BACKLOG.md).
 
 Lihat detail lengkap alur & skill di [docs/CLAUDE-SKILLS.md](docs/CLAUDE-SKILLS.md).
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

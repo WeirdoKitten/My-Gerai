@@ -1,6 +1,6 @@
 # Arsitektur Folder
 
-> Struktur ini adalah **target** untuk saat kode mulai ditulis (belum discaffold — lihat [BACKLOG.md](BACKLOG.md) Fase 1). Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
+> Struktur ini adalah **target** struktur folder. Setelah Fase 1-2 ([BACKLOG.md](BACKLOG.md)): `src/lib/db/{schema.ts,client.ts,seed.ts}`, `drizzle.config.ts`, `drizzle/` (migrasi), route group `(buyer)` lengkap (`menu/[stallSlug]`, `checkout`, `pesanan/[orderId]`), `components/buyer/`, `server/{orders.ts,products.ts}`, `lib/{payment,validation,utils,cart}/`, `types/` **sudah nyata ada**. Folder `lib/cart/` **tidak** ada di rencana awal — ditambahkan saat implementasi (keranjang sisi klien, lihat [DATA-MODEL.md](DATA-MODEL.md)/[TEKNOLOGI.md](TEKNOLOGI.md)). `docker-compose.dev.yml` di root (bukan di dalam `src/`) juga baru — Postgres lokal **khusus development**, terpisah dari rencana produksi self-hosted Garuda (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)). Sisanya (`(merchant)`, `(admin)`, `components/ui`, `components/merchant`, `components/admin`, `server/merchants.ts`, `server/config.ts`, `lib/realtime/`, `tests/`) masih target, dibuat bertahap di fase-fase berikutnya. Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
 
 ```
 /
@@ -53,16 +53,19 @@
 │   ├── lib/
 │   │   ├── db/                                # Drizzle schema & client
 │   │   │   ├── schema.ts
-│   │   │   └── client.ts
+│   │   │   ├── client.ts
+│   │   │   └── seed.ts                        # Data contoh untuk dev lokal (guard: hanya boleh ke localhost)
 │   │   ├── payment/                           # Payment Provider abstraction
 │   │   │   ├── types.ts                       # interface PaymentProvider
 │   │   │   ├── mock-provider.ts
 │   │   │   └── tripay-provider.ts             # (fase lanjutan)
+│   │   ├── cart/                              # Keranjang sisi klien (Context + localStorage)
 │   │   ├── realtime/
 │   │   ├── validation/                        # Skema Zod
 │   │   └── utils/
 │   └── types/                                 # Tipe TypeScript bersama
 ├── drizzle/                                   # File migrasi database
+├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi
 ├── tests/
 │   ├── unit/
 │   └── e2e/

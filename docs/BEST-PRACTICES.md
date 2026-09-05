@@ -16,7 +16,7 @@ Halaman **Pembeli** adalah prioritas performa tertinggi — diakses lewat scan Q
 - Validasi **semua** input dari klien pakai Zod di sisi server — jangan percaya validasi sisi klien saja.
 - Total harga Pesanan **selalu dihitung ulang di server** dari data `products` terkini, tidak pernah dipercaya dari payload klien (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)).
 - Rate-limit endpoint checkout & login untuk mencegah spam/brute-force sederhana (boleh solusi ringan dulu, mis. batas per IP, bukan infrastruktur mahal).
-- Jangan expose `service_role` key Supabase ke sisi klien — hanya dipakai di server (Server Actions/API routes).
+- Jangan pernah expose `DATABASE_URL`, `password_hash`, atau kredensial lain ke sisi klien — koneksi database hanya dipakai di server (Server Actions/Route Handlers), respons ke klien selalu lewat tipe hasil eksplisit, bukan raw row database.
 
 ## Error Handling
 

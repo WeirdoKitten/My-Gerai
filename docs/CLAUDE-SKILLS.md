@@ -4,7 +4,7 @@
 
 ## Wajib Dipakai
 
-- **`/security-review`** — jalankan setiap kali selesai mengerjakan fitur yang menyentuh **pembayaran, autentikasi/login, webhook, atau akses data lintas Pedagang (RLS)**. Ini area paling berisiko di proyek ini (uang & data multi-tenant) — lihat [RULES.md §5.3](RULES.md#5-alur-kerja-fitur).
+- **`/security-review`** — jalankan setiap kali selesai mengerjakan fitur yang menyentuh **pembayaran, autentikasi/login, webhook, atau akses data lintas Pedagang (isolasi multi-tenant level aplikasi)**. Ini area paling berisiko di proyek ini (uang & data multi-tenant) — lihat [RULES.md §5.3](RULES.md#5-alur-kerja-fitur).
 - **Plan mode / agent `Plan`** — dipakai untuk fitur besar atau perubahan yang menyentuh banyak file/dokumen ground truth sekaligus, sebelum mulai menulis kode, supaya pendekatan disepakati dulu dengan User.
 
 ## Direkomendasikan
@@ -21,7 +21,7 @@
 1. Baca ground truth relevan (lihat [CLAUDE.md](../CLAUDE.md) untuk daftar & kapan baca apa).
 2. Untuk fitur besar: Plan mode dulu → selaraskan dengan User.
 3. Implementasi.
-4. Kalau menyentuh uang/auth/webhook/RLS → `/security-review`.
+4. Kalau menyentuh uang/auth/webhook/isolasi data antar Pedagang → `/security-review`.
 5. `/code-review` (opsional tapi disarankan) → `/simplify`.
 6. Untuk perubahan UI → jalankan aplikasi (`run` skill) & coba manual.
 7. Update dokumen ground truth terkait + [CHANGELOG.md](../CHANGELOG.md).

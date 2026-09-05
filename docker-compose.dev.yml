@@ -1,0 +1,23 @@
+# HANYA untuk development lokal (menjalankan & menguji kode di komputer developer).
+# Produksi TETAP self-hosted di server Garuda via Dokploy + Cloudflare Tunnel
+# (lihat docs/ARSITEKTUR-SISTEM.md ADR 2026-09-05) — file ini tidak dipakai di sana.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mygerai
+      POSTGRES_PASSWORD: mygerai_dev_password
+      POSTGRES_DB: mygerai
+    ports:
+      - "5432:5432"
+    volumes:
+      - mygerai_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mygerai -d mygerai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mygerai_pgdata_dev:
