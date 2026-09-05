@@ -14,6 +14,7 @@ erDiagram
     PRODUCTS ||--o{ ORDER_ITEMS : "dipesan sebagai"
     ORDERS ||--o| PAYMENTS : "dibayar via"
     PLATFORM_CONFIG ||--o{ ORDERS : "fee snapshot dari"
+    MERCHANTS ||--o{ SESSIONS : "login"
 
     MERCHANTS {
         uuid id PK
@@ -99,6 +100,14 @@ erDiagram
         string phone
         string password_hash
     }
+
+    SESSIONS {
+        uuid id PK
+        uuid merchant_id FK
+        string token_hash "SHA-256 dari token di cookie, bukan token mentah"
+        timestamp created_at
+        timestamp expires_at
+    }
 ```
 
 ## Catatan per Entitas
@@ -134,6 +143,13 @@ erDiagram
 ### `platform_config` (Konfigurasi Aplikator)
 - Disimpan sebagai key-value dengan riwayat (`effective_from`) supaya bisa dilacak kapan Biaya Layanan berubah — jangan **update in place**, tapi **insert baris baru** dan pakai baris dengan `effective_from` terbaru yang `<= now()` sebagai nilai aktif.
 - Key minimal MVP: `platform_fee_amount` (default `1000`), `order_expiry_minutes` (default `15`).
+
+### `sessions` (Sesi login Pedagang — Fase 3)
+- Mekanisme konkret dari "identitas Pedagang dari sesi" yang disebut di §Keamanan Multi-tenant di bawah — lihat implementasi di `src/lib/auth/session.ts`.
+- `token_hash`: **SHA-256 dari token bearer acak** (32 byte) yang disimpan di cookie `HttpOnly` klien — token mentah **tidak pernah** disimpan di DB, supaya kebocoran baris tabel ini tidak otomatis jadi kebocoran sesi aktif.
+- Tidak ada job cleanup baris kedaluwarsa — sama seperti filosofi kedaluwarsa Pesanan ([ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md#kedaluwarsa-pesanan)): cukup difilter `expires_at > now()` saat dibaca (lazy), volume rendah di skala MVP.
+- Logout = hapus baris (bukan cuma hapus cookie klien) — sesi benar-benar revoked di server.
+- Belum ada tabel `admin_sessions` terpisah — login Admin (Fase 4) akan memutuskan apakah reuse tabel ini (dengan kolom nullable) atau tabel sendiri, dicatat saat itu.
 
 ## Keamanan Multi-tenant (Isolasi Level Aplikasi)
 

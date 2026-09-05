@@ -1,6 +1,6 @@
 # Arsitektur Folder
 
-> Struktur ini adalah **target** struktur folder. Setelah Fase 1-2 ([BACKLOG.md](BACKLOG.md)): `src/lib/db/{schema.ts,client.ts,seed.ts}`, `drizzle.config.ts`, `drizzle/` (migrasi), route group `(buyer)` lengkap (`menu/[stallSlug]`, `checkout`, `pesanan/[orderId]`), `components/buyer/`, `server/{orders.ts,products.ts}`, `lib/{payment,validation,utils,cart}/`, `types/` **sudah nyata ada**. Folder `lib/cart/` **tidak** ada di rencana awal — ditambahkan saat implementasi (keranjang sisi klien, lihat [DATA-MODEL.md](DATA-MODEL.md)/[TEKNOLOGI.md](TEKNOLOGI.md)). `docker-compose.dev.yml` di root (bukan di dalam `src/`) juga baru — Postgres lokal **khusus development**, terpisah dari rencana produksi self-hosted Garuda (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)). Sisanya (`(merchant)`, `(admin)`, `components/ui`, `components/merchant`, `components/admin`, `server/merchants.ts`, `server/config.ts`, `lib/realtime/`, `tests/`) masih target, dibuat bertahap di fase-fase berikutnya. Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
+> Struktur ini adalah **target** struktur folder. Setelah Fase 1-3 ([BACKLOG.md](BACKLOG.md)): `src/lib/db/{schema.ts,client.ts,seed.ts}`, `drizzle.config.ts`, `drizzle/` (migrasi), route group `(buyer)` & `(merchant)` lengkap, `components/{buyer,merchant}/`, `server/{orders.ts,products.ts,merchants.ts}`, `lib/{payment,validation,utils,cart,auth}/`, `types/` **sudah nyata ada**. Folder `lib/cart/` dan `lib/auth/` **tidak** ada di rencana awal — ditambahkan saat implementasi (keranjang sisi klien di Fase 2; hash password & sesi login di Fase 3, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)). `docker-compose.dev.yml` (Postgres dev lokal) & `Dockerfile`+`.dockerignore` (image produksi untuk Dokploy) di root juga baru. Sisanya (`(admin)`, `components/ui`, `components/admin`, `server/config.ts`, `lib/realtime/`, `tests/`) masih target, dibuat bertahap di fase-fase berikutnya. Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
 
 ```
 /
@@ -60,6 +60,7 @@
 │   │   │   ├── mock-provider.ts
 │   │   │   └── tripay-provider.ts             # (fase lanjutan)
 │   │   ├── cart/                              # Keranjang sisi klien (Context + localStorage)
+│   │   ├── auth/                              # Hash password (scrypt) & sesi login (cookie + tabel sessions)
 │   │   ├── realtime/
 │   │   ├── validation/                        # Skema Zod
 │   │   └── utils/

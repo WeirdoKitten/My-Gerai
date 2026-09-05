@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { sql } from "drizzle-orm";
+import { hashPassword } from "@/lib/auth/password";
 import { client, db } from "./client";
 import {
   admins,
@@ -10,7 +11,10 @@ import {
   payouts,
   platformConfig,
   products,
+  sessions,
 } from "./schema";
+
+const SEED_PASSWORD = "Password123!";
 
 const connectionString = process.env.DATABASE_URL ?? "";
 if (
@@ -27,10 +31,12 @@ if (
 async function main() {
   console.log("Menghapus data lama...");
   await db.execute(
-    sql`TRUNCATE TABLE ${payouts}, ${payments}, ${orderItems}, ${orders}, ${products}, ${merchants}, ${admins}, ${platformConfig} RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE ${sessions}, ${payouts}, ${payments}, ${orderItems}, ${orders}, ${products}, ${merchants}, ${admins}, ${platformConfig} RESTART IDENTITY CASCADE`,
   );
 
   console.log("Membuat data seed...");
+
+  const passwordHash = await hashPassword(SEED_PASSWORD);
 
   const [merchant] = await db
     .insert(merchants)
@@ -40,11 +46,45 @@ async function main() {
       ownerName: "Budi Santoso",
       category: "Makanan",
       phone: "081200000001",
-      // Placeholder — BUKAN hash asli. Login Pedagang belum ada sampai Fase 3.
-      passwordHash: "seed-placeholder-not-a-real-hash",
+      passwordHash,
       status: "approved",
     })
     .returning();
+
+  // Fixture untuk menguji jalur "menunggu approval Admin" (Fase 4 belum ada
+  // UI approve, jadi ini satu-satunya cara login-dengan-password-benar-tapi-
+  // belum-approved bisa diuji sampai Fase 4 dikerjakan).
+  await db.insert(merchants).values({
+    slug: "batagor-bu-siti",
+    stallName: "Batagor Bu Siti",
+    ownerName: "Siti Aminah",
+    category: "Makanan",
+    phone: "081200000002",
+    passwordHash,
+    status: "pending",
+  });
+
+  // Lapak approved KEDUA — dipakai untuk menguji isolasi data antar-Lapak
+  // (Pedagang A tidak boleh bisa ubah Item/Pesanan milik Pedagang B).
+  const [merchantTwo] = await db
+    .insert(merchants)
+    .values({
+      slug: "warung-cak-slamet",
+      stallName: "Warung Cak Slamet",
+      ownerName: "Slamet Riyadi",
+      category: "Makanan",
+      phone: "081200000003",
+      passwordHash,
+      status: "approved",
+    })
+    .returning();
+
+  await db.insert(products).values({
+    merchantId: merchantTwo.id,
+    name: "Nasi Goreng",
+    price: 13000,
+    status: "available",
+  });
 
   await db.insert(products).values([
     {
@@ -85,6 +125,17 @@ async function main() {
   ]);
 
   console.log("Selesai. Coba buka: http://localhost:3000/menu/bakso-pak-budi");
+  console.log("");
+  console.log("Kredensial uji Pedagang (login di /login):");
+  console.log(
+    `  Approved : 081200000001 / ${SEED_PASSWORD} -> masuk dashboard`,
+  );
+  console.log(
+    `  Pending  : 081200000002 / ${SEED_PASSWORD} -> pesan menunggu approval`,
+  );
+  console.log(
+    `  Approved2: 081200000003 / ${SEED_PASSWORD} -> Lapak kedua, untuk uji isolasi`,
+  );
 }
 
 main()

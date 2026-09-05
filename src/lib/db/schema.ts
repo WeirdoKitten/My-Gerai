@@ -167,3 +167,20 @@ export const platformConfig = pgTable("platform_config", {
   value: text().notNull(),
   effectiveFrom: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Sesi login Pedagang. `tokenHash` = SHA-256 dari token acak yang disimpan
+ * di cookie klien — DB tidak pernah menyimpan token mentah, supaya kebocoran
+ * baris ini tidak otomatis jadi kebocoran sesi aktif (lihat src/lib/auth/session.ts).
+ * Tidak ada job cleanup baris kedaluwarsa — sama seperti filosofi kedaluwarsa
+ * Pesanan (lazy, cukup difilter saat dibaca), volume rendah di skala MVP.
+ */
+export const sessions = pgTable("sessions", {
+  id: uuid().primaryKey().defaultRandom(),
+  merchantId: uuid()
+    .notNull()
+    .references(() => merchants.id, { onDelete: "cascade" }),
+  tokenHash: text().notNull().unique(),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp({ withTimezone: true }).notNull(),
+});

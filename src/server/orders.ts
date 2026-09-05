@@ -2,6 +2,7 @@
 
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { z } from "zod";
+import { getMerchantSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import {
   merchants,
@@ -15,7 +16,9 @@ import { mockPaymentProvider } from "@/lib/payment/mock-provider";
 import { generateOrderCode } from "@/lib/utils/order-code";
 import {
   isOrderExpired,
+  nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
+  type OrderStatus,
 } from "@/lib/utils/order-status";
 import {
   type CreateOrderInput,
@@ -24,8 +27,10 @@ import {
 import type {
   BuyerOrderStatusView,
   CreateOrderResult,
+  MerchantOrderListItem,
   Order,
   SimulatePaymentResult,
+  UpdateOrderStatusResult,
 } from "@/types/order";
 
 const DEFAULT_PLATFORM_FEE_AMOUNT = 1000;
@@ -318,5 +323,103 @@ export async function simulatePaymentSuccess(
       and(eq(orders.id, current.id), eq(orders.status, "menunggu_pembayaran")),
     );
 
+  return { ok: true };
+}
+
+/** Pesanan aktif (butuh aksi Pedagang) milik Lapak sendiri — identitas dari sesi login. */
+export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
+  const session = await getMerchantSession();
+  if (!session) return [];
+
+  const activeOrders = await db.query.orders.findMany({
+    where: and(
+      eq(orders.merchantId, session.merchantId),
+      inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
+    ),
+    orderBy: (row, { desc }) => [desc(row.createdAt)],
+  });
+  if (activeOrders.length === 0) return [];
+
+  const orderIds = activeOrders.map((order) => order.id);
+  const items = await db.query.orderItems.findMany({
+    where: inArray(orderItems.orderId, orderIds),
+  });
+  const itemsByOrderId = new Map<string, typeof items>();
+  for (const item of items) {
+    const list = itemsByOrderId.get(item.orderId) ?? [];
+    list.push(item);
+    itemsByOrderId.set(item.orderId, list);
+  }
+
+  return activeOrders.map((order) => ({
+    id: order.id,
+    orderCode: order.orderCode,
+    status: order.status,
+    buyerName: order.buyerName,
+    buyerNote: order.buyerNote,
+    createdAt: order.createdAt,
+    items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
+      id: item.id,
+      productNameSnapshot: item.productNameSnapshot,
+      priceSnapshot: item.priceSnapshot,
+      qty: item.qty,
+      note: item.note,
+    })),
+  }));
+}
+
+export async function updateOrderStatus(
+  orderId: string,
+  nextStatus: OrderStatus,
+): Promise<UpdateOrderStatusResult> {
+  if (!z.uuid().safeParse(orderId).success) {
+    return { ok: false, message: "Pesanan tidak ditemukan." };
+  }
+  const session = await getMerchantSession();
+  if (!session) {
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+  }
+
+  // Sengaja TIDAK menerima merchantId dari parameter — identitas Pedagang
+  // selalu dari sesi, dan filter kepemilikan ada di klausa WHERE query di
+  // bawah, bukan cuma dicek di JS setelah fetch bebas (docs/DATA-MODEL.md
+  // §Keamanan Multi-tenant).
+  const order = await db.query.orders.findFirst({
+    where: and(
+      eq(orders.id, orderId),
+      eq(orders.merchantId, session.merchantId),
+    ),
+  });
+  if (!order) {
+    // Sama pesannya untuk "tidak ada" maupun "milik Lapak lain" — jangan
+    // bocorkan keberadaan Pesanan Lapak lain.
+    return { ok: false, message: "Pesanan tidak ditemukan." };
+  }
+
+  if (nextMerchantStatus(order.status) !== nextStatus) {
+    return { ok: false, message: "Perubahan status tidak valid." };
+  }
+
+  const [updated] = await db
+    .update(orders)
+    .set({
+      status: nextStatus,
+      ...(nextStatus === "selesai" ? { completedAt: new Date() } : {}),
+    })
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.merchantId, session.merchantId),
+        eq(orders.status, order.status), // optimistic lock, cegah race klik ganda
+      ),
+    )
+    .returning();
+
+  if (!updated) {
+    return {
+      ok: false,
+      message: "Status Pesanan sudah berubah, silakan refresh.",
+    };
+  }
   return { ok: true };
 }

@@ -2,6 +2,19 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-05 — Fase 3 selesai: alur inti Pedagang (registrasi, login, dashboard)
+
+**Dampak:** [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (§Autentikasi dituntaskan), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (tabel `sessions` baru), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`src/app/(merchant)/**`, `src/components/merchant/`, `src/lib/auth/`, `src/server/merchants.ts`, tambahan di `src/server/{orders,products}.ts`)
+**Alasan:** Mengerjakan Fase 3 sesuai instruksi User (lanjut tanpa perlu akses Dokploy, karena fase ini murni pengembangan lokal). Plan mode dulu (fitur besar + keputusan auth) sesuai RULES §5.2.
+**Ringkasan:**
+- **Autentikasi dituntaskan**: hash password pakai `scrypt` bawaan `node:crypto` (bukan bcrypt/argon2 — nol dependency baru, aman dari risiko gagal compile native binding di image Docker Alpine). Sesi login DB-backed (tabel `sessions` baru): token bearer 32-byte acak di cookie `HttpOnly`+`Secure`(prod)+`SameSite=Lax`, hanya **hash SHA-256** token yang disimpan di DB. Status `approved` di-re-cek tiap request lewat sesi.
+- Registrasi mandiri (`/daftar`, status awal `pending`), login (`/login`, anti-enumeration: pesan & waktu respons generik untuk kredensial salah, password benar tapi belum `approved` tidak membuat sesi — cuma tampilkan pesan status), dashboard Pedagang (`/dashboard` guard via `dashboard/layout.tsx`) — kelola Item (`/dashboard/produk`), Pesanan masuk (polling 5 detik), update status Pesanan forward-only dengan optimistic lock, unduh QR Lapak (reuse `qrcode` dari Fase 2).
+- Isolasi multi-tenant (aturan dari DATA-MODEL.md §Keamanan Multi-tenant, ditulis Fase 1-2) sekarang punya implementasi konkret: setiap Server Action Pedagang mengambil identitas dari sesi (bukan parameter klien) dan memfilter `WHERE merchant_id` langsung di query — diverifikasi manual bahwa data Lapak lain tidak pernah muncul/bisa diubah.
+- **Bug ditemukan & diperbaiki selama verifikasi manual** (bukan cuma baca kode — RULES §8.1): `MerchantOrderCard` lupa reset state `submitting` setelah update status Pesanan sukses, membuat tombol macet di "Memproses..." walau update di server berhasil (dikonfirmasi lewat log server: request 200 OK, tapi UI tidak reset). Diperbaiki dengan menambah `setSubmitting(false)` di jalur sukses.
+- Diverifikasi nyata: Postgres lokal + seed 3 Lapak fixture (approved, pending, approved-kedua untuk uji isolasi) + Playwright browser sungguhan — alur penuh registrasi→login→dashboard→CRUD Item→Pesanan 3x update status→unduh QR→logout, termasuk uji isolasi lintas-Lapak dan cek tidak ada `passwordHash`/`tokenHash` bocor ke client (grep response Server Action & bundle `.next/static`). `tsc`/`lint`/`build` lulus.
+- `/security-review` dijalankan — 1 temuan MEDIUM (tidak ada rate-limiting `loginMerchant`/`registerMerchant`, dikecualikan oleh aturan skill tapi dicatat sebagai gap nyata, kandidat Fase 5) + 1 LOW (parameter `status` di `setProductStatus` tidak divalidasi Zod — bukan celah otorisasi karena Postgres enum tetap menolak nilai salah, tapi langsung diperbaiki untuk konsistensi).
+- **Tertunda ke Fase 5**: rate-limiting login/registrasi, unit test formal (sama seperti preseden Fase 2).
+
 ## 2026-09-05 — Siapkan Dockerfile produksi untuk deploy via Dokploy
 
 **Dampak:** [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`Dockerfile`, `.dockerignore`, `next.config.ts`, `public/`)

@@ -39,3 +39,29 @@ export type CreateOrderResult =
   | { ok: false; message: string };
 
 export type SimulatePaymentResult = { ok: boolean; message?: string };
+
+/** Baris Item dalam daftar Pesanan Pedagang (dashboard). */
+export type MerchantOrderItemView = {
+  id: string;
+  productNameSnapshot: string;
+  priceSnapshot: number;
+  qty: number;
+  note: string | null;
+};
+
+/**
+ * Bentuk hasil daftar Pesanan untuk dashboard Pedagang — hanya Pesanan milik
+ * Lapak sendiri (difilter dari sesi login, lihat src/server/orders.ts),
+ * tanpa field internal seperti `merchantId`.
+ */
+export type MerchantOrderListItem = {
+  id: string;
+  orderCode: string;
+  status: Order["status"];
+  buyerName: string;
+  buyerNote: string | null;
+  createdAt: Date;
+  items: MerchantOrderItemView[];
+};
+
+export type UpdateOrderStatusResult = { ok: boolean; message?: string };
