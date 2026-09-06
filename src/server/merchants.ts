@@ -12,6 +12,11 @@ import {
 } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import { merchants } from "@/lib/db/schema";
+import {
+  checkRateLimit,
+  getClientIp,
+  RATE_LIMIT_MESSAGE,
+} from "@/lib/rate-limit/limiter";
 import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
 import {
   type ApproveMerchantInput,
@@ -74,6 +79,11 @@ async function generateUniqueSlug(stallName: string): Promise<string> {
 export async function registerMerchant(
   input: RegisterMerchantInput,
 ): Promise<RegisterMerchantResult> {
+  const ip = await getClientIp();
+  if (!checkRateLimit(`register-merchant:ip:${ip}`, 5, 60 * 60_000)) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
+
   const parsed = registerMerchantSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -113,6 +123,11 @@ export async function registerMerchant(
 export async function loginMerchant(
   input: LoginMerchantInput,
 ): Promise<LoginMerchantResult> {
+  const ip = await getClientIp();
+  if (!checkRateLimit(`login-merchant:ip:${ip}`, 5, 5 * 60_000)) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
+
   const parsed = loginMerchantSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -121,6 +136,10 @@ export async function loginMerchant(
     };
   }
   const { phone, password } = parsed.data;
+
+  if (!checkRateLimit(`login-merchant:phone:${phone}`, 5, 5 * 60_000)) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
 
   const merchant = await db.query.merchants.findFirst({
     where: eq(merchants.phone, phone),

@@ -13,6 +13,11 @@ import {
   products,
 } from "@/lib/db/schema";
 import { mockPaymentProvider } from "@/lib/payment/mock-provider";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
+import {
+  calculateOrderTotals,
+  type OrderCalcItem,
+} from "@/lib/utils/order-calc";
 import { generateOrderCode } from "@/lib/utils/order-code";
 import {
   isOrderExpired,
@@ -83,6 +88,14 @@ async function expireOrderIfNeeded(order: Order): Promise<Order> {
 export async function createOrder(
   input: CreateOrderInput,
 ): Promise<CreateOrderResult> {
+  const ip = await getClientIp();
+  if (!checkRateLimit(`create-order:ip:${ip}`, 20, 10 * 60_000)) {
+    return {
+      ok: false,
+      message: "Terlalu banyak permintaan. Silakan coba lagi sebentar lagi.",
+    };
+  }
+
   const parsed = createOrderSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -113,7 +126,6 @@ export async function createOrder(
     availableProducts.map((product) => [product.id, product]),
   );
 
-  let subtotal = 0;
   const orderItemRows: Array<{
     productId: string;
     productNameSnapshot: string;
@@ -121,6 +133,7 @@ export async function createOrder(
     qty: number;
     note: string | null;
   }> = [];
+  const calcItems: OrderCalcItem[] = [];
 
   for (const item of items) {
     const product = productById.get(item.productId);
@@ -131,7 +144,7 @@ export async function createOrder(
           "Salah satu Item sudah tidak tersedia, silakan perbarui Keranjang.",
       };
     }
-    subtotal += product.price * item.qty;
+    calcItems.push({ price: product.price, qty: item.qty });
     orderItemRows.push({
       productId: product.id,
       productNameSnapshot: product.name,
@@ -143,8 +156,8 @@ export async function createOrder(
 
   const { platformFeeAmount, orderExpiryMinutes } =
     await getActivePlatformConfig();
-  const platformFeeSnapshot = platformFeeAmount;
-  const totalForMerchant = subtotal - platformFeeSnapshot;
+  const { subtotal, platformFeeSnapshot, totalForMerchant } =
+    calculateOrderTotals(calcItems, platformFeeAmount);
   const expiresAt = new Date(Date.now() + orderExpiryMinutes * 60_000);
   const orderCode = await generateUniqueOrderCode(merchant.id);
 

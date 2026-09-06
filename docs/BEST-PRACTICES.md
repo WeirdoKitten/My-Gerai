@@ -15,7 +15,7 @@ Halaman **Pembeli** adalah prioritas performa tertinggi — diakses lewat scan Q
 - Lihat [RULES.md §7](RULES.md#7-keamanan) untuk aturan wajib (secrets, verifikasi webhook, RLS).
 - Validasi **semua** input dari klien pakai Zod di sisi server — jangan percaya validasi sisi klien saja.
 - Total harga Pesanan **selalu dihitung ulang di server** dari data `products` terkini, tidak pernah dipercaya dari payload klien (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)).
-- Rate-limit endpoint checkout & login untuk mencegah spam/brute-force sederhana (boleh solusi ringan dulu, mis. batas per IP, bukan infrastruktur mahal).
+- Rate-limit endpoint checkout & login untuk mencegah spam/brute-force sederhana (boleh solusi ringan dulu, mis. batas per IP, bukan infrastruktur mahal) — **sudah diterapkan Fase 5**, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi) untuk mekanisme & angka batasnya.
 - Jangan pernah expose `DATABASE_URL`, `password_hash`, atau kredensial lain ke sisi klien — koneksi database hanya dipakai di server (Server Actions/Route Handlers), respons ke klien selalu lewat tipe hasil eksplisit, bukan raw row database.
 
 ## Error Handling
@@ -26,8 +26,8 @@ Halaman **Pembeli** adalah prioritas performa tertinggi — diakses lewat scan Q
 
 ## Testing
 
-- Unit test wajib untuk logika perhitungan uang: total Pesanan, snapshot Biaya Layanan, status kedaluwarsa.
-- E2E test (Playwright) minimal mencakup: alur checkout penuh (Pembeli) dan alur terima+selesaikan Pesanan (Pedagang) — dua alur paling kritikal di produk ini.
+- Unit test wajib untuk logika perhitungan uang: total Pesanan, snapshot Biaya Layanan, status kedaluwarsa. **Sudah ada (Fase 5)**: `tests/unit/{order-calc,order-status,money}.test.ts` (Vitest, `pnpm test`) — jalankan sebelum menganggap perubahan pada `src/lib/utils/{order-calc,order-status,money}.ts` selesai.
+- E2E test (Playwright) minimal mencakup: alur checkout penuh (Pembeli) dan alur terima+selesaikan Pesanan (Pedagang) — dua alur paling kritikal di produk ini. **Sudah ada (Fase 5)**: `tests/e2e/order-flow.spec.ts` (`pnpm test:e2e`, butuh database `mygerai_test` terpisah — lihat `.env.test.example`/TEKNOLOGI.md) mencakup keduanya sekaligus regresi bug nyata Fase 3 (tombol status Pedagang macet di "Memproses...").
 - Untuk fitur UI, ikuti instruksi global: jalankan aplikasi & coba fitur di browser (skill `run`) sebelum melaporkan selesai — test otomatis memverifikasi kebenaran kode, bukan kebenaran fitur dari sudut pandang pengguna.
 
 ## Aksesibilitas Praktis

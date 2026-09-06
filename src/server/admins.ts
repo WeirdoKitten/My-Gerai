@@ -10,6 +10,11 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { db } from "@/lib/db/client";
 import { admins } from "@/lib/db/schema";
 import {
+  checkRateLimit,
+  getClientIp,
+  RATE_LIMIT_MESSAGE,
+} from "@/lib/rate-limit/limiter";
+import {
   type LoginAdminInput,
   loginAdminSchema,
 } from "@/lib/validation/admin.schema";
@@ -24,6 +29,11 @@ const DUMMY_PASSWORD_HASH = hashPassword(
 export async function loginAdmin(
   input: LoginAdminInput,
 ): Promise<LoginAdminResult> {
+  const ip = await getClientIp();
+  if (!checkRateLimit(`login-admin:ip:${ip}`, 5, 5 * 60_000)) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
+
   const parsed = loginAdminSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -32,6 +42,10 @@ export async function loginAdmin(
     };
   }
   const { phone, password } = parsed.data;
+
+  if (!checkRateLimit(`login-admin:phone:${phone}`, 5, 5 * 60_000)) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
 
   const admin = await db.query.admins.findFirst({
     where: eq(admins.phone, phone),

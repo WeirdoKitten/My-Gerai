@@ -11,6 +11,7 @@ dist/
 # Environment variables (jangan pernah commit secret/API key)
 .env
 .env*.local
+.env.test
 
 # Supabase
 .supabase/
