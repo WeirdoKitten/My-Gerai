@@ -5,5 +5,17 @@ build
 .git
 .env
 .env.local
-drizzle
+.env.test
 *.log
+
+# Tidak dibutuhkan untuk build/runtime — dikecualikan supaya context lebih ramping.
+docs
+tests
+test-results
+playwright-report
+coverage
+.claude
+.vscode
+
+# CATATAN: folder `drizzle/` (migrasi) SENGAJA tidak di-ignore — dibutuhkan
+# Dockerfile untuk di-COPY ke image & dipakai saat migrasi otomatis.

@@ -2,6 +2,18 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-07 — Migrasi database & seed demo otomatis di image produksi
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR baru), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (esbuild + alur migrasi produksi), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`Dockerfile`, `.dockerignore`, `.gitattributes`, `docker-entrypoint.sh`, `src/lib/db/{migrate,seed-demo,create-admin}.ts`, `package.json`, `.env.example`)
+**Alasan:** Permintaan User: migrasi & seeder demo dibuatkan file supaya deploy di Dokploy tidak perlu langkah manual (buka port DB eksternal + `pnpm db:migrate` dari laptop). Keputusan lewat AskUserQuestion: akun Admin **tetap dibuat manual** (tidak otomatis dari env), seed demo jalan **otomatis hanya bila `SEED_DEMO=true`**.
+**Ringkasan:**
+- **`docker-entrypoint.sh`** (ENTRYPOINT image): tiap container start → (1) jalankan migrasi database (selalu, idempoten), (2) kalau `SEED_DEMO=true` isi data demo, (3) `exec` server Next.js. Migrasi otomatis aman karena deployment single-instance (lihat ADR & [TEKNOLOGI.md §Autentikasi](docs/TEKNOLOGI.md#autentikasi) soal asumsi single-instance).
+- **`src/lib/db/migrate.ts`**: pakai migrator bawaan `drizzle-orm/postgres-js` (bukan `drizzle-kit`, yang devDependency & tidak ada di image runner minimal). Di stage `builder`, esbuild mem-*bundle* skrip ini + `seed-demo.ts` + `create-admin.ts` jadi file `.mjs` mandiri (`drizzle-orm` + `postgres` di-inline, ±260–300 KB/file) — image runner tidak perlu `node_modules` tambahan.
+- **`src/lib/db/seed-demo.ts`**: versi **aman** dari `seed.ts` untuk server — **tanpa `TRUNCATE`**, idempoten (skip kalau Lapak demo `bakso-pak-budi` sudah ada, semua insert pakai `onConflictDoNothing`). `seed.ts` lama tetap dipakai apa adanya untuk dev lokal & E2E (TRUNCATE + guard localhost).
+- **`src/lib/db/create-admin.ts`** (`pnpm admin:create`): pembuatan akun Admin manual, idempoten pada nomor HP. Di server dijalankan lewat Terminal container Dokploy (`node scripts/create-admin.mjs "Nama" "0812..." "pass"`) — tidak perlu buka port DB.
+- **Bugfix `.dockerignore`**: baris `drizzle` dihapus — folder migrasi sebelumnya tidak ikut masuk build context sama sekali. `.gitattributes` baru memaksa `*.sh` = LF (core.autocrlf Windows bisa merusak entrypoint).
+- **Diverifikasi nyata**: `docker build` + `docker run` konek ke Postgres lokal — log entrypoint menunjukkan migrasi → seed → server; `GET /` dan `GET /menu/bakso-pak-budi` = 200 dengan data demo tampil; restart container → migrasi idempoten, seed dilewati. `tsc --noEmit` / `pnpm lint` / `pnpm build` / `pnpm test` (24) lulus.
+
 ## 2026-09-06 — Fase 5 selesai: Pengujian & Pengerasan (unit test, E2E, rate-limiting, security review, audit performa)
 
 **Dampak:** [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (§Autentikasi: rate-limiting final), [docs/BEST-PRACTICES.md](docs/BEST-PRACTICES.md) (§Testing & §Keamanan ditandai terpenuhi), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`tests/`, `src/lib/rate-limit/`, `src/lib/utils/order-calc.ts`, `src/server/{orders,merchants,admins}.ts`, `vitest.config.mts`, `playwright.config.ts`, `.env.test.example`, `package.json`)

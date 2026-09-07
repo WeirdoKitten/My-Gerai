@@ -1,6 +1,6 @@
 # Arsitektur Folder
 
-> Struktur ini adalah **target** struktur folder. Setelah Fase 1-5 ([BACKLOG.md](BACKLOG.md)): `src/lib/db/{schema.ts,client.ts,seed.ts}`, `drizzle.config.ts`, `drizzle/` (migrasi), route group `(buyer)`, `(merchant)` & `(admin)` lengkap, `components/{buyer,merchant,admin}/`, `server/{orders,products,merchants,admins,config,payouts}.ts`, `lib/{payment,validation,utils,cart,auth,rate-limit}/`, `types/`, `tests/{unit,e2e}/` **sudah nyata ada**. Folder `lib/cart/` dan `lib/auth/` **tidak** ada di rencana awal — ditambahkan saat implementasi (keranjang sisi klien di Fase 2; hash password & sesi login di Fase 3, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)). `docker-compose.dev.yml` (Postgres dev lokal) & `Dockerfile`+`.dockerignore` (image produksi untuk Dokploy) di root juga baru. `server/config.ts` & `server/payouts.ts` (Fase 4) juga tidak persis seperti rencana awal — `admins.ts` dan `payouts.ts` **tidak** ada di target semula, ditambahkan karena approve/reject Pedagang & login Admin ternyata cukup besar untuk file sendiri (bukan digabung ke `merchants.ts`/`config.ts`). Halaman Admin juga punya route group bersarang `(dashboard)` yang tidak direncanakan semula — dipakai supaya `merchants/`, `config/`, `payouts/` berbagi guard sesi + header lewat satu layout, tanpa ikut membungkus `admin/login`. `lib/rate-limit/` (Fase 5) juga tidak ada di rencana awal — rate-limiter kecil (in-memory) dipisah dari `lib/auth/` karena dipakai juga oleh `createOrder` (bukan cuma alur auth). Sisanya (`components/ui`, `lib/realtime/`, `api/webhooks/payment/`, `lib/payment/tripay-provider.ts`) masih target, dibuat bertahap di fase-fase berikutnya (realtime & payment nyata = Fase 6). Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
+> Struktur ini adalah **target** struktur folder. Setelah Fase 1-5 ([BACKLOG.md](BACKLOG.md)): `src/lib/db/{schema.ts,client.ts,seed.ts}`, `drizzle.config.ts`, `drizzle/` (migrasi), route group `(buyer)`, `(merchant)` & `(admin)` lengkap, `components/{buyer,merchant,admin}/`, `server/{orders,products,merchants,admins,config,payouts}.ts`, `lib/{payment,validation,utils,cart,auth,rate-limit}/`, `types/`, `tests/{unit,e2e}/` **sudah nyata ada**. Folder `lib/cart/` dan `lib/auth/` **tidak** ada di rencana awal — ditambahkan saat implementasi (keranjang sisi klien di Fase 2; hash password & sesi login di Fase 3, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)). `docker-compose.dev.yml` (Postgres dev lokal) & `Dockerfile`+`.dockerignore` (image produksi untuk Dokploy) di root juga baru. `docker-entrypoint.sh` + `.gitattributes` (2026-09-07) ditambahkan supaya migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); menyusul juga `src/lib/db/{migrate,seed-demo,create-admin}.ts` (skrip DB yang di-*bundle* esbuild jadi `scripts/*.mjs` di dalam image — folder `scripts/` di root adalah output build, tidak di-commit). `server/config.ts` & `server/payouts.ts` (Fase 4) juga tidak persis seperti rencana awal — `admins.ts` dan `payouts.ts` **tidak** ada di target semula, ditambahkan karena approve/reject Pedagang & login Admin ternyata cukup besar untuk file sendiri (bukan digabung ke `merchants.ts`/`config.ts`). Halaman Admin juga punya route group bersarang `(dashboard)` yang tidak direncanakan semula — dipakai supaya `merchants/`, `config/`, `payouts/` berbagi guard sesi + header lewat satu layout, tanpa ikut membungkus `admin/login`. `lib/rate-limit/` (Fase 5) juga tidak ada di rencana awal — rate-limiter kecil (in-memory) dipisah dari `lib/auth/` karena dipakai juga oleh `createOrder` (bukan cuma alur auth). Sisanya (`components/ui`, `lib/realtime/`, `api/webhooks/payment/`, `lib/payment/tripay-provider.ts`) masih target, dibuat bertahap di fase-fase berikutnya (realtime & payment nyata = Fase 6). Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
 
 ```
 /
@@ -59,7 +59,10 @@
 │   │   ├── db/                                # Drizzle schema & client
 │   │   │   ├── schema.ts
 │   │   │   ├── client.ts
-│   │   │   └── seed.ts                        # Data contoh untuk dev lokal (guard: hanya boleh ke localhost)
+│   │   │   ├── seed.ts                        # Data contoh untuk dev lokal (guard: hanya boleh ke localhost, pakai TRUNCATE)
+│   │   │   ├── migrate.ts                     # Migrasi produksi (migrator drizzle-orm) — di-bundle jadi scripts/migrate.mjs oleh Dockerfile
+│   │   │   ├── seed-demo.ts                   # Seed demo server: idempoten, TANPA TRUNCATE — jalan otomatis bila SEED_DEMO=true
+│   │   │   └── create-admin.ts                # Buat 1 akun Admin manual (pnpm admin:create / node scripts/create-admin.mjs)
 │   │   ├── payment/                           # Payment Provider abstraction
 │   │   │   ├── types.ts                       # interface PaymentProvider
 │   │   │   ├── mock-provider.ts
@@ -74,7 +77,9 @@
 ├── drizzle/                                   # File migrasi database
 ├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi
 ├── Dockerfile                                 # Image produksi untuk deploy via Dokploy (server Garuda)
+├── docker-entrypoint.sh                       # ENTRYPOINT image: migrasi (+ seed demo bila SEED_DEMO=true) lalu start server
 ├── .dockerignore
+├── .gitattributes                             # Paksa *.sh = LF supaya entrypoint jalan di Linux (alpine)
 ├── vitest.config.mts                          # Config Vitest (Fase 5) — alias @/*, environment node
 ├── playwright.config.ts                       # Config Playwright E2E (Fase 5) — DB terpisah (mygerai_test), port 3100
 ├── tests/
