@@ -69,6 +69,7 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     name: product.name,
     description: product.description,
     price: product.price,
+    photoUrl: product.photoUrl,
     status: product.status,
   }));
 }

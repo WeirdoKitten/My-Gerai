@@ -89,6 +89,7 @@
 │   ├── unit/                                  # order-calc, order-status, money — Vitest, `pnpm test`
 │   └── e2e/                                   # order-flow (checkout+alur Pedagang), rate-limit, global-setup.ts — Playwright, `pnpm test:e2e`
 └── public/
+    └── img/menu/                              # Foto demo Item (dipakai seeder) — bakso, mie-ayam, es-teh, nasi-goreng, pangsit
 ```
 
 ## Konvensi Penamaan

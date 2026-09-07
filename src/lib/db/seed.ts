@@ -101,6 +101,7 @@ async function main() {
     name: "Nasi Goreng",
     price: 13000,
     status: "available",
+    photoUrl: "/img/menu/nasi-goreng.jpg",
   });
 
   await db.insert(products).values([
@@ -109,6 +110,7 @@ async function main() {
       name: "Bakso Urat",
       price: 15000,
       status: "available",
+      photoUrl: "/img/menu/bakso.jpg",
     },
     {
       merchantId: merchant.id,
@@ -121,18 +123,21 @@ async function main() {
       name: "Mie Ayam Bakso",
       price: 17000,
       status: "available",
+      photoUrl: "/img/menu/mie-ayam.jpg",
     },
     {
       merchantId: merchant.id,
       name: "Es Teh Manis",
       price: 5000,
       status: "available",
+      photoUrl: "/img/menu/es-teh.jpg",
     },
     {
       merchantId: merchant.id,
       name: "Pangsit Goreng",
       price: 8000,
       status: "sold_out",
+      photoUrl: "/img/menu/pangsit.jpg",
     },
   ]);
 

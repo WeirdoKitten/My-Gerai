@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-07 — Foto Item: tampilan (read-only) + foto demo di seeder
+
+**Dampak:** [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), kode (`src/lib/db/{seed,seed-demo}.ts`, `src/types/product.ts`, `src/server/products.ts`, `src/components/merchant/ProductListItem.tsx`, `public/img/menu/*.jpg` baru)
+**Alasan:** Feedback User — menu Pembeli terlihat kosong tanpa foto Item. Keputusan via AskUserQuestion: fitur **upload foto dari HP** dimau (task tersendiri, menunggu keputusan penyimpanan — lihat BACKLOG); untuk sekarang **foto demo lokal di seeder** + tampilkan foto yang sudah ada (read-only).
+**Ringkasan:**
+- 5 foto makanan (Unsplash, ~264 KB total) di `public/img/menu/` — disajikan lewat `next/image` (lokal, tanpa `remotePatterns`).
+- `seed.ts` & `seed-demo.ts` mengisi `products.photo_url` untuk sebagian Item demo (`Bakso Halus` sengaja tanpa foto → uji tampilan placeholder).
+- `MerchantProductView` + `listMerchantProducts` kini bawa `photoUrl`; `ProductListItem` menampilkan thumbnail 48px (placeholder ikon kalau kosong). `ProductCard` Pembeli sudah render `photoUrl` sejak Fase Tampilan.
+- **Belum ada** cara Pedagang menambah/ubah foto (`createProduct`/`updateProduct` tidak menyentuh `photo_url` — foto seed aman saat Item diedit). Fitur upload menyusul.
+
 ## 2026-09-07 — Tampilan: QR Lapak jadi tab sendiri + rapikan header dashboard
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), kode (`src/components/DashboardShell.tsx`, `src/app/(merchant)/dashboard/{layout,page}.tsx`, `src/app/(merchant)/dashboard/qr/page.tsx` baru, `src/components/merchant/QrLapakCard.tsx`)
