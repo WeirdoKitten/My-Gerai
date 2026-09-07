@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Field } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
 import { loginMerchant } from "@/server/merchants";
 
 export function LoginMerchantForm() {
@@ -34,44 +38,30 @@ export function LoginMerchantForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Nomor HP
-        </span>
-        <input
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field label="Nomor HP">
+        <Input
           type="tel"
+          autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           required
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Password
-        </span>
-        <input
+      </Field>
+      <Field label="Password">
+        <Input
           type="password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
-      {info ? (
-        <p className="text-sm text-amber-600 dark:text-amber-400">{info}</p>
-      ) : null}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="h-11 rounded-md bg-zinc-900 font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      </Field>
+      {error ? <Alert tone="error">{error}</Alert> : null}
+      {info ? <Alert tone="warning">{info}</Alert> : null}
+      <Button type="submit" fullWidth loading={submitting}>
         {submitting ? "Masuk..." : "Masuk"}
-      </button>
+      </Button>
     </form>
   );
 }

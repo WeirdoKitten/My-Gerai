@@ -1,4 +1,6 @@
 import Image from "next/image";
+import { Card } from "@/components/ui/Card";
+import { ImageOffIcon } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/utils/money";
 import type { BuyerProductView } from "@/types/product";
 import { AddToCartControls } from "./AddToCartControls";
@@ -11,34 +13,34 @@ export function ProductCard({
   stallSlug: string;
 }) {
   return (
-    <div className="flex gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+    <Card pad="sm" className="flex gap-3">
       {product.photoUrl ? (
         <Image
           src={product.photoUrl}
           alt={product.name}
-          width={72}
-          height={72}
-          className="h-[72px] w-[72px] shrink-0 rounded-md object-cover"
+          width={80}
+          height={80}
+          className="size-20 shrink-0 rounded-control object-cover"
         />
       ) : (
-        <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-md bg-zinc-100 text-center text-xs text-zinc-400 dark:bg-zinc-800">
-          Tanpa foto
+        <div className="flex size-20 shrink-0 items-center justify-center rounded-control bg-brand-tint text-brand">
+          <ImageOffIcon className="size-6" />
         </div>
       )}
-      <div className="flex flex-1 flex-col gap-1">
-        <p className="font-medium text-zinc-900 dark:text-zinc-50">
-          {product.name}
-        </p>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="font-semibold text-ink">{product.name}</p>
         {product.description ? (
-          <p className="line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="mt-0.5 line-clamp-2 text-sm text-ink-muted">
             {product.description}
           </p>
         ) : null}
-        <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+        <p className="mt-1 font-bold tabular-nums text-ink">
           {formatRupiah(product.price)}
         </p>
-        <AddToCartControls product={product} stallSlug={stallSlug} />
+        <div className="mt-2">
+          <AddToCartControls product={product} stallSlug={stallSlug} />
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }

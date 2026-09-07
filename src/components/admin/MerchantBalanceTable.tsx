@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { StoreIcon } from "@/components/ui/icons";
 import { formatRupiah } from "@/lib/utils/money";
 import type { MerchantBalanceView } from "@/types/payout";
 import { RecordPayoutForm } from "./RecordPayoutForm";
@@ -16,22 +20,22 @@ export function MerchantBalanceTable({
 
   if (balances.length === 0) {
     return (
-      <p className="text-zinc-500 dark:text-zinc-400">Belum ada Pedagang.</p>
+      <EmptyState
+        icon={<StoreIcon className="size-10" />}
+        title="Belum ada Pedagang"
+      />
     );
   }
 
   return (
     <div className="flex flex-col gap-2">
       {balances.map((row) => (
-        <div
-          key={row.merchantId}
-          className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-        >
-          <div className="flex items-center justify-between">
-            <p className="font-medium text-zinc-900 dark:text-zinc-50">
+        <Card key={row.merchantId}>
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate font-semibold text-ink">
               {row.stallName}
             </p>
-            <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+            <span className="shrink-0 font-bold tabular-nums text-ink">
               {formatRupiah(row.balance)}
             </span>
           </div>
@@ -46,16 +50,18 @@ export function MerchantBalanceTable({
               onCancel={() => setActiveMerchantId(null)}
             />
           ) : (
-            <button
+            <Button
               type="button"
-              onClick={() => setActiveMerchantId(row.merchantId)}
+              variant="secondary"
+              size="sm"
+              className="mt-3"
               disabled={row.balance <= 0}
-              className="mt-2 h-9 rounded-md border border-zinc-300 px-4 text-sm font-medium disabled:opacity-40 dark:border-zinc-700"
+              onClick={() => setActiveMerchantId(row.merchantId)}
             >
               Catat Pencairan
-            </button>
+            </Button>
           )}
-        </div>
+        </Card>
       ))}
     </div>
   );

@@ -27,18 +27,14 @@ export function PayoutsManager({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Saldo Pedagang
-        </h2>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-ink">Saldo Pedagang</h2>
         <MerchantBalanceTable balances={balances} onRecorded={refresh} />
-      </div>
-      <div>
-        <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Riwayat Pencairan
-        </h2>
+      </section>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-ink">Riwayat Pencairan</h2>
         <PayoutHistoryList payouts={payoutHistory} />
-      </div>
+      </section>
     </div>
   );
 }

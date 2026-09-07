@@ -2,6 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
 import { updatePlatformConfig } from "@/server/config";
 import type { PlatformConfigView } from "@/types/config";
 
@@ -43,46 +48,32 @@ export function PlatformConfigForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Biaya Layanan (Rp)
-        </span>
-        <input
+    <Card as="form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field label="Biaya Layanan (Rp)">
+        <Input
           type="number"
+          inputMode="numeric"
           value={platformFeeAmount}
           onChange={(e) => setPlatformFeeAmount(e.target.value)}
           required
           min={0}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Durasi Kedaluwarsa Pesanan (menit)
-        </span>
-        <input
+      </Field>
+      <Field label="Durasi Kedaluwarsa Pesanan (menit)">
+        <Input
           type="number"
+          inputMode="numeric"
           value={orderExpiryMinutes}
           onChange={(e) => setOrderExpiryMinutes(e.target.value)}
           required
           min={1}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
-      {message ? (
-        <p className="text-sm text-green-600 dark:text-green-400">{message}</p>
-      ) : null}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="h-11 rounded-md bg-zinc-900 font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900"
-      >
+      </Field>
+      {error ? <Alert tone="error">{error}</Alert> : null}
+      {message ? <Alert tone="success">{message}</Alert> : null}
+      <Button type="submit" fullWidth loading={submitting}>
         {submitting ? "Menyimpan..." : "Simpan"}
-      </button>
-    </form>
+      </Button>
+    </Card>
   );
 }

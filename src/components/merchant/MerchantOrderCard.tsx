@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatRupiah } from "@/lib/utils/money";
 import {
   MERCHANT_ACTION_LABEL_ID,
   nextMerchantStatus,
-  ORDER_STATUS_LABEL_ID,
 } from "@/lib/utils/order-status";
 import { updateOrderStatus } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
@@ -38,42 +41,40 @@ export function MerchantOrderCard({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-      <div className="flex items-center justify-between">
-        <p className="text-lg font-bold tracking-wide text-zinc-900 dark:text-zinc-50">
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-lg font-bold tracking-wide tabular-nums text-ink">
           {order.orderCode}
         </p>
-        <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-          {ORDER_STATUS_LABEL_ID[order.status]}
-        </span>
+        <OrderStatusBadge status={order.status} />
       </div>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Atas nama: {order.buyerName}
-      </p>
-      <div className="flex flex-col gap-1">
+      <p className="text-sm text-ink-muted">Atas nama {order.buyerName}</p>
+      <ul className="flex flex-col gap-1 border-t border-line pt-3">
         {order.items.map((item) => (
-          <div key={item.id} className="flex justify-between text-sm">
-            <span>
-              {item.qty}x {item.productNameSnapshot}
-              {item.note ? ` (${item.note})` : ""}
+          <li key={item.id} className="flex justify-between gap-2 text-sm">
+            <span className="text-ink">
+              {item.qty}× {item.productNameSnapshot}
+              {item.note ? (
+                <span className="text-ink-muted"> — {item.note}</span>
+              ) : null}
             </span>
-            <span>{formatRupiah(item.priceSnapshot * item.qty)}</span>
-          </div>
+            <span className="tabular-nums text-ink-muted">
+              {formatRupiah(item.priceSnapshot * item.qty)}
+            </span>
+          </li>
         ))}
-      </div>
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      </ul>
+      {error ? <Alert tone="error">{error}</Alert> : null}
       {actionLabel ? (
-        <button
+        <Button
           type="button"
+          fullWidth
+          loading={submitting}
           onClick={handleAdvance}
-          disabled={submitting}
-          className="h-10 rounded-md bg-zinc-900 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900"
         >
           {submitting ? "Memproses..." : actionLabel}
-        </button>
+        </Button>
       ) : null}
-    </div>
+    </Card>
   );
 }

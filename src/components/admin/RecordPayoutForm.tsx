@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Field } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
 import { recordPayout } from "@/server/payouts";
 
 export function RecordPayoutForm({
@@ -41,52 +45,35 @@ export function RecordPayoutForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-2 flex flex-col gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800"
+      className="mt-3 flex flex-col gap-3 border-t border-line pt-3"
     >
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Nominal (Rp)
-        </span>
-        <input
+      <Field label="Nominal (Rp)">
+        <Input
           type="number"
+          inputMode="numeric"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           required
           min={1}
           max={balance}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Catatan (opsional)
-        </span>
-        <input
+      </Field>
+      <Field label="Catatan" hint="Opsional.">
+        <Input
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={500}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      </Field>
+      {error ? <Alert tone="error">{error}</Alert> : null}
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="h-9 flex-1 rounded-md bg-zinc-900 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900"
-        >
+        <Button type="submit" size="sm" fullWidth loading={submitting}>
           {submitting ? "Menyimpan..." : "Konfirmasi Pencairan"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="h-9 rounded-md border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700"
-        >
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={onCancel}>
           Batal
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Textarea } from "@/components/ui/Textarea";
 import { approveMerchant, rejectMerchant } from "@/server/merchants";
 import type { AdminMerchantView } from "@/types/admin";
 
@@ -42,65 +46,65 @@ export function MerchantApprovalRow({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <Card className="flex flex-col gap-3">
       <div>
-        <p className="font-medium text-zinc-900 dark:text-zinc-50">
-          {merchant.stallName}
-        </p>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="font-semibold text-ink">{merchant.stallName}</p>
+        <p className="text-sm text-ink-muted">
           {merchant.ownerName} · {merchant.category} · {merchant.phone}
         </p>
       </div>
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      {error ? <Alert tone="error">{error}</Alert> : null}
       {showRejectForm ? (
         <form onSubmit={handleReject} className="flex flex-col gap-2">
-          <textarea
+          <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             required
             minLength={3}
-            placeholder="Alasan penolakan..."
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            placeholder="Alasan penolakan (ditampilkan ke Pedagang)..."
           />
           <div className="flex gap-2">
-            <button
+            <Button
               type="submit"
-              disabled={submitting}
-              className="h-9 flex-1 rounded-md bg-red-600 text-sm font-medium text-white disabled:opacity-60"
+              variant="danger"
+              size="sm"
+              fullWidth
+              loading={submitting}
             >
               {submitting ? "Memproses..." : "Konfirmasi Tolak"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setShowRejectForm(false)}
-              className="h-9 rounded-md border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700"
             >
               Batal
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            size="sm"
+            fullWidth
+            loading={submitting}
             onClick={handleApprove}
-            disabled={submitting}
-            className="h-9 flex-1 rounded-md bg-zinc-900 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900"
           >
             Setujui
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            onClick={() => setShowRejectForm(true)}
+            variant="secondary"
+            size="sm"
             disabled={submitting}
-            className="h-9 rounded-md border border-red-300 px-4 text-sm font-medium text-red-600 dark:border-red-900 dark:text-red-400"
+            onClick={() => setShowRejectForm(true)}
           >
             Tolak
-          </button>
+          </Button>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

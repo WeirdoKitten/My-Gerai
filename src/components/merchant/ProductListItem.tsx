@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/utils/cn";
 import { formatRupiah } from "@/lib/utils/money";
 import { setProductStatus } from "@/server/products";
 import type { MerchantProductView } from "@/types/product";
@@ -38,37 +40,44 @@ export function ProductListItem({
     onChanged();
   }
 
+  const available = product.status === "available";
+
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
-          {product.name}
-        </p>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+    <Card
+      pad="sm"
+      className={cn(
+        "flex items-center justify-between gap-3",
+        !available && "opacity-70",
+      )}
+    >
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-ink">{product.name}</p>
+        <p className="text-sm tabular-nums text-ink-muted">
           {formatRupiah(product.price)}
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           onClick={handleToggle}
           disabled={toggling}
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            product.status === "available"
-              ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
-              : "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-          }`}
+          className={cn(
+            "rounded-full px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+            available
+              ? "bg-success-bg text-success"
+              : "bg-neutral-bg text-ink-muted",
+          )}
         >
-          {product.status === "available" ? "Tersedia" : "Habis"}
+          {available ? "Tersedia" : "Habis"}
         </button>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-sm text-zinc-500 underline dark:text-zinc-400"
+          className="rounded-lg px-2.5 py-1 text-sm font-semibold text-brand-strong transition-colors hover:bg-brand-tint"
         >
           Ubah
         </button>
       </div>
-    </div>
+    </Card>
   );
 }

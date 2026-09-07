@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Field } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
 import { createProduct, updateProduct } from "@/server/products";
 import type { MerchantProductView } from "@/types/product";
 
@@ -47,67 +52,43 @@ export function ProductForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-    >
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Nama Item
-        </span>
-        <input
+    <Card as="form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field label="Nama Item">
+        <Input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
           maxLength={100}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Deskripsi (opsional)
-        </span>
-        <input
+      </Field>
+      <Field label="Deskripsi" hint="Opsional.">
+        <Input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           maxLength={500}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Harga (Rp)
-        </span>
-        <input
+      </Field>
+      <Field label="Harga (Rp)">
+        <Input
           type="number"
+          inputMode="numeric"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           required
           min={0}
-          className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
         />
-      </label>
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      </Field>
+      {error ? <Alert tone="error">{error}</Alert> : null}
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="h-10 flex-1 rounded-md bg-zinc-900 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900"
-        >
+        <Button type="submit" fullWidth loading={submitting}>
           {submitting ? "Menyimpan..." : "Simpan"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="h-10 rounded-md border border-zinc-300 px-4 text-sm font-medium dark:border-zinc-700"
-        >
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Batal
-        </button>
+        </Button>
       </div>
-    </form>
+    </Card>
   );
 }

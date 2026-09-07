@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ReceiptIcon } from "@/components/ui/icons";
 import { listMerchantOrders } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
 import { MerchantOrderCard } from "./MerchantOrderCard";
@@ -26,9 +28,11 @@ export function MerchantOrderList({
 
   if (orders.length === 0) {
     return (
-      <p className="text-zinc-500 dark:text-zinc-400">
-        Belum ada Pesanan masuk.
-      </p>
+      <EmptyState
+        icon={<ReceiptIcon className="size-10" />}
+        title="Belum ada Pesanan masuk"
+        description="Pesanan yang sudah dibayar muncul di sini otomatis."
+      />
     );
   }
 

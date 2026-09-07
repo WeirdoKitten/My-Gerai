@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
 import { ProductCard } from "@/components/buyer/ProductCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ImageOffIcon, StoreIcon } from "@/components/ui/icons";
 import { getStallCatalog } from "@/server/products";
 
 export default async function StallMenuPage(
@@ -12,19 +14,25 @@ export default async function StallMenuPage(
   if (!catalog) notFound();
 
   return (
-    <div className="flex flex-col gap-4 pb-24">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-          {catalog.merchant.stallName}
-        </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          {catalog.merchant.category}
-        </p>
+    <div className="flex flex-col gap-4 pb-28">
+      <div className="flex items-start gap-3">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-card bg-brand-tint text-brand">
+          <StoreIcon className="size-6" />
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight text-ink">
+            {catalog.merchant.stallName}
+          </h1>
+          <p className="text-sm text-ink-muted">{catalog.merchant.category}</p>
+        </div>
       </div>
+
       {catalog.products.length === 0 ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
-          Belum ada Item tersedia.
-        </p>
+        <EmptyState
+          icon={<ImageOffIcon className="size-10" />}
+          title="Belum ada Item"
+          description="Lapak ini belum menambahkan menu apa pun."
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {catalog.products.map((product) => (
@@ -36,6 +44,7 @@ export default async function StallMenuPage(
           ))}
         </div>
       )}
+
       <FloatingCartBar />
     </div>
   );

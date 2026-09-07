@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatRupiah } from "@/lib/utils/money";
-import {
-  FINAL_ORDER_STATUSES,
-  ORDER_STATUS_LABEL_ID,
-} from "@/lib/utils/order-status";
+import { FINAL_ORDER_STATUSES } from "@/lib/utils/order-status";
 import { getOrderStatus, simulatePaymentSuccess } from "@/server/orders";
 import type { BuyerOrderStatusView } from "@/types/order";
 
@@ -46,65 +47,59 @@ export function OrderStatusView({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-zinc-200 p-4 text-center dark:border-zinc-800">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Kode Pesanan</p>
-        <p className="text-3xl font-bold tracking-widest text-zinc-900 dark:text-zinc-50">
+      <Card pad="lg" className="flex flex-col items-center gap-2 text-center">
+        <p className="text-sm text-ink-muted">Kode Pesanan</p>
+        <p className="text-3xl font-extrabold tracking-[0.15em] tabular-nums text-ink">
           {order.orderCode}
         </p>
-        <p className="mt-2 inline-block rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-          {ORDER_STATUS_LABEL_ID[order.status]}
-        </p>
-      </div>
+        <OrderStatusBadge status={order.status} />
+      </Card>
 
       {order.qrImageUrl ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <Card pad="lg" className="flex flex-col items-center gap-3">
+          <p className="text-sm text-ink-muted">
             Pindai untuk bayar (simulasi)
           </p>
-          {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku untuk ini */}
+          {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
           <img
             src={order.qrImageUrl}
             alt="QR pembayaran"
-            className="h-48 w-48"
+            className="size-48 rounded-control"
           />
-          <button
+          <Button
             type="button"
+            fullWidth
+            loading={simulating}
             onClick={handleSimulate}
-            disabled={simulating}
-            className="h-11 w-full rounded-md bg-zinc-900 font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900"
           >
             {simulating ? "Memproses..." : "Simulasikan Pembayaran Berhasil"}
-          </button>
-          {simulateError ? (
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {simulateError}
-            </p>
-          ) : null}
-        </div>
+          </Button>
+          {simulateError ? <Alert tone="error">{simulateError}</Alert> : null}
+        </Card>
       ) : null}
 
-      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-        <p className="font-medium text-zinc-900 dark:text-zinc-50">
-          {order.stallName}
-        </p>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Atas nama: {order.buyerName}
-        </p>
-        <div className="mt-2 flex flex-col gap-1">
+      <Card className="flex flex-col gap-3">
+        <div>
+          <p className="font-semibold text-ink">{order.stallName}</p>
+          <p className="text-sm text-ink-muted">Atas nama {order.buyerName}</p>
+        </div>
+        <ul className="flex flex-col gap-1.5 border-t border-line pt-3">
           {order.items.map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span>
-                {item.qty}x {item.productNameSnapshot}
+            <li key={item.id} className="flex justify-between gap-2 text-sm">
+              <span className="text-ink">
+                {item.qty}× {item.productNameSnapshot}
               </span>
-              <span>{formatRupiah(item.priceSnapshot * item.qty)}</span>
-            </div>
+              <span className="tabular-nums text-ink-muted">
+                {formatRupiah(item.priceSnapshot * item.qty)}
+              </span>
+            </li>
           ))}
-        </div>
-        <div className="mt-2 flex justify-between border-t border-zinc-200 pt-2 font-semibold text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+        </ul>
+        <div className="flex justify-between border-t border-line pt-3 font-bold text-ink">
           <span>Total Dibayar</span>
-          <span>{formatRupiah(order.subtotal)}</span>
+          <span className="tabular-nums">{formatRupiah(order.subtotal)}</span>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

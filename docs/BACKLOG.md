@@ -63,6 +63,18 @@
 
 **Diverifikasi nyata**: `pnpm test` (24 test unit) & `pnpm test:e2e` (3 test E2E, termasuk regresi bug Fase 3 & rate-limit) hijau; `tsc --noEmit`/`pnpm lint`/`pnpm build` lulus di setiap tahap. `/security-review` dijalankan, 1 temuan HIGH diperbaiki & diverifikasi ulang. Audit Lighthouse dijalankan sungguhan (bukan diasumsikan), hasil dicatat di atas. Tidak ada item tersisa dari scope Fase 5 — seluruh 4 poin backlog asli plus gap rate-limiting yang diwariskan dari Fase 2-4 sudah tertutup.
 
+## Fase Tampilan — Desain Sistem & Percantik UI ✅
+
+> Ground truth: [DESAIN-SISTEM.md](DESAIN-SISTEM.md). Arah: hangat/menggugah selera (aksen oranye), terang saja (hapus semua `dark:`), mobile-first, sederhana. Dikonfirmasi User via AskUserQuestion 2026-09-07.
+
+- [x] Tulis [DESAIN-SISTEM.md](DESAIN-SISTEM.md) (token warna/tipografi/spacing, resep komponen, aturan layout).
+- [x] `globals.css` (`@theme` token) + swap font ke Plus Jakarta Sans + `body` base.
+- [x] Komponen primitif `src/components/ui/` (Button, ButtonLink, Input, Textarea, Field, Card, Badge, OrderStatusBadge, Alert, QuantityStepper, PageHeader, EmptyState, Spinner, Wordmark, icons) + kerangka `AuthShell`/`DashboardShell`/`DashboardNav`.
+- [x] Percantik halaman Pembeli: landing `page.tsx` + `menu` + `checkout` + `pesanan` + `not-found`.
+- [x] Percantik Pedagang: layout dashboard + `dashboard` + `produk` + `login` + `daftar`.
+- [x] Percantik Admin: layout + `merchants` + `config` + `payouts` + `login`.
+- [x] Nol sisa `dark:`/`zinc-*`/`#000`. `tsc`/`lint`/`build`/`pnpm test` (24) lulus. Diverifikasi visual di browser (Playwright, desktop + mobile) — 2 bug ditemukan & diperbaiki (nav tab dobel-aktif di `/dashboard/produk`, input catatan sempit di mobile). Ground truth disinkronkan (CLAUDE.md, DOKUMENTASI.md, ARSITEKTUR-FOLDER.md, TEKNOLOGI.md, CHANGELOG.md).
+
 ## Fase 6 — Integrasi Payment Nyata (Tripay)
 
 - [ ] Daftar akun Tripay (perorangan, KTP) — dilakukan User, bukan Claude.
