@@ -59,10 +59,10 @@ export function ProductListItem({
           onClick={handleToggle}
           disabled={toggling}
           className={cn(
-            "rounded-full px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+            "rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
             available
-              ? "bg-success-bg text-success"
-              : "bg-neutral-bg text-ink-muted",
+              ? "border-success/40 bg-success-bg text-success"
+              : "border-line bg-neutral-bg text-ink-muted",
           )}
         >
           {available ? "Tersedia" : "Habis"}
