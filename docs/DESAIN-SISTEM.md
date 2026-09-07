@@ -173,7 +173,7 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 ## 5. Pola spesifik
 
 - **Kartu Item Pembeli (`ProductCard`):** foto kiri `size-20 rounded-control object-cover` (via `next/image`), placeholder tanpa foto = `bg-brand-tint` + ikon. Nama `font-semibold`, deskripsi `text-sm text-ink-muted line-clamp-2`, harga `font-bold text-ink tabular-nums`. Catatan (opsional) satu baris penuh, lalu baris stepper + tombol "Tambah". _(Item `sold_out` tidak pernah sampai ke Pembeli — `getStallCatalog` sudah memfilternya.)_
-- **Baris Item Pedagang (`ProductListItem`):** Item `sold_out` → seluruh baris `opacity-70`. Aksi kanan = 2 pil ber-**border** (supaya jelas tombol, bukan teks): (1) toggle status `role="switch"` — titik + "Tersedia"/"Habis", hijau saat aktif; (2) "Ubah" (border) buka `Modal` form.
+- **Baris Item Pedagang (`ProductListItem`):** Item `sold_out` → seluruh baris `opacity-70`, toggle status tampil sebagai badge yang bisa diklik (`bg-success-bg` "Tersedia" / `bg-neutral-bg` "Habis").
 - **Floating cart bar:** pill mengambang `fixed inset-x-4 bottom-4 mx-auto max-w-md h-14 rounded-full bg-brand-strong text-white shadow-card px-5`, kiri "N item", kanan harga `tabular-nums` + ikon panah. Muncul hanya kalau keranjang berisi.
 - **Halaman status Pesanan:** Kode Pesanan jadi "hero" (lihat tipografi), badge status di bawahnya. QR pembayaran dalam `Card`. Tombol simulasi = `Button variant="primary" fullWidth`.
 - **Dashboard Pedagang — kartu Pesanan:** Kode Pesanan `text-lg font-bold tabular-nums`, `OrderStatusBadge` di kanan, daftar item ringkas, satu tombol aksi lebar untuk maju status.
