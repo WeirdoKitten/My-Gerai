@@ -1,6 +1,5 @@
-import Image from "next/image";
 import { Card } from "@/components/ui/Card";
-import { ImageOffIcon } from "@/components/ui/icons";
+import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { formatRupiah } from "@/lib/utils/money";
 import type { BuyerProductView } from "@/types/product";
 import { AddToCartControls } from "./AddToCartControls";
@@ -14,19 +13,7 @@ export function ProductCard({
 }) {
   return (
     <Card pad="sm" className="flex gap-3">
-      {product.photoUrl ? (
-        <Image
-          src={product.photoUrl}
-          alt={product.name}
-          width={80}
-          height={80}
-          className="size-20 shrink-0 rounded-control object-cover"
-        />
-      ) : (
-        <div className="flex size-20 shrink-0 items-center justify-center rounded-control bg-brand-tint text-brand">
-          <ImageOffIcon className="size-6" />
-        </div>
-      )}
+      <PhotoThumb src={product.photoUrl} alt={product.name} bordered={false} />
       <div className="flex min-w-0 flex-1 flex-col">
         <p className="font-semibold text-ink">{product.name}</p>
         {product.description ? (

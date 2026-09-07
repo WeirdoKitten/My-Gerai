@@ -2,6 +2,21 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Fitur upload foto Item (dari HP Pedagang)
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR baru), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) ("Storage foto" diputuskan), [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`src/server/products.ts`, `src/lib/validation/product.schema.ts`, `src/components/merchant/ProductForm.tsx`, `src/lib/upload/*` baru, `src/app/uploads/[...path]/route.ts` baru, `src/types/product.ts`, `Dockerfile`, `docker-entrypoint.sh`, `.dockerignore`, `.gitignore`, `tests/unit/upload.test.ts` baru)
+**Alasan:** Lanjutan feedback User — Pedagang harus bisa menaruh foto Item sendiri. Plan mode dulu (fitur besar + keamanan, RULES §5.2), rencana disetujui (`~/.claude/plans/wild-rolling-turtle.md`). Keputusan penyimpanan (AskUserQuestion): **volume Docker persisten** di Garuda, bukan Cloudflare R2.
+**Ringkasan:**
+- **Penyimpanan**: file ditulis ke `UPLOADS_DIR` (`/app/uploads` di produksi = named volume Docker; `.uploads/` di dev). Disajikan lewat Route Handler `src/app/uploads/[...path]/route.ts` (bukan `public/` yang dibaked saat build) — path di-sanitasi (`path.resolve` + cek `startsWith(UPLOADS_DIR)`), hanya ekstensi gambar, `Cache-Control: immutable` + `X-Content-Type-Options: nosniff`.
+- **Konsekuensi arsitektur**: container aplikasi **tidak lagi 100% stateless** — perlu volume dimount di Dokploy. Backup foto = backup volume (manual). ADR baru di ARSITEKTUR-SISTEM.md.
+- **Upload** (`uploadProductPhoto` Server Action): auth Pedagang, rate-limit 30/10menit per-merchant, batas 3 MB, validasi tipe lewat **magic-bytes** (JPG/PNG/WebP — **SVG ditolak**, bisa memuat script), nama file `crypto.randomUUID()` (ekstensi dari magic-bytes, bukan dari klien). Foto di-**resize di klien** dulu (`src/lib/upload/resize-image.ts`, maks 1280px, JPEG — tanpa dependency `sharp`).
+- **Skema**: `product.schema.ts` `photoUrl` di-regex kunci ke `^/uploads/products/<uuid>\.(jpg|png|webp)$` (tidak bisa simpan URL sembarang / `javascript:` / traversal). `updateProduct` kini **ikut menulis** `photo_url` → `ProductForm` selalu mengirim balik nilai saat ini (prefill dari `product.photoUrl`).
+- **UI**: `ProductForm` dapat pemilih foto (`<input type=file accept=image/*>`), pratinjau, tombol Ganti/Hapus Foto.
+- **Orphan file** (foto lama saat diganti/dihapus) dibiarkan di volume — sesuai filosofi lazy-cleanup proyek. Dicatat sebagai keterbatasan diketahui.
+- **`/security-review`**: tidak ada temuan HIGH/MEDIUM. 1 hardening kecil diterapkan (`nosniff`). Unit test baru `tests/unit/upload.test.ts` (7 test: magic-bytes JPG/PNG/WebP + tolak teks/SVG; regex path terima yang sah + tolak URL eksternal/traversal/ekstensi lain).
+- **Diverifikasi nyata**: dev (upload via Playwright → file di `.uploads/products/`, muncul di menu Pembeli & Kelola Item, edit nama Item tidak menghilangkan foto, "Hapus Foto" jalan) + `docker build`+`run` dengan named volume (tulis sebagai user `nextjs`, sajikan via route, `/uploads/%2e%2e%2fserver.js`→404, foto persist setelah `docker restart`). `tsc`/`lint`/`build`/`pnpm test` (31) lulus.
+- **TODO User sebelum deploy versi ini**: tambahkan Volume Mount `/app/uploads` di Dokploy (`mygerai-app` → Advanced → Volumes), kalau tidak foto hilang tiap redeploy.
+
 ## 2026-09-07 — Foto Item: tampilan (read-only) + foto demo di seeder
 
 **Dampak:** [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), kode (`src/lib/db/{seed,seed-demo}.ts`, `src/types/product.ts`, `src/server/products.ts`, `src/components/merchant/ProductListItem.tsx`, `public/img/menu/*.jpg` baru)

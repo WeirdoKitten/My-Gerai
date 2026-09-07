@@ -46,3 +46,6 @@ next-env.d.ts
 # Output esbuild untuk skrip DB (migrate/seed-demo/create-admin) — digenerate
 # di dalam image oleh Dockerfile, tidak perlu di-commit.
 /scripts/
+
+# Foto yang diunggah Pedagang saat dev lokal (produksi: volume Docker).
+/.uploads/

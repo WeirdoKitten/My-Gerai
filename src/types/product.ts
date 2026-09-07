@@ -36,3 +36,7 @@ export type CreateProductResult =
 
 export type UpdateProductResult = { ok: boolean; message?: string };
 export type SetProductStatusResult = { ok: boolean; message?: string };
+
+export type UploadProductPhotoResult =
+  | { ok: true; url: string }
+  | { ok: false; message: string };

@@ -5,6 +5,8 @@ import { z } from "zod";
 import { getMerchantSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import { merchants, products } from "@/lib/db/schema";
+import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit/limiter";
+import { detectImage, saveProductPhoto } from "@/lib/upload/storage";
 import {
   type CreateProductInput,
   createProductSchema,
@@ -17,7 +19,10 @@ import type {
   SetProductStatusResult,
   StallCatalogView,
   UpdateProductResult,
+  UploadProductPhotoResult,
 } from "@/types/product";
+
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
 /** Katalog publik sebuah Lapak — null kalau slug tidak ada atau belum `approved`. */
 export async function getStallCatalog(
@@ -96,10 +101,46 @@ export async function createProduct(
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       price: parsed.data.price,
+      photoUrl: parsed.data.photoUrl ?? null,
     })
     .returning();
 
   return { ok: true, productId: product.id };
+}
+
+/**
+ * Unggah foto Item. Dipanggil dari `ProductForm` sebelum submit — mengembalikan
+ * `photo_url` yang lalu ikut dikirim ke `createProduct`/`updateProduct`.
+ * Foto di-resize di klien dulu (`src/lib/upload/resize-image.ts`); di sini
+ * tetap validasi tipe (magic bytes) + batas ukuran sebagai backstop.
+ */
+export async function uploadProductPhoto(
+  formData: FormData,
+): Promise<UploadProductPhotoResult> {
+  const session = await getMerchantSession();
+  if (!session)
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  if (!checkRateLimit(`upload:${session.merchantId}`, 30, 10 * 60_000)) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof Blob) || file.size === 0) {
+    return { ok: false, message: "Tidak ada file foto." };
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    return { ok: false, message: "Ukuran foto maksimal 3 MB." };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const ext = detectImage(bytes);
+  if (!ext) {
+    return { ok: false, message: "Format foto harus JPG, PNG, atau WebP." };
+  }
+
+  const url = await saveProductPhoto(bytes, ext);
+  return { ok: true, url };
 }
 
 export async function updateProduct(
@@ -116,11 +157,16 @@ export async function updateProduct(
       message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
     };
   }
-  const { productId, name, description, price } = parsed.data;
+  const { productId, name, description, price, photoUrl } = parsed.data;
 
   const [updated] = await db
     .update(products)
-    .set({ name, description: description ?? null, price })
+    .set({
+      name,
+      description: description ?? null,
+      price,
+      photoUrl: photoUrl ?? null,
+    })
     .where(
       and(
         eq(products.id, productId),

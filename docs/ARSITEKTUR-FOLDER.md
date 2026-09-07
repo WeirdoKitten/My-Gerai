@@ -42,6 +42,7 @@
 │   │   │           ├── merchants/page.tsx     # Approve/reject Pedagang (+ alasan saat reject)
 │   │   │           ├── config/page.tsx        # Atur Biaya Layanan & durasi kedaluwarsa + histori
 │   │   │           └── payouts/page.tsx       # Saldo Pedagang, Daftar Transaksi, catat Pencairan manual
+│   │   ├── uploads/[...path]/route.ts         # Sajikan foto Item dari UPLOADS_DIR (volume Docker) — path-sanitized, publik
 │   │   └── api/
 │   │       └── webhooks/payment/route.ts      # (target Fase 6) Endpoint webhook saat provider nyata aktif
 │   ├── components/
@@ -71,6 +72,7 @@
 │   │   │   ├── mock-provider.ts
 │   │   │   └── tripay-provider.ts             # (target Fase 6)
 │   │   ├── cart/                              # Keranjang sisi klien (Context + localStorage)
+│   │   ├── upload/                            # storage.ts (tulis file ke UPLOADS_DIR + validasi magic-bytes), resize-image.ts (resize di klien)
 │   │   ├── auth/                              # Hash password (scrypt) & sesi login: session.ts (Pedagang), admin-session.ts (Admin, Fase 4)
 │   │   ├── rate-limit/                        # limiter.ts (Fase 5, tidak ada di rencana awal) — fixed-window in-memory
 │   │   ├── realtime/                          # (target) belum dipakai — status Pesanan/dashboard masih polling langsung di komponen

@@ -38,7 +38,7 @@ erDiagram
         string name
         text description
         int price
-        string photo_url
+        string photo_url "nullable; path /uploads/products/<uuid>.<ext> hasil upload Pedagang (Fase Foto Item, 2026-09-08). Disimpan di volume Docker, bukan di DB."
         string status "available|sold_out"
         timestamp created_at
     }
