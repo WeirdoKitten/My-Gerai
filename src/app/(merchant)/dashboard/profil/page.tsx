@@ -6,7 +6,7 @@ export default async function MerchantProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="flex max-w-lg flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold text-ink">Profil Lapak</h2>
       <MerchantProfileForm profile={profile} />
     </div>

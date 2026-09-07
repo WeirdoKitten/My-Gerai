@@ -9,7 +9,7 @@ export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
   }
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
+    <div className="flex flex-col gap-2">
       {orders.map((order) => (
         <Card
           key={order.id}

@@ -154,23 +154,19 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 
 ## 4. Layout
 
-**Prinsip responsif:** mobile-first, tapi tablet & desktop **wajib memakai lebar layar** — bukan kolom telepon sempit dengan samping kosong. Caranya: shell lebar + konten "browse/kelola" jadi **grid multi-kolom** di `sm`/`lg`; hanya alur linier (form, struk) yang tetap dibatasi lebar bacanya.
+**Mobile-first, satu kolom.** Semua permukaan = kolom di tengah, `bg-bg` mengisi samping. Tidak ada grid multi-kolom / breakpoint layout (dicoba 2026-09-08, di-revert — hasilnya jelek di layar lebar). Konten baru mengikuti pola ini kecuali ada alasan kuat.
 
-| Permukaan | Lebar shell | Grid konten |
-|---|---|---|
-| Layout Pembeli (`(buyer)/layout.tsx`) | `max-w-3xl` | — |
-| Menu Pembeli | (shell) | Kartu Item: `grid gap-3 sm:grid-cols-2` |
-| Checkout | `max-w-lg` (di dalam shell) | alur linier, 1 kolom |
-| Status Pesanan | `max-w-md` (di dalam shell) | struk, 1 kolom |
-| Halaman auth (login/daftar) | `max-w-sm`, center V+H | 1 kolom (form) |
-| Landing `/` | `max-w-5xl` | `md:grid-cols-2` (hero + kartu langkah) |
-| Dashboard Pedagang (`DashboardShell` width `max-w-5xl`) | `max-w-5xl` | Pesanan: `grid lg:grid-cols-2`; Item: `grid sm:grid-cols-2` (form Tambah/Ubah dalam **`Modal`**, bukan inline); QR: `max-w-md` |
-| Panel Admin (`DashboardShell` width `max-w-6xl`) | `max-w-6xl` | Semua daftar (approval, saldo, transaksi, riwayat): `grid sm:grid-cols-2`; form konfigurasi `max-w-lg` |
+| Permukaan | Lebar |
+|---|---|
+| Pembeli (menu, checkout, status, 404) — `(buyer)/layout.tsx` | `max-w-md`, wordmark kecil di atas |
+| Halaman auth (login/daftar) | `max-w-sm`, center V+H |
+| Landing `/` | `max-w-md`, 1 kolom |
+| Dashboard Pedagang (`DashboardShell` width `max-w-2xl`) | `max-w-2xl`, `px-4 py-6` |
+| Panel Admin (`DashboardShell` width `max-w-3xl`) | `max-w-3xl` |
 
-- Padding halaman: `px-4 py-6 sm:px-6`. Grid ragged-height pakai `items-start`.
-
-- **Root:** `<body>` = `min-h-dvh bg-bg text-ink font-sans`. Semua halaman berdiri di atas `bg-bg`; kartu (`bg-surface`) yang memberi kontras, bukan sebaliknya.
-- **Header dashboard** (Pedagang & Admin, komponen `DashboardShell`): sticky, `bg-bg/85 backdrop-blur`, border bawah `border-line`. Baris 1: `Wordmark` kecil + (opsional) `headerAction` + tombol **Keluar** (`Button variant="dangerOutline" size="sm"` — outline merah, isi merah saat hover). Baris 2 (opsional, `heading`): teks `text-base font-bold` — dipakai Admin (`Admin · <nama>`); **Pedagang tidak pakai** (konteks Lapak ada di halaman Profil, diakses lewat tombol **Profil** di `headerAction`). Baris 3: `DashboardNav` — tab garis-bawah, aktif = `border-brand text-brand-strong`; tab "index" (`/dashboard`) hanya aktif saat cocok **persis** (supaya tidak ikut aktif di `/dashboard/profil` dsb). Scrollbar disembunyikan.
+- **Root:** `<body>` = `min-h-dvh bg-bg text-ink font-sans`. Kartu (`bg-surface`) yang memberi kontras.
+- **Header dashboard** (komponen `DashboardShell`): sticky, `bg-bg/85 backdrop-blur`, border bawah. Baris 1: slot `brand` di kiri (Pedagang = **nama Lapak** via `<Wordmark label={stallName}>`; Admin = `<Wordmark>` "MyGerai") + `headerAction` + tombol **Keluar** (`Button variant="dangerOutline" size="sm"`). Baris 2 (opsional `heading`): dipakai Admin (`Admin · <nama>`); Pedagang tidak. Baris 3: `DashboardNav` — tab garis-bawah, aktif = `border-brand text-brand-strong`; tab "index" (`/dashboard`) aktif hanya saat cocok **persis**. Scrollbar disembunyikan.
+- **Tombol Profil Pedagang** = ikon (`UserIcon`) di `headerAction`, `<Link>` ber-`aria-label`, kotak `size-9 border border-line rounded-control`.
 - **Jarak antar-blok** dalam satu halaman: `gap-4` (padat) atau `gap-6` (longgar, antar-seksi). Konsisten pakai `flex flex-col gap-*`, bukan `space-y` campur `mb-*`.
 - **Grid Item (menu Pembeli):** tetap **satu kolom** untuk MVP (fokus & sederhana). Multi-kolom di desktop dicatat sebagai peningkatan opsional, bukan sekarang.
 

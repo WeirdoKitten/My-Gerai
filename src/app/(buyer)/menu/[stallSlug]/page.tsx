@@ -34,7 +34,7 @@ export default async function StallMenuPage(
           description="Lapak ini belum menambahkan menu apa pun."
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-3">
           {catalog.products.map((product) => (
             <ProductCard
               key={product.id}

@@ -1,31 +1,34 @@
 import type { ReactNode } from "react";
 import { DashboardNav, type NavItem } from "@/components/DashboardNav";
 import { Button } from "@/components/ui/Button";
-import { Wordmark } from "@/components/ui/Wordmark";
 import { cn } from "@/lib/utils/cn";
 
 export function DashboardShell({
+  brand,
   heading,
   headerAction,
   nav,
   logoutAction,
-  width = "max-w-5xl",
+  width = "max-w-2xl",
   children,
 }: {
+  /** Kiri-atas header (mis. `<Wordmark>` atau nama Lapak). */
+  brand: ReactNode;
+  /** Baris kedua opsional (dipakai Admin: "Admin · <nama>"). */
   heading?: string;
   headerAction?: ReactNode;
   nav: NavItem[];
   logoutAction: () => Promise<void>;
-  width?: "max-w-5xl" | "max-w-6xl";
+  width?: "max-w-2xl" | "max-w-3xl";
   children: ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-10 border-b border-line bg-bg/85 backdrop-blur">
-        <div className={cn("mx-auto w-full px-4 sm:px-6", width)}>
+        <div className={cn("mx-auto w-full px-4", width)}>
           <div className="flex items-center justify-between gap-3 pt-3">
-            <Wordmark className="text-sm" />
-            <div className="flex items-center gap-2">
+            <div className="min-w-0">{brand}</div>
+            <div className="flex shrink-0 items-center gap-2">
               {headerAction}
               <form action={logoutAction}>
                 <Button type="submit" variant="dangerOutline" size="sm">
@@ -49,7 +52,7 @@ export function DashboardShell({
           </div>
         </div>
       </header>
-      <main className={cn("mx-auto w-full flex-1 px-4 py-6 sm:px-6", width)}>
+      <main className={cn("mx-auto w-full flex-1 px-4 py-6", width)}>
         {children}
       </main>
     </div>

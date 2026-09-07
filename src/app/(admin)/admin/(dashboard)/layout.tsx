@@ -2,6 +2,7 @@ import type { Route } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
+import { Wordmark } from "@/components/ui/Wordmark";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { logoutAdmin } from "@/server/admins";
 
@@ -21,10 +22,11 @@ export default async function AdminDashboardLayout({
 
   return (
     <DashboardShell
+      brand={<Wordmark className="text-sm" />}
       heading={`Admin · ${session.name}`}
       nav={NAV}
       logoutAction={logoutAdmin}
-      width="max-w-6xl"
+      width="max-w-3xl"
     >
       {children}
     </DashboardShell>

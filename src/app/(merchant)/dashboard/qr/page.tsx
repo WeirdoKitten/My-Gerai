@@ -5,7 +5,7 @@ export default async function MerchantQrPage() {
   const qr = await getMerchantQrLapak();
 
   return (
-    <div className="flex max-w-md flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold text-ink">QR Lapak</h2>
         <p className="text-sm text-ink-muted">

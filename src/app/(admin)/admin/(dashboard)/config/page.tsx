@@ -14,7 +14,7 @@ export default async function AdminConfigPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex max-w-lg flex-col gap-4">
+      <section className="flex flex-col gap-4">
         <PageHeader title="Konfigurasi Aplikator" />
         <PlatformConfigForm current={current} />
       </section>
