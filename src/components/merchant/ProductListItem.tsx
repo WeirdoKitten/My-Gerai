@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { cn } from "@/lib/utils/cn";
 import { formatRupiah } from "@/lib/utils/money";
@@ -18,21 +19,6 @@ export function ProductListItem({
 }) {
   const [editing, setEditing] = useState(false);
   const [toggling, setToggling] = useState(false);
-
-  if (editing) {
-    return (
-      <div className="sm:col-span-2 sm:max-w-lg">
-        <ProductForm
-          product={product}
-          onDone={() => {
-            setEditing(false);
-            onChanged();
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      </div>
-    );
-  }
 
   async function handleToggle() {
     setToggling(true);
@@ -79,6 +65,17 @@ export function ProductListItem({
           Ubah
         </button>
       </div>
+
+      <Modal open={editing} onClose={() => setEditing(false)} title="Ubah Item">
+        <ProductForm
+          product={product}
+          onDone={() => {
+            setEditing(false);
+            onChanged();
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </Modal>
     </Card>
   );
 }

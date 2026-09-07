@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
@@ -90,7 +89,7 @@ export function ProductForm({
   }
 
   return (
-    <Card as="form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Field label="Nama Item">
         <Input
           type="text"
@@ -173,6 +172,6 @@ export function ProductForm({
           Batal
         </Button>
       </div>
-    </Card>
+    </form>
   );
 }

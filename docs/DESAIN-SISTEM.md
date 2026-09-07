@@ -143,6 +143,9 @@ Peta status → tone (pakai label dari `ORDER_STATUS_LABEL_ID` yang sudah ada):
 </div>
 ```
 
+### `Modal.tsx`
+Dialog berbasis `<dialog>` bawaan (Esc + focus-trap + backdrop gratis). Panel `max-w-lg`, header (judul + tombol ✕), body `max-h-[75vh] overflow-y-auto`. Klik backdrop menutup. Dipakai untuk form Tambah/Ubah Item (bukan inline lagi).
+
 ### `EmptyState.tsx`
 Tengah, `py-12`, ikon SVG `size-10 text-ink-muted`, judul `font-semibold text-ink`, keterangan `text-sm text-ink-muted`, opsional tombol. Ganti teks polos "Belum ada Pesanan masuk." / "Belum ada Item tersedia." dll.
 
@@ -161,7 +164,7 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 | Status Pesanan | `max-w-md` (di dalam shell) | struk, 1 kolom |
 | Halaman auth (login/daftar) | `max-w-sm`, center V+H | 1 kolom (form) |
 | Landing `/` | `max-w-5xl` | `md:grid-cols-2` (hero + kartu langkah) |
-| Dashboard Pedagang (`DashboardShell` width `max-w-5xl`) | `max-w-5xl` | Pesanan: `grid lg:grid-cols-2`; Item: `grid sm:grid-cols-2` (form "Tambah/Ubah" `sm:col-span-2 sm:max-w-lg`); QR: `max-w-md` |
+| Dashboard Pedagang (`DashboardShell` width `max-w-5xl`) | `max-w-5xl` | Pesanan: `grid lg:grid-cols-2`; Item: `grid sm:grid-cols-2` (form Tambah/Ubah dalam **`Modal`**, bukan inline); QR: `max-w-md` |
 | Panel Admin (`DashboardShell` width `max-w-6xl`) | `max-w-6xl` | Semua daftar (approval, saldo, transaksi, riwayat): `grid sm:grid-cols-2`; form konfigurasi `max-w-lg` |
 
 - Padding halaman: `px-4 py-6 sm:px-6`. Grid ragged-height pakai `items-start`.
