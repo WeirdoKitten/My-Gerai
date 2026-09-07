@@ -61,8 +61,8 @@ export function ProductListItem({
           className={cn(
             "rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
             available
-              ? "border-success/40 bg-success-bg text-success"
-              : "border-line bg-neutral-bg text-ink-muted",
+              ? "border-success/40 bg-success-bg text-success hover:border-success/70 hover:bg-success/15"
+              : "border-line bg-neutral-bg text-ink-muted hover:border-ink-muted/40 hover:bg-line/60",
           )}
         >
           {available ? "Tersedia" : "Habis"}
