@@ -75,6 +75,15 @@
 - [x] Percantik Admin: layout + `merchants` + `config` + `payouts` + `login`.
 - [x] Nol sisa `dark:`/`zinc-*`/`#000`. `tsc`/`lint`/`build`/`pnpm test` (24) lulus. Diverifikasi visual di browser (Playwright, desktop + mobile) — 2 bug ditemukan & diperbaiki (nav tab dobel-aktif di `/dashboard/produk`, input catatan sempit di mobile). Ground truth disinkronkan (CLAUDE.md, DOKUMENTASI.md, ARSITEKTUR-FOLDER.md, TEKNOLOGI.md, CHANGELOG.md).
 
+## Profil Pedagang ✅ (nomor HP & password menyusul)
+
+> Dimau User 2026-09-08: hapus nama Lapak dari header dashboard, ganti tombol "Profil".
+
+- [x] Header dashboard Pedagang: nama Lapak dihapus, tombol **Profil** ditambah (di samping "Keluar").
+- [x] `/dashboard/profil`: `getMerchantProfile`/`updateMerchantProfile` — Pedagang ubah **Nama Lapak, Nama Pemilik, Kategori, Info Rekening/E-wallet** sendiri. Nomor HP tampil read-only (slug/QR tidak berubah).
+- [x] `DashboardNav`: tab "index" hanya aktif saat cocok persis (supaya `/dashboard/profil` tidak menyorot "Pesanan"). Diverifikasi nyata (edit tersimpan ke DB).
+- [ ] Ubah **nomor HP** (menyentuh auth — mungkin perlu verifikasi) & **ganti password** — fitur terpisah, belum dikerjakan.
+
 ## Fase Stok Item ✅
 
 > Dimau User (AskUserQuestion 2026-09-08). Migrasi `drizzle/0003_*.sql` (kolom `products.stock`, nullable).

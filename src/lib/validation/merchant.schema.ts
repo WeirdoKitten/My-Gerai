@@ -20,6 +20,17 @@ export const loginMerchantSchema = z.object({
 
 export type LoginMerchantInput = z.infer<typeof loginMerchantSchema>;
 
+export const updateMerchantProfileSchema = z.object({
+  stallName: z.string().trim().min(1, "Nama Lapak wajib diisi.").max(100),
+  ownerName: z.string().trim().min(1, "Nama Pedagang wajib diisi.").max(100),
+  category: z.string().trim().min(1, "Kategori wajib diisi.").max(50),
+  payoutAccountInfo: z.string().trim().max(300).optional(),
+});
+
+export type UpdateMerchantProfileInput = z.infer<
+  typeof updateMerchantProfileSchema
+>;
+
 export const approveMerchantSchema = z.object({
   merchantId: z.uuid(),
 });

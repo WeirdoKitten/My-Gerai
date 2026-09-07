@@ -10,30 +10,33 @@ export type NavItem = { href: Route; label: string };
 export function DashboardNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
 
-  // Item aktif = prefix cocok yang paling panjang (supaya "/dashboard" tidak
-  // ikut aktif saat berada di "/dashboard/produk").
-  const activeHref = items
-    .filter(
-      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-    )
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
-
   return (
     <nav className="flex gap-1">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={cn(
-            "-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors",
-            item.href === activeHref
-              ? "border-brand text-brand-strong"
-              : "border-transparent text-ink-muted hover:text-ink",
-          )}
-        >
-          {item.label}
-        </Link>
-      ))}
+      {items.map((item) => {
+        // Tab "index" (punya tab anak, mis. /dashboard) hanya aktif saat cocok
+        // persis — supaya tidak ikut aktif di /dashboard/profil dsb.
+        const isIndex = items.some(
+          (other) => other !== item && other.href.startsWith(`${item.href}/`),
+        );
+        const active = isIndex
+          ? pathname === item.href
+          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors",
+              active
+                ? "border-brand text-brand-strong"
+                : "border-transparent text-ink-muted hover:text-ink",
+            )}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Profil Pedagang + header dashboard tanpa nama Lapak
+
+**Dampak:** [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`src/components/DashboardShell.tsx` + `DashboardNav.tsx`, `src/app/(merchant)/dashboard/layout.tsx` + `profil/page.tsx` baru, `src/components/merchant/MerchantProfileForm.tsx` baru, `src/server/merchants.ts`, `src/lib/validation/merchant.schema.ts`, `src/types/merchant.ts`)
+**Alasan:** Feedback User: nama Lapak di header dashboard ("Warung Pak Budi ...") sebaiknya dihapus, diganti tombol "Profil" untuk mengubah nama dsb. Field yang bisa diubah dikonfirmasi via AskUserQuestion.
+**Ringkasan:**
+- **Header `DashboardShell`**: `heading` jadi opsional + slot `headerAction`. Pedagang tidak lagi menampilkan nama Lapak — hanya wordmark + tombol **Profil** + **Keluar** + nav. Admin tetap menampilkan `Admin · <nama>`.
+- **`/dashboard/profil`**: `getMerchantProfile` / `updateMerchantProfile` (auth Pedagang, Zod) — Pedagang mengubah **Nama Lapak, Nama Pemilik, Kategori, Info Rekening/E-wallet Pencairan** sendiri. Nomor HP tampil read-only (mengubahnya = urusan auth, ditunda); `slug`/QR tidak ikut berubah supaya QR cetak tetap valid.
+- **`DashboardNav`**: tab "index" (`/dashboard`, punya tab anak) hanya aktif saat `pathname` cocok **persis** — supaya `/dashboard/profil` tidak menyorot tab "Pesanan".
+- Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (31) lulus; edit profil dites nyata (tersimpan ke DB, nomor HP read-only, nav tidak salah sorot).
+
 ## 2026-09-08 — Stok Item (opsional) + Modal Tambah/Ubah Item + perbaikan E2E
 
 **Dampak:** [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/PRD.md](docs/PRD.md), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR), [docs/CODING-STYLE.md](docs/CODING-STYLE.md), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), kode (`drizzle/0003_*.sql`, `src/lib/db/schema.ts` + `seed*.ts`, `src/server/{products,orders}.ts`, `src/lib/validation/product.schema.ts`, `src/types/product.ts`, `src/components/merchant/Product*.tsx`, `src/components/ui/Modal.tsx` baru, `tests/e2e/*`)

@@ -27,6 +27,8 @@ import {
   type RejectMerchantInput,
   registerMerchantSchema,
   rejectMerchantSchema,
+  type UpdateMerchantProfileInput,
+  updateMerchantProfileSchema,
 } from "@/lib/validation/merchant.schema";
 import type {
   AdminMerchantView,
@@ -35,8 +37,10 @@ import type {
 } from "@/types/admin";
 import type {
   LoginMerchantResult,
+  MerchantProfileView,
   QrLapakView,
   RegisterMerchantResult,
+  UpdateMerchantProfileResult,
 } from "@/types/merchant";
 
 // Dihitung sekali saat modul dimuat — dipakai supaya waktu verifikasi login
@@ -168,6 +172,52 @@ export async function loginMerchant(
 export async function logoutMerchant(): Promise<void> {
   await destroyMerchantSession();
   redirect("/login");
+}
+
+export async function getMerchantProfile(): Promise<MerchantProfileView | null> {
+  const session = await getMerchantSession();
+  if (!session) return null;
+
+  const merchant = await db.query.merchants.findFirst({
+    where: eq(merchants.id, session.merchantId),
+  });
+  if (!merchant) return null;
+
+  return {
+    stallName: merchant.stallName,
+    ownerName: merchant.ownerName,
+    category: merchant.category,
+    phone: merchant.phone,
+    payoutAccountInfo: merchant.payoutAccountInfo,
+  };
+}
+
+export async function updateMerchantProfile(
+  input: UpdateMerchantProfileInput,
+): Promise<UpdateMerchantProfileResult> {
+  const session = await getMerchantSession();
+  if (!session)
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  const parsed = updateMerchantProfileSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
+    };
+  }
+
+  await db
+    .update(merchants)
+    .set({
+      stallName: parsed.data.stallName,
+      ownerName: parsed.data.ownerName,
+      category: parsed.data.category,
+      payoutAccountInfo: parsed.data.payoutAccountInfo || null,
+    })
+    .where(eq(merchants.id, session.merchantId));
+
+  return { ok: true, message: "Profil diperbarui." };
 }
 
 export async function getMerchantQrLapak(): Promise<QrLapakView | null> {
