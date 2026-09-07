@@ -42,3 +42,7 @@ next-env.d.ts
 
 # State internal tooling Claude Code (bukan bagian proyek)
 .claude/scheduled_tasks.lock
+
+# Output esbuild untuk skrip DB (migrate/seed-demo/create-admin) — digenerate
+# di dalam image oleh Dockerfile, tidak perlu di-commit.
+/scripts/

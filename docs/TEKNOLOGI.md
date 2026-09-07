@@ -17,9 +17,10 @@
 | Komponen UI dasar | **shadcn/ui / Radix primitives** (dipakai seperlunya) | Hindari library UI berat (mis. MUI) yang membengkakkan bundle. |
 | Payment Gateway (tahap lanjutan) | **Tripay** | Salah satu dari sedikit payment gateway Indonesia yang bisa didaftarkan dengan **KTP saja** (cocok dengan status badan usaha Aplikator: **perorangan**). Mendukung QRIS. Lihat detail di bawah. |
 | Payment Gateway (tahap MVP sekarang) | **MockPaymentProvider** (buatan sendiri, disimulasikan) | Lihat [Payment Provider Abstraction](#payment-provider-abstraction) di bawah. |
-| Hosting app & database | **Server sendiri (Garuda)** via **Dokploy** + **Cloudflare Tunnel** | Sama seperti proyek User yang lain (MyPlaza) — pola ops yang sudah dikenal, tanpa akun cloud baru, tanpa biaya hosting tambahan. Cloudflare Tunnel menghindari perlu buka port publik/IP statis. |
+| Hosting app & database | **Server sendiri (Garuda)** via **Dokploy** + **Cloudflare Tunnel** | Sama seperti proyek User yang lain (MyPlaza) — pola ops yang sudah dikenal, tanpa akun cloud baru, tanpa biaya hosting tambahan. Cloudflare Tunnel menghindari perlu buka port publik/IP statis. Migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); deploy = set env var di Dokploy lalu klik Deploy. |
 | Package manager | **pnpm** | Lebih hemat disk & lebih cepat install dibanding npm/yarn. |
 | Lint & Format | **Biome** | Satu tool cepat (berbasis Rust) untuk lint+format, menggantikan kombinasi ESLint+Prettier yang lebih berat & butuh konfigurasi ganda. |
+| Bundler skrip DB (build-time) | **esbuild** | Hanya dipakai di stage `builder` Dockerfile untuk mem-*bundle* `src/lib/db/{migrate,seed-demo,create-admin}.ts` jadi file `.mjs` mandiri (drizzle-orm + postgres di-inline) — supaya image runner minimal tidak perlu `drizzle-kit`/devDependencies. Sudah jadi dependency transitif (via Next/Tailwind), cuma dinaikkan jadi devDependency eksplisit. |
 | Testing | **Vitest** (unit) + **Playwright** (E2E, alur kritikal: checkout, webhook) | Ringan, cepat, terintegrasi baik dengan Next.js/TypeScript. |
 | Validasi input | **Zod** | Skema validasi type-safe, dipakai di form & server action. |
 | Monitoring error (nanti) | **Sentry** (free tier) | Ditambahkan setelah MVP jalan, bukan blocker awal. |

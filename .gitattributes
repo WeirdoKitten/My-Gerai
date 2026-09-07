@@ -1,0 +1,5 @@
+# Skrip shell WAJIB LF — dipakai sebagai entrypoint di image Linux (alpine).
+# Tanpa ini, core.autocrlf=true di Windows bisa mengubahnya jadi CRLF dan
+# container gagal start ("no such file or directory").
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
