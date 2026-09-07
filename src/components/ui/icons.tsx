@@ -109,6 +109,34 @@ export function QrIcon({ className }: IconProps) {
   );
 }
 
+export function TagIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M3.5 3.5h7l10 10-7 7-10-10z" />
+      <circle cx="7.5" cy="7.5" r="1.5" />
+    </Icon>
+  );
+}
+
+export function SettingsIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" />
+    </Icon>
+  );
+}
+
+export function WalletIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v3" />
+      <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a1 1 0 0 0-1-1H6a3 3 0 0 1-3-3Z" />
+      <circle cx="16.5" cy="13.5" r="1.25" />
+    </Icon>
+  );
+}
+
 export function UserIcon({ className }: IconProps) {
   return (
     <Icon className={className}>

@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Navigasi dashboard jadi bottom nav (ikon + label, ala aplikasi HP)
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§4), kode (`src/components/DashboardNav.tsx` + `DashboardShell.tsx`, layout Pedagang/Admin, `src/components/ui/icons.tsx`)
+**Alasan:** User minta navigasi seperti aplikasi HP — bar di bawah layar dengan ikon + nama tiap menu.
+**Ringkasan:**
+- `DashboardNav` dirombak dari tab atas jadi **bottom nav** `fixed inset-x-0 bottom-0` — tiap tab = ikon (`size-5`) + label (`text-[11px]`), lebar `max-w-md` di tengah, aktif `text-brand-strong`. `<main>` dapat `pb-24`. Top bar tinggal brand + Profil + Keluar.
+- `NavItem.icon` sekarang **string** (`"receipt"|"tag"|"qr"|"store"|"settings"|"wallet"`) yang di-resolve `DashboardNav` ke komponen — perlu, karena melempar komponen (fungsi) dari layout (Server Component) ke `DashboardNav` (Client) error serialisasi RSC.
+- Ikon baru: `TagIcon`, `SettingsIcon`, `WalletIcon`.
+- Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (31) lulus; discreenshot Pedagang (mobile) + Admin (desktop).
+
 ## 2026-09-08 — Revert layout responsif + header dashboard = nama Lapak + Profil jadi ikon
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§4), kode (semua file yang disentuh commit "layout responsif" + `DashboardShell.tsx`, layout Pedagang/Admin, `Wordmark.tsx`, `icons.tsx`)

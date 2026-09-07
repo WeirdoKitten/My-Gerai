@@ -1,17 +1,17 @@
-import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UserIcon } from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
 import { logoutMerchant } from "@/server/merchants";
 
-const NAV: { href: Route; label: string }[] = [
-  { href: "/dashboard", label: "Pesanan" },
-  { href: "/dashboard/produk", label: "Item" },
-  { href: "/dashboard/qr", label: "QR Lapak" },
+const NAV: NavItem[] = [
+  { href: "/dashboard", label: "Pesanan", icon: "receipt" },
+  { href: "/dashboard/produk", label: "Item", icon: "tag" },
+  { href: "/dashboard/qr", label: "QR Lapak", icon: "qr" },
 ];
 
 export default async function DashboardLayout({

@@ -14,7 +14,7 @@ export function DashboardShell({
 }: {
   /** Kiri-atas header (mis. `<Wordmark>` atau nama Lapak). */
   brand: ReactNode;
-  /** Baris kedua opsional (dipakai Admin: "Admin · <nama>"). */
+  /** Baris kecil di bawah brand (dipakai Admin: "Admin · <nama>"). */
   heading?: string;
   headerAction?: ReactNode;
   nav: NavItem[];
@@ -25,36 +25,34 @@ export function DashboardShell({
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-10 border-b border-line bg-bg/85 backdrop-blur">
-        <div className={cn("mx-auto w-full px-4", width)}>
-          <div className="flex items-center justify-between gap-3 pt-3">
-            <div className="min-w-0">{brand}</div>
-            <div className="flex shrink-0 items-center gap-2">
-              {headerAction}
-              <form action={logoutAction}>
-                <Button type="submit" variant="dangerOutline" size="sm">
-                  Keluar
-                </Button>
-              </form>
-            </div>
+        <div
+          className={cn(
+            "mx-auto flex w-full items-center justify-between gap-3 px-4 py-3",
+            width,
+          )}
+        >
+          <div className="flex min-w-0 flex-col">
+            {brand}
+            {heading ? (
+              <span className="truncate text-xs text-ink-muted">{heading}</span>
+            ) : null}
           </div>
-          {heading ? (
-            <p className="mt-1.5 truncate text-base font-bold tracking-tight text-ink">
-              {heading}
-            </p>
-          ) : null}
-          <div
-            className={cn(
-              heading ? "mt-3" : "mt-2",
-              "overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-            )}
-          >
-            <DashboardNav items={nav} />
+          <div className="flex shrink-0 items-center gap-2">
+            {headerAction}
+            <form action={logoutAction}>
+              <Button type="submit" variant="dangerOutline" size="sm">
+                Keluar
+              </Button>
+            </form>
           </div>
         </div>
       </header>
-      <main className={cn("mx-auto w-full flex-1 px-4 py-6", width)}>
+
+      <main className={cn("mx-auto w-full flex-1 px-4 pb-24 pt-6", width)}>
         {children}
       </main>
+
+      <DashboardNav items={nav} />
     </div>
   );
 }
