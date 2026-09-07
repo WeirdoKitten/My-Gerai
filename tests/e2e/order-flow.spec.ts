@@ -12,11 +12,12 @@ test.describe
     test("Pembeli menyelesaikan checkout dan bayar", async ({ page }) => {
       await page.goto(`/menu/${MERCHANT_SLUG}`);
 
-      const card = page.locator("div.rounded-lg.border").first();
-      await expect(card).toBeVisible();
-      await card.getByRole("button", { name: "Tambah ke Keranjang" }).click();
+      await page
+        .getByRole("button", { name: "Tambah", exact: true })
+        .first()
+        .click();
 
-      await page.getByRole("link", { name: /Item di Keranjang/ }).click();
+      await page.getByRole("link", { name: /item/i }).click();
       await expect(page).toHaveURL(/\/checkout$/);
 
       await page.getByLabel("Nama").fill("Pembeli E2E");
@@ -43,8 +44,8 @@ test.describe
       await expect(page).toHaveURL(/\/dashboard$/);
 
       const card = page
-        .locator("div.rounded-lg.border")
-        .filter({ hasText: orderCode });
+        .getByText(orderCode, { exact: true })
+        .locator("xpath=ancestor::*[contains(@class,'rounded-card')][1]");
       await expect(card).toBeVisible();
 
       // Regresi bug nyata Fase 3: tombol dulu macet di "Memproses..." setelah
@@ -60,8 +61,6 @@ test.describe
       ).toBeVisible();
 
       await card.getByRole("button", { name: "Tandai Selesai" }).click();
-      await expect(
-        page.locator("div.rounded-lg.border").filter({ hasText: orderCode }),
-      ).toHaveCount(0);
+      await expect(page.getByText(orderCode, { exact: true })).toHaveCount(0);
     });
   });

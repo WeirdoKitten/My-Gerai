@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
@@ -142,6 +142,15 @@ export async function createOrder(
         ok: false,
         message:
           "Salah satu Item sudah tidak tersedia, silakan perbarui Keranjang.",
+      };
+    }
+    if (product.stock !== null && item.qty > product.stock) {
+      return {
+        ok: false,
+        message:
+          product.stock === 0
+            ? `"${product.name}" sudah habis, silakan perbarui Keranjang.`
+            : `Stok "${product.name}" tinggal ${product.stock}.`,
       };
     }
     calcItems.push({ price: product.price, qty: item.qty });
@@ -286,16 +295,45 @@ export async function simulatePaymentSuccess(
   }
 
   const paidAt = new Date();
-  await db
-    .update(payments)
-    .set({ status: "success", paidAt })
-    .where(eq(payments.id, payment.id));
-  await db
-    .update(orders)
-    .set({ status: "dibayar", paidAt })
-    .where(
-      and(eq(orders.id, current.id), eq(orders.status, "menunggu_pembayaran")),
-    );
+  await db.transaction(async (tx) => {
+    await tx
+      .update(payments)
+      .set({ status: "success", paidAt })
+      .where(eq(payments.id, payment.id));
+
+    const [paidOrder] = await tx
+      .update(orders)
+      .set({ status: "dibayar", paidAt })
+      .where(
+        and(
+          eq(orders.id, current.id),
+          eq(orders.status, "menunggu_pembayaran"),
+        ),
+      )
+      .returning({ id: orders.id });
+
+    // Kurangi stok hanya kalau transisi menunggu -> dibayar benar terjadi
+    // (guard di WHERE di atas mencegah pengurangan ganda).
+    if (paidOrder) {
+      const lines = await tx.query.orderItems.findMany({
+        where: eq(orderItems.orderId, current.id),
+        columns: { productId: true, qty: true },
+      });
+      for (const line of lines) {
+        await tx
+          .update(products)
+          .set({ stock: sql`GREATEST(${products.stock} - ${line.qty}, 0)` })
+          .where(
+            and(
+              eq(products.id, line.productId),
+              eq(products.merchantId, current.merchantId),
+              // Hanya Item yang stoknya dibatasi.
+              sql`${products.stock} IS NOT NULL`,
+            ),
+          );
+      }
+    }
+  });
 
   return { ok: true };
 }

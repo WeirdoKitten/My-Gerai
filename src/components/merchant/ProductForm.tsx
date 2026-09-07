@@ -26,6 +26,9 @@ export function ProductForm({
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(product ? String(product.price) : "");
+  const [stock, setStock] = useState(
+    product?.stock != null ? String(product.stock) : "",
+  );
   const [photoUrl, setPhotoUrl] = useState<string | null>(
     product?.photoUrl ?? null,
   );
@@ -65,18 +68,21 @@ export function ProductForm({
     setError(null);
 
     const priceNumber = Number(price);
+    const stockValue = stock.trim() === "" ? null : Number(stock);
     const result = product
       ? await updateProduct({
           productId: product.id,
           name,
           description: description || undefined,
           price: priceNumber,
+          stock: stockValue,
           photoUrl,
         })
       : await createProduct({
           name,
           description: description || undefined,
           price: priceNumber,
+          stock: stockValue,
           photoUrl,
         });
 
@@ -115,6 +121,16 @@ export function ProductForm({
           onChange={(e) => setPrice(e.target.value)}
           required
           min={0}
+        />
+      </Field>
+      <Field label="Stok" hint="Kosongkan kalau tidak dibatasi.">
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={stock}
+          onChange={(e) => setStock(e.target.value)}
+          min={0}
+          placeholder="Tidak dibatasi"
         />
       </Field>
 

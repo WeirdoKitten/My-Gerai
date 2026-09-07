@@ -117,12 +117,14 @@ async function main() {
       name: "Bakso Halus",
       price: 12000,
       status: "available",
+      stock: 10,
     },
     {
       merchantId: merchant.id,
       name: "Mie Ayam Bakso",
       price: 17000,
       status: "available",
+      stock: 6,
       photoUrl: "/img/menu/mie-ayam.jpg",
     },
     {

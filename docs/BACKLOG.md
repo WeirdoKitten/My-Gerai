@@ -75,6 +75,15 @@
 - [x] Percantik Admin: layout + `merchants` + `config` + `payouts` + `login`.
 - [x] Nol sisa `dark:`/`zinc-*`/`#000`. `tsc`/`lint`/`build`/`pnpm test` (24) lulus. Diverifikasi visual di browser (Playwright, desktop + mobile) — 2 bug ditemukan & diperbaiki (nav tab dobel-aktif di `/dashboard/produk`, input catatan sempit di mobile). Ground truth disinkronkan (CLAUDE.md, DOKUMENTASI.md, ARSITEKTUR-FOLDER.md, TEKNOLOGI.md, CHANGELOG.md).
 
+## Fase Stok Item ✅
+
+> Dimau User (AskUserQuestion 2026-09-08). Migrasi `drizzle/0003_*.sql` (kolom `products.stock`, nullable).
+
+- [x] `products.stock` opsional (`null` = tak terbatas). ProductForm dapat field "Stok"; `ProductListItem` menampilkan "· Stok N" (merah kalau 0).
+- [x] `getStallCatalog` sembunyikan Item stok 0 (`or(isNull, gt(stock,0))`). `createOrder` tolak `qty > stock`.
+- [x] `simulatePaymentSuccess`: kurangi stok `GREATEST(stock-qty,0)` dalam transaksi transisi `dibayar` (guard WHERE cegah pengurangan ganda). Diverifikasi: pesan 2x → stok 6→4; Item tak terbatas tetap `null`; over-order ditolak.
+- [x] Seeder isi stok contoh (Bakso Halus 10, Mie Ayam Bakso 6). E2E (`order-flow`, `rate-limit`) diperbaiki untuk markup baru — 3/3 lulus. Ground truth: DATA-MODEL, PRD, ARSITEKTUR-SISTEM (ADR), CODING-STYLE, CHANGELOG.
+
 ## Fase Foto Item — Upload foto dari HP ✅ (foto Lapak menyusul)
 
 > Dimau User (AskUserQuestion 2026-09-07). Plan mode dulu (`~/.claude/plans/wild-rolling-turtle.md`), lihat CHANGELOG 2026-09-08.

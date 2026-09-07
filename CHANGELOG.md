@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Stok Item (opsional) + Modal Tambah/Ubah Item + perbaikan E2E
+
+**Dampak:** [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/PRD.md](docs/PRD.md), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR), [docs/CODING-STYLE.md](docs/CODING-STYLE.md), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), kode (`drizzle/0003_*.sql`, `src/lib/db/schema.ts` + `seed*.ts`, `src/server/{products,orders}.ts`, `src/lib/validation/product.schema.ts`, `src/types/product.ts`, `src/components/merchant/Product*.tsx`, `src/components/ui/Modal.tsx` baru, `tests/e2e/*`)
+**Alasan:** Feedback User berturut-turut: (1) belum ada stok per Item; (2) form Tambah/Ubah Item sebaiknya pop-up, bukan inline. Keputusan stok via AskUserQuestion: **opsional** (`null` = tak terbatas), **berkurang saat lunas**.
+**Ringkasan:**
+- **Stok** (`products.stock`, nullable — migrasi `0003`): kalau diisi angka, `createOrder` menolak `qty > stock`, `getStallCatalog` menyembunyikan Item stok 0, dan `simulatePaymentSuccess` mengurangi `GREATEST(stock-qty,0)` **di dalam transaksi** transisi `menunggu_pembayaran → dibayar` (guard `WHERE status='menunggu_pembayaran'` mencegah pengurangan ganda). Lihat ADR 2026-09-08. `ProductForm` dapat field "Stok" (kosong = tak dibatasi); `ProductListItem` menampilkan "· Stok N" (merah bila 0).
+- **`Modal`** (`src/components/ui/Modal.tsx`): dialog `<dialog>` bawaan. Form Tambah/Ubah Item sekarang pop-up, bukan `<Card as="form">` inline. `ProductManager`/`ProductListItem` jadi lebih sederhana.
+- **E2E diperbaiki**: `order-flow.spec.ts` & `rate-limit.spec.ts` masih pakai selector CSS lama (`div.rounded-lg.border`, `"Tambah ke Keranjang"`, `p.text-red-600`) dari sebelum Fase Tampilan — diganti ke selector berbasis role/teks (`getByRole("button", {name:"Tambah"})`, `getByText(orderCode)`, `form >> role=alert`). 3/3 lulus.
+- Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (31)/`pnpm test:e2e` (3) lulus; alur stok dites nyata (pesan+bayar → stok turun, over-order ditolak, Item tak-terbatas tak terpengaruh).
+
 ## 2026-09-08 — Fitur upload foto Item (dari HP Pedagang)
 
 **Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR baru), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) ("Storage foto" diputuskan), [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`src/server/products.ts`, `src/lib/validation/product.schema.ts`, `src/components/merchant/ProductForm.tsx`, `src/lib/upload/*` baru, `src/app/uploads/[...path]/route.ts` baru, `src/types/product.ts`, `Dockerfile`, `docker-entrypoint.sh`, `.dockerignore`, `.gitignore`, `tests/unit/upload.test.ts` baru)

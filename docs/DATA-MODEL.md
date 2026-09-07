@@ -38,6 +38,7 @@ erDiagram
         string name
         text description
         int price
+        int stock "nullable; null = tak terbatas. Berkurang GREATEST(stock-qty,0) saat Pesanan dibayar (2026-09-08)."
         string photo_url "nullable; path /uploads/products/<uuid>.<ext> hasil upload Pedagang (Fase Foto Item, 2026-09-08). Disimpan di volume Docker, bukan di DB."
         string status "available|sold_out"
         timestamp created_at

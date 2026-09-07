@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { getMerchantSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
@@ -38,6 +38,7 @@ export async function getStallCatalog(
     where: and(
       eq(products.merchantId, merchant.id),
       eq(products.status, "available"),
+      or(isNull(products.stock), gt(products.stock, 0)),
     ),
     orderBy: [asc(products.name)],
   });
@@ -74,6 +75,7 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     name: product.name,
     description: product.description,
     price: product.price,
+    stock: product.stock,
     photoUrl: product.photoUrl,
     status: product.status,
   }));
@@ -101,6 +103,7 @@ export async function createProduct(
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       price: parsed.data.price,
+      stock: parsed.data.stock ?? null,
       photoUrl: parsed.data.photoUrl ?? null,
     })
     .returning();
@@ -157,7 +160,7 @@ export async function updateProduct(
       message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
     };
   }
-  const { productId, name, description, price, photoUrl } = parsed.data;
+  const { productId, name, description, price, stock, photoUrl } = parsed.data;
 
   const [updated] = await db
     .update(products)
@@ -165,6 +168,7 @@ export async function updateProduct(
       name,
       description: description ?? null,
       price,
+      stock: stock ?? null,
       photoUrl: photoUrl ?? null,
     })
     .where(

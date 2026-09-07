@@ -41,6 +41,16 @@ export function ProductListItem({
         <p className="truncate font-semibold text-ink">{product.name}</p>
         <p className="text-sm tabular-nums text-ink-muted">
           {formatRupiah(product.price)}
+          {product.stock !== null ? (
+            <span
+              className={cn(
+                "ml-2",
+                product.stock === 0 ? "font-semibold text-danger" : "",
+              )}
+            >
+              · Stok {product.stock}
+            </span>
+          ) : null}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
