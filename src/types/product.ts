@@ -26,6 +26,7 @@ export type MerchantProductView = {
   name: string;
   description: string | null;
   price: number;
+  photoUrl: string | null;
   status: "available" | "sold_out";
 };
 

@@ -75,6 +75,17 @@
 - [x] Percantik Admin: layout + `merchants` + `config` + `payouts` + `login`.
 - [x] Nol sisa `dark:`/`zinc-*`/`#000`. `tsc`/`lint`/`build`/`pnpm test` (24) lulus. Diverifikasi visual di browser (Playwright, desktop + mobile) — 2 bug ditemukan & diperbaiki (nav tab dobel-aktif di `/dashboard/produk`, input catatan sempit di mobile). Ground truth disinkronkan (CLAUDE.md, DOKUMENTASI.md, ARSITEKTUR-FOLDER.md, TEKNOLOGI.md, CHANGELOG.md).
 
+## Fase Foto Item — Upload foto dari HP
+
+> Dimau User (AskUserQuestion 2026-09-07). Foto demo di seeder + tampilan read-only **sudah** ada (CHANGELOG 2026-09-07). Yang tersisa: cara Pedagang mengunggah/mengganti foto Item sendiri.
+
+- [ ] **Keputusan penyimpanan** (butuh konfirmasi User): volume Docker persisten di Garuda (sederhana, tapi memecah prinsip container stateless — perlu volume di Dokploy + Dockerfile, backup manual) **vs** Cloudflare R2 (S3-compatible, gratis ≤10GB, sudah pakai Cloudflare, container tetap stateless — perlu bucket + API token di env). Catat sebagai ADR di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) + update baris "Storage foto" di [TEKNOLOGI.md](TEKNOLOGI.md).
+- [ ] Field upload foto di `ProductForm` (pilih dari galeri HP, preview, hapus). `createProduct`/`updateProduct` + skema Zod terima `photoUrl` / file.
+- [ ] Server: validasi tipe (jpeg/png/webp), batas ukuran, kompres/resize (mis. `sharp` — cek beban vs manfaat, `pnpm-workspace.yaml` saat ini `sharp: false`), nama file acak (anti path-traversal & tebak-URL).
+- [ ] `next.config.ts` `images.remotePatterns` kalau foto disajikan dari domain R2.
+- [ ] `/security-review` wajib (upload = permukaan serangan: tipe konten, ukuran, file berbahaya, SSRF kalau nanti terima URL).
+- [ ] Foto Lapak (`merchants.photo_url`) menyusul dengan mekanisme yang sama.
+
 ## Fase 6 — Integrasi Payment Nyata (Tripay)
 
 - [ ] Daftar akun Tripay (perorangan, KTP) — dilakukan User, bukan Claude.

@@ -158,7 +158,7 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 | Panel Admin | `max-w-3xl` | Header sticky. Tabel boleh scroll-x dalam wadah sendiri. |
 
 - **Root:** `<body>` = `min-h-dvh bg-bg text-ink font-sans`. Semua halaman berdiri di atas `bg-bg`; kartu (`bg-surface`) yang memberi kontras, bukan sebaliknya.
-- **Header dashboard** (Pedagang & Admin): sticky, `bg-bg/90 backdrop-blur`, border bawah `border-line`, berisi wordmark + nama Lapak/Admin, nav teks, tombol "Keluar" sebagai `Button variant="ghost" size="sm"`. Nav aktif: `text-brand-strong font-semibold`; nonaktif: `text-ink-muted`.
+- **Header dashboard** (Pedagang & Admin, komponen `DashboardShell`): sticky, `bg-bg/85 backdrop-blur`, border bawah `border-line`, **tiga baris**: (1) `Wordmark` kecil + tombol **Keluar** (`Button variant="danger" size="sm"`) di kanan; (2) nama Lapak / `Admin · <nama>` sebagai `text-base font-bold`; (3) `DashboardNav` — tab dengan garis bawah, aktif = `border-brand text-brand-strong` (prefix cocok **terpanjang** supaya `/dashboard` tidak ikut aktif di sub-route), nonaktif = `text-ink-muted`. Tiap halaman di bawahnya tetap punya `<h2>` / `PageHeader` sendiri (nama Lapak di header = konteks, h2 = seksi).
 - **Jarak antar-blok** dalam satu halaman: `gap-4` (padat) atau `gap-6` (longgar, antar-seksi). Konsisten pakai `flex flex-col gap-*`, bukan `space-y` campur `mb-*`.
 - **Grid Item (menu Pembeli):** tetap **satu kolom** untuk MVP (fokus & sederhana). Multi-kolom di desktop dicatat sebagai peningkatan opsional, bukan sekarang.
 

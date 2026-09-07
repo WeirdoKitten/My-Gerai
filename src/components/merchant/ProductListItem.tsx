@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { ImageOffIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 import { formatRupiah } from "@/lib/utils/money";
 import { setProductStatus } from "@/server/products";
@@ -45,12 +47,22 @@ export function ProductListItem({
   return (
     <Card
       pad="sm"
-      className={cn(
-        "flex items-center justify-between gap-3",
-        !available && "opacity-70",
-      )}
+      className={cn("flex items-center gap-3", !available && "opacity-70")}
     >
-      <div className="min-w-0">
+      {product.photoUrl ? (
+        <Image
+          src={product.photoUrl}
+          alt={product.name}
+          width={48}
+          height={48}
+          className="size-12 shrink-0 rounded-control object-cover"
+        />
+      ) : (
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-control bg-brand-tint text-brand">
+          <ImageOffIcon className="size-5" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-ink">{product.name}</p>
         <p className="text-sm tabular-nums text-ink-muted">
           {formatRupiah(product.price)}
