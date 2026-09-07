@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-07 — Tampilan: QR Lapak jadi tab sendiri + rapikan header dashboard
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), kode (`src/components/DashboardShell.tsx`, `src/app/(merchant)/dashboard/{layout,page}.tsx`, `src/app/(merchant)/dashboard/qr/page.tsx` baru, `src/components/merchant/QrLapakCard.tsx`)
+**Alasan:** Feedback User setelah melihat Fase Tampilan — (1) QR Lapak jangan menyatu dengan halaman Pesanan, kasih navigasi sendiri; (2) di header dashboard tulisan "MyGerai" dan nama Lapak tumpang tindih terlalu berdekatan; (3) tombol "Keluar" jangan cuma teks, kasih kotak.
+**Ringkasan:**
+- **QR Lapak pindah** dari `/dashboard` ke tab baru `/dashboard/qr`. `/dashboard` sekarang murni daftar Pesanan. Nav Pedagang jadi 3 tab: Pesanan · Item · QR Lapak.
+- **Header `DashboardShell` dirombak** jadi 3 baris jelas (wordmark + Keluar / nama Lapak `text-base font-bold` / nav) — tidak lagi wordmark & nama menempel tanpa jarak.
+- **Tombol Keluar** kini `Button variant="danger" size="sm"` (kotak merah), bukan teks polos.
+- Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` lulus; discreenshot ulang (desktop + mobile) — header lega, tab QR berfungsi.
+
 ## 2026-09-07 — Fase Tampilan: desain sistem & percantik seluruh UI
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (baru), [CLAUDE.md](CLAUDE.md), [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`src/app/globals.css`, `src/app/layout.tsx`, seluruh `src/app/**/page.tsx` & `layout.tsx`, seluruh `src/components/**`, `src/components/ui/**` baru, `src/lib/utils/cn.ts` baru)

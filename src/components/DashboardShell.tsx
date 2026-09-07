@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { DashboardNav, type NavItem } from "@/components/DashboardNav";
+import { Button } from "@/components/ui/Button";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { cn } from "@/lib/utils/cn";
 
@@ -19,27 +20,21 @@ export function DashboardShell({
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-10 border-b border-line bg-bg/85 backdrop-blur">
-        <div
-          className={cn(
-            "mx-auto flex w-full items-center justify-between gap-3 px-4 pt-3",
-            width,
-          )}
-        >
-          <div className="flex min-w-0 flex-col">
+        <div className={cn("mx-auto w-full px-4", width)}>
+          <div className="flex items-center justify-between gap-3 pt-3">
             <Wordmark className="text-sm" />
-            <span className="truncate text-xs text-ink-muted">{heading}</span>
+            <form action={logoutAction}>
+              <Button type="submit" variant="danger" size="sm">
+                Keluar
+              </Button>
+            </form>
           </div>
-          <form action={logoutAction}>
-            <button
-              type="submit"
-              className="shrink-0 text-sm font-semibold text-ink-muted transition-colors hover:text-brand-strong"
-            >
-              Keluar
-            </button>
-          </form>
-        </div>
-        <div className={cn("mx-auto w-full overflow-x-auto px-2", width)}>
-          <DashboardNav items={nav} />
+          <p className="mt-1.5 truncate text-base font-bold tracking-tight text-ink">
+            {heading}
+          </p>
+          <div className="mt-3 overflow-x-auto">
+            <DashboardNav items={nav} />
+          </div>
         </div>
       </header>
       <main className={cn("mx-auto w-full flex-1 px-4 py-6", width)}>

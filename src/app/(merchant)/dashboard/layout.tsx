@@ -8,6 +8,7 @@ import { logoutMerchant } from "@/server/merchants";
 const NAV: { href: Route; label: string }[] = [
   { href: "/dashboard", label: "Pesanan" },
   { href: "/dashboard/produk", label: "Item" },
+  { href: "/dashboard/qr", label: "QR Lapak" },
 ];
 
 export default async function DashboardLayout({

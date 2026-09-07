@@ -31,8 +31,9 @@
 │   │   │   ├── login/page.tsx
 │   │   │   ├── daftar/page.tsx                # Onboarding Pedagang baru
 │   │   │   └── dashboard/
-│   │   │       ├── page.tsx                   # Daftar Pesanan masuk (realtime)
-│   │   │       └── produk/page.tsx            # Kelola Item
+│   │   │       ├── page.tsx                   # Daftar Pesanan masuk (polling)
+│   │   │       ├── produk/page.tsx            # Kelola Item
+│   │   │       └── qr/page.tsx                # QR Lapak (tab terpisah — cetak/unduh)
 │   │   ├── (admin)/
 │   │   │   └── admin/
 │   │   │       ├── login/page.tsx             # DI LUAR (dashboard) — self-redirect kalau sudah login
