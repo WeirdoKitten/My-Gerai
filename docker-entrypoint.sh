@@ -6,6 +6,10 @@
 # Lihat docs/ARSITEKTUR-SISTEM.md ADR 2026-09-07.
 set -e
 
+# Direktori upload (volume Docker di produksi) — pastikan ada & bisa ditulis
+# walau volume dimount kosong. Lihat docs/ARSITEKTUR-SISTEM.md ADR 2026-09-08.
+mkdir -p "${UPLOADS_DIR:-/app/uploads}/products"
+
 echo "[entrypoint] Menerapkan migrasi database..."
 node /app/scripts/migrate.mjs
 

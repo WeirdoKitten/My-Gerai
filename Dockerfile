@@ -44,6 +44,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Direktori upload foto Item. Dimount sebagai named volume di Dokploy — volume
+# kosong mewarisi ownership `nextjs:nodejs` dari sini saat pertama kali dipakai.
+ENV UPLOADS_DIR=/app/uploads
+RUN mkdir -p /app/uploads/products && chown -R nextjs:nodejs /app/uploads
+
 # Migrasi + skrip DB + entrypoint (lihat docker-entrypoint.sh).
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts

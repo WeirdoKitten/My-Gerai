@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { ImageOffIcon } from "@/components/ui/icons";
+import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { cn } from "@/lib/utils/cn";
 import { formatRupiah } from "@/lib/utils/money";
 import { setProductStatus } from "@/server/products";
@@ -49,19 +48,7 @@ export function ProductListItem({
       pad="sm"
       className={cn("flex items-center gap-3", !available && "opacity-70")}
     >
-      {product.photoUrl ? (
-        <Image
-          src={product.photoUrl}
-          alt={product.name}
-          width={48}
-          height={48}
-          className="size-12 shrink-0 rounded-control object-cover"
-        />
-      ) : (
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-control bg-brand-tint text-brand">
-          <ImageOffIcon className="size-5" />
-        </div>
-      )}
+      <PhotoThumb src={product.photoUrl} alt={product.name} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold text-ink">{product.name}</p>
         <p className="text-sm tabular-nums text-ink-muted">

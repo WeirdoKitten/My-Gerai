@@ -75,16 +75,18 @@
 - [x] Percantik Admin: layout + `merchants` + `config` + `payouts` + `login`.
 - [x] Nol sisa `dark:`/`zinc-*`/`#000`. `tsc`/`lint`/`build`/`pnpm test` (24) lulus. Diverifikasi visual di browser (Playwright, desktop + mobile) — 2 bug ditemukan & diperbaiki (nav tab dobel-aktif di `/dashboard/produk`, input catatan sempit di mobile). Ground truth disinkronkan (CLAUDE.md, DOKUMENTASI.md, ARSITEKTUR-FOLDER.md, TEKNOLOGI.md, CHANGELOG.md).
 
-## Fase Foto Item — Upload foto dari HP
+## Fase Foto Item — Upload foto dari HP ✅ (foto Lapak menyusul)
 
-> Dimau User (AskUserQuestion 2026-09-07). Foto demo di seeder + tampilan read-only **sudah** ada (CHANGELOG 2026-09-07). Yang tersisa: cara Pedagang mengunggah/mengganti foto Item sendiri.
+> Dimau User (AskUserQuestion 2026-09-07). Plan mode dulu (`~/.claude/plans/wild-rolling-turtle.md`), lihat CHANGELOG 2026-09-08.
 
-- [ ] **Keputusan penyimpanan** (butuh konfirmasi User): volume Docker persisten di Garuda (sederhana, tapi memecah prinsip container stateless — perlu volume di Dokploy + Dockerfile, backup manual) **vs** Cloudflare R2 (S3-compatible, gratis ≤10GB, sudah pakai Cloudflare, container tetap stateless — perlu bucket + API token di env). Catat sebagai ADR di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) + update baris "Storage foto" di [TEKNOLOGI.md](TEKNOLOGI.md).
-- [ ] Field upload foto di `ProductForm` (pilih dari galeri HP, preview, hapus). `createProduct`/`updateProduct` + skema Zod terima `photoUrl` / file.
-- [ ] Server: validasi tipe (jpeg/png/webp), batas ukuran, kompres/resize (mis. `sharp` — cek beban vs manfaat, `pnpm-workspace.yaml` saat ini `sharp: false`), nama file acak (anti path-traversal & tebak-URL).
-- [ ] `next.config.ts` `images.remotePatterns` kalau foto disajikan dari domain R2.
-- [ ] `/security-review` wajib (upload = permukaan serangan: tipe konten, ukuran, file berbahaya, SSRF kalau nanti terima URL).
-- [ ] Foto Lapak (`merchants.photo_url`) menyusul dengan mekanisme yang sama.
+- [x] **Keputusan penyimpanan**: **volume Docker persisten** di Garuda (bukan R2). ADR di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) 2026-09-08, baris "Storage foto" [TEKNOLOGI.md](TEKNOLOGI.md) diperbarui.
+- [x] Field upload foto di `ProductForm` (pilih dari HP, preview, ganti, hapus). Resize di klien (`src/lib/upload/resize-image.ts`, tanpa `sharp`). `createProduct`/`updateProduct` + Zod terima `photoUrl` (regex kunci ke path upload sendiri).
+- [x] Server `uploadProductPhoto`: auth Pedagang, rate-limit 30/10menit, batas 3 MB, validasi **magic-bytes** (JPG/PNG/WebP, tolak SVG), nama file `randomUUID`. Route Handler `src/app/uploads/[...path]/route.ts` menyajikan file (path-sanitized, `nosniff`).
+- [x] Dockerfile: `mkdir /app/uploads` + `chown nextjs` + `ENV UPLOADS_DIR`. entrypoint `mkdir -p` idempoten. `.dockerignore`/`.gitignore`: `.uploads`.
+- [x] `/security-review` dijalankan — tidak ada temuan HIGH/MEDIUM; 1 hardening kecil (`X-Content-Type-Options: nosniff`) diterapkan. Unit test `tests/unit/upload.test.ts` (magic-bytes + regex path).
+- [x] Diverifikasi nyata: dev (upload via Playwright, file di `.uploads/`, edit Item tidak hilang, hapus foto) + `docker run` dengan named volume (tulis sebagai `nextjs`, sajikan, traversal→404, persist setelah restart). `tsc`/`lint`/`build`/`pnpm test` (31) lulus.
+- [ ] **Langkah Dokploy (User)**: `mygerai-app` → Advanced → Volumes → Volume Mount (named, mis. `mygerai_uploads`) → Mount Path `/app/uploads`. **Wajib sebelum deploy versi ini**, kalau tidak foto hilang tiap redeploy.
+- [ ] Foto Lapak (`merchants.photo_url`) — mekanisme sama, belum dikerjakan.
 
 ## Fase 6 — Integrasi Payment Nyata (Tripay)
 
