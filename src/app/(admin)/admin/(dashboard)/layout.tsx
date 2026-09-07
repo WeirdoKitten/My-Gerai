@@ -1,15 +1,15 @@
-import type { Route } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { logoutAdmin } from "@/server/admins";
 
-const NAV: { href: Route; label: string }[] = [
-  { href: "/admin/merchants", label: "Pedagang" },
-  { href: "/admin/config", label: "Konfigurasi" },
-  { href: "/admin/payouts", label: "Pencairan" },
+const NAV: NavItem[] = [
+  { href: "/admin/merchants", label: "Pedagang", icon: "store" },
+  { href: "/admin/config", label: "Konfigurasi", icon: "settings" },
+  { href: "/admin/payouts", label: "Pencairan", icon: "wallet" },
 ];
 
 export default async function AdminDashboardLayout({
