@@ -15,6 +15,7 @@
 | Ubah keputusan arsitektur (mis. ganti provider, ganti pola integrasi) | [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) (tambah baris ADR baru) |
 | Ubah struktur folder/file nyata | [ARSITEKTUR-FOLDER.md](ARSITEKTUR-FOLDER.md) |
 | Ganti/tambah library, tool, atau layanan pihak ketiga | [TEKNOLOGI.md](TEKNOLOGI.md) |
+| Ubah token desain (warna/tipografi/spacing), komponen UI baku, atau aturan layout | [DESAIN-SISTEM.md](DESAIN-SISTEM.md) |
 | Istilah domain baru | [GLOSSARY.md](GLOSSARY.md) |
 | Perubahan signifikan apa pun di atas | **[CHANGELOG.md](../CHANGELOG.md)** (selalu) |
 

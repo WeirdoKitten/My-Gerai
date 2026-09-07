@@ -1,5 +1,6 @@
 import { PlatformConfigForm } from "@/components/admin/PlatformConfigForm";
 import { PlatformConfigHistoryList } from "@/components/admin/PlatformConfigHistoryList";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   getActivePlatformConfig,
   getPlatformConfigHistory,
@@ -13,18 +14,14 @@ export default async function AdminConfigPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Konfigurasi Aplikator
-        </h1>
+      <section className="flex flex-col gap-4">
+        <PageHeader title="Konfigurasi Aplikator" />
         <PlatformConfigForm current={current} />
-      </div>
-      <div>
-        <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Riwayat Perubahan
-        </h2>
+      </section>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-ink">Riwayat Perubahan</h2>
         <PlatformConfigHistoryList history={history} />
-      </div>
+      </section>
     </div>
   );
 }

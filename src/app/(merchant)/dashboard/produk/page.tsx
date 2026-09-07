@@ -6,9 +6,7 @@ export default async function MerchantProductsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-        Kelola Item
-      </h2>
+      <h2 className="text-lg font-semibold text-ink">Kelola Item</h2>
       <ProductManager initialProducts={products} />
     </div>
   );

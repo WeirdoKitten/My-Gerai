@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ImageOffIcon, PlusIcon } from "@/components/ui/icons";
 import { listMerchantProducts } from "@/server/products";
 import type { MerchantProductView } from "@/types/product";
 import { ProductForm } from "./ProductForm";
@@ -15,8 +18,7 @@ export function ProductManager({
   const [showForm, setShowForm] = useState(false);
 
   async function refresh() {
-    const latest = await listMerchantProducts();
-    setProducts(latest);
+    setProducts(await listMerchantProducts());
   }
 
   return (
@@ -30,23 +32,33 @@ export function ProductManager({
           onCancel={() => setShowForm(false)}
         />
       ) : (
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={() => setShowForm(true)}
-          className="h-10 rounded-md border border-zinc-300 text-sm font-medium dark:border-zinc-700"
         >
-          + Tambah Item
-        </button>
+          <PlusIcon className="size-4" />
+          Tambah Item
+        </Button>
       )}
-      <div className="flex flex-col gap-2">
-        {products.map((product) => (
-          <ProductListItem
-            key={product.id}
-            product={product}
-            onChanged={refresh}
-          />
-        ))}
-      </div>
+
+      {products.length === 0 && !showForm ? (
+        <EmptyState
+          icon={<ImageOffIcon className="size-10" />}
+          title="Belum ada Item"
+          description="Tambahkan menu pertamamu supaya pembeli bisa memesan."
+        />
+      ) : (
+        <div className="flex flex-col gap-2">
+          {products.map((product) => (
+            <ProductListItem
+              key={product.id}
+              product={product}
+              onChanged={refresh}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

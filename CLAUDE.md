@@ -23,6 +23,7 @@ Semua keputusan produk/arsitektur ada di `docs/`. **Ini satu-satunya sumber kebe
 | [docs/BACKLOG.md](docs/BACKLOG.md) | Daftar task per fase | Menentukan apa yang dikerjakan berikutnya |
 | [docs/BEST-PRACTICES.md](docs/BEST-PRACTICES.md) | Performa, keamanan, error handling, testing | Menulis kode fitur apa pun |
 | [docs/CODING-STYLE.md](docs/CODING-STYLE.md) | Konvensi penulisan kode & istilah domain | Menulis kode apa pun |
+| [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) | Token warna/tipografi, komponen UI baku (`src/components/ui/`), aturan layout | Menyentuh tampilan/UI apa pun |
 | [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md) | Kapan & bagaimana update dokumen ground truth | Selesai mengerjakan sesuatu yang berdampak ke ground truth |
 | [docs/CLAUDE-SKILLS.md](docs/CLAUDE-SKILLS.md) | Kapan pakai skill Claude Code apa | Merencanakan alur kerja sebuah task |
 | [docs/PROMPT-TIPS.md](docs/PROMPT-TIPS.md) | Tips untuk User menulis prompt efektif | (Untuk User, tapi baca juga untuk paham ekspektasi kolaborasi) |
@@ -48,7 +49,7 @@ Semua keputusan produk/arsitektur ada di `docs/`. **Ini satu-satunya sumber kebe
 
 ## Stack Ringkas (detail & alasan di [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md))
 
-Next.js (App Router) + TypeScript + Tailwind CSS + PostgreSQL (self-hosted) + Drizzle ORM + Zod + Biome + Vitest/Playwright + pnpm. Auth/Realtime/Storage dibangun custom (bukan Supabase). Hosting: server sendiri (Garuda) via Dokploy + Cloudflare Tunnel. Payment gateway masa depan: Tripay (perorangan, KTP saja) — untuk sekarang disimulasikan.
+Next.js (App Router) + TypeScript + Tailwind CSS v4 (font Plus Jakarta Sans, desain sistem terang/hangat — lihat [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md)) + PostgreSQL (self-hosted) + Drizzle ORM + Zod + Biome + Vitest/Playwright + pnpm. Auth/Realtime/Storage dibangun custom (bukan Supabase). Hosting: server sendiri (Garuda) via Dokploy + Cloudflare Tunnel. Payment gateway masa depan: Tripay (perorangan, KTP saja) — untuk sekarang disimulasikan.
 
 ## Alur Kerja Default untuk Task Apa Pun
 

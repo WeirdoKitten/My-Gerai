@@ -1,5 +1,6 @@
 import { PayoutsManager } from "@/components/admin/PayoutsManager";
 import { TransactionList } from "@/components/admin/TransactionList";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { listOrdersForAdmin } from "@/server/orders";
 import { listMerchantBalances, listPayoutsForAdmin } from "@/server/payouts";
 
@@ -12,19 +13,15 @@ export default async function AdminPayoutsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-        Saldo & Pencairan
-      </h1>
+      <PageHeader title="Saldo & Pencairan" />
       <PayoutsManager
         initialBalances={balances}
         initialPayouts={payoutHistory}
       />
-      <div>
-        <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Daftar Transaksi
-        </h2>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold text-ink">Daftar Transaksi</h2>
         <TransactionList orders={transactions} />
-      </div>
+      </section>
     </div>
   );
 }

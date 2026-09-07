@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/Card";
 import { formatRupiah } from "@/lib/utils/money";
 import type { PlatformConfigHistoryEntry } from "@/types/config";
 
@@ -17,28 +18,27 @@ export function PlatformConfigHistoryList({
   history: PlatformConfigHistoryEntry[];
 }) {
   if (history.length === 0) {
-    return (
-      <p className="text-zinc-500 dark:text-zinc-400">Belum ada riwayat.</p>
-    );
+    return <p className="text-sm text-ink-muted">Belum ada riwayat.</p>;
   }
 
   return (
     <div className="flex flex-col gap-2">
       {history.map((entry) => (
-        <div
+        <Card
           key={entry.id}
-          className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+          pad="sm"
+          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-sm"
         >
-          <span className="text-zinc-500 dark:text-zinc-400">
+          <span className="text-ink-muted">
             {KEY_LABEL_ID[entry.key] ?? entry.key}
           </span>
-          <span className="font-medium text-zinc-900 dark:text-zinc-50">
+          <span className="font-semibold tabular-nums text-ink">
             {formatHistoryValue(entry.key, entry.value)}
           </span>
-          <span className="text-xs text-zinc-400">
+          <span className="w-full text-xs text-ink-muted">
             {entry.effectiveFrom.toLocaleString("id-ID")}
           </span>
-        </div>
+        </Card>
       ))}
     </div>
   );

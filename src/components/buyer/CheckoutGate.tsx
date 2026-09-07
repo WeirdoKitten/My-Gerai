@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { CartIcon } from "@/components/ui/icons";
 import { useCart } from "@/lib/cart/cart-context";
 
 export function CheckoutGate({ children }: { children: ReactNode }) {
@@ -8,9 +10,11 @@ export function CheckoutGate({ children }: { children: ReactNode }) {
 
   if (!cart.stallSlug || cart.items.length === 0) {
     return (
-      <p className="text-zinc-500 dark:text-zinc-400">
-        Keranjang kosong. Silakan pindai QR Lapak dulu untuk memilih Item.
-      </p>
+      <EmptyState
+        icon={<CartIcon className="size-10" />}
+        title="Keranjang masih kosong"
+        description="Pindai QR di Lapak untuk melihat menu dan memilih Item."
+      />
     );
   }
 

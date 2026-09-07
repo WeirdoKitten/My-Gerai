@@ -1,38 +1,40 @@
+import { Card } from "@/components/ui/Card";
+import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatRupiah } from "@/lib/utils/money";
-import { ORDER_STATUS_LABEL_ID } from "@/lib/utils/order-status";
 import type { AdminOrderListItem } from "@/types/order";
 
 export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
   if (orders.length === 0) {
-    return (
-      <p className="text-zinc-500 dark:text-zinc-400">Belum ada Pesanan.</p>
-    );
+    return <p className="text-sm text-ink-muted">Belum ada Pesanan.</p>;
   }
 
   return (
     <div className="flex flex-col gap-2">
       {orders.map((order) => (
-        <div
+        <Card
           key={order.id}
-          className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+          pad="sm"
+          className="flex items-center justify-between gap-3"
         >
-          <div>
-            <p className="font-medium text-zinc-900 dark:text-zinc-50">
-              {order.orderCode} · {order.stallName}
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-ink">
+              <span className="tabular-nums">{order.orderCode}</span> ·{" "}
+              {order.stallName}
             </p>
-            <p className="text-zinc-500 dark:text-zinc-400">
-              {order.buyerName} — {ORDER_STATUS_LABEL_ID[order.status]}
-            </p>
+            <div className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-muted">
+              <span className="truncate">{order.buyerName}</span>
+              <OrderStatusBadge status={order.status} />
+            </div>
           </div>
-          <div className="text-right">
-            <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="shrink-0 text-right">
+            <p className="font-semibold tabular-nums text-ink">
               {formatRupiah(order.subtotal)}
             </p>
-            <p className="text-xs text-zinc-400">
-              Fee: {formatRupiah(order.platformFeeSnapshot)}
+            <p className="text-xs tabular-nums text-ink-muted">
+              Fee {formatRupiah(order.platformFeeSnapshot)}
             </p>
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
