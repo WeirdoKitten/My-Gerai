@@ -21,14 +21,16 @@ export function ProductListItem({
 
   if (editing) {
     return (
-      <ProductForm
-        product={product}
-        onDone={() => {
-          setEditing(false);
-          onChanged();
-        }}
-        onCancel={() => setEditing(false)}
-      />
+      <div className="sm:col-span-2 sm:max-w-lg">
+        <ProductForm
+          product={product}
+          onDone={() => {
+            setEditing(false);
+            onChanged();
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </div>
     );
   }
 

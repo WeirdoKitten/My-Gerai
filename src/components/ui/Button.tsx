@@ -2,7 +2,12 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 import { Spinner } from "./Spinner";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "danger"
+  | "dangerOutline";
 export type ButtonSize = "md" | "sm";
 
 const BASE =
@@ -13,6 +18,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: "border border-line bg-surface text-ink hover:bg-bg",
   ghost: "text-brand-strong hover:bg-brand-tint",
   danger: "bg-danger text-white hover:bg-danger-hover",
+  dangerOutline:
+    "border border-danger text-danger hover:bg-danger hover:text-white",
 };
 
 const SIZES: Record<ButtonSize, string> = {

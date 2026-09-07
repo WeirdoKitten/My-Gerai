@@ -28,7 +28,7 @@ export function MerchantBalanceTable({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="grid items-start gap-2 sm:grid-cols-2">
       {balances.map((row) => (
         <Card key={row.merchantId}>
           <div className="flex items-center justify-between gap-3">

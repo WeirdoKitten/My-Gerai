@@ -24,7 +24,7 @@ export default async function AdminDashboardLayout({
       heading={`Admin · ${session.name}`}
       nav={NAV}
       logoutAction={logoutAdmin}
-      width="max-w-3xl"
+      width="max-w-6xl"
     >
       {children}
     </DashboardShell>

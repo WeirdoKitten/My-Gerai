@@ -22,42 +22,45 @@ export function ProductManager({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {showForm ? (
-        <ProductForm
-          onDone={async () => {
-            setShowForm(false);
-            await refresh();
-          }}
-          onCancel={() => setShowForm(false)}
-        />
-      ) : (
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setShowForm(true)}
-        >
-          <PlusIcon className="size-4" />
-          Tambah Item
-        </Button>
-      )}
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div className="sm:col-span-2 sm:max-w-lg">
+        {showForm ? (
+          <ProductForm
+            onDone={async () => {
+              setShowForm(false);
+              await refresh();
+            }}
+            onCancel={() => setShowForm(false)}
+          />
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            onClick={() => setShowForm(true)}
+          >
+            <PlusIcon className="size-4" />
+            Tambah Item
+          </Button>
+        )}
+      </div>
 
       {products.length === 0 && !showForm ? (
-        <EmptyState
-          icon={<ImageOffIcon className="size-10" />}
-          title="Belum ada Item"
-          description="Tambahkan menu pertamamu supaya pembeli bisa memesan."
-        />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {products.map((product) => (
-            <ProductListItem
-              key={product.id}
-              product={product}
-              onChanged={refresh}
-            />
-          ))}
+        <div className="sm:col-span-2">
+          <EmptyState
+            icon={<ImageOffIcon className="size-10" />}
+            title="Belum ada Item"
+            description="Tambahkan menu pertamamu supaya pembeli bisa memesan."
+          />
         </div>
+      ) : (
+        products.map((product) => (
+          <ProductListItem
+            key={product.id}
+            product={product}
+            onChanged={refresh}
+          />
+        ))
       )}
     </div>
   );
