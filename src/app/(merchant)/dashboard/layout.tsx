@@ -1,8 +1,10 @@
 import type { Route } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
-import { ButtonLink } from "@/components/ui/ButtonLink";
+import { UserIcon } from "@/components/ui/icons";
+import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
 import { logoutMerchant } from "@/server/merchants";
 
@@ -22,12 +24,17 @@ export default async function DashboardLayout({
 
   return (
     <DashboardShell
+      brand={<Wordmark label={session.stallName} className="text-sm" />}
       nav={NAV}
       logoutAction={logoutMerchant}
       headerAction={
-        <ButtonLink href="/dashboard/profil" variant="secondary" size="sm">
-          Profil
-        </ButtonLink>
+        <Link
+          href="/dashboard/profil"
+          aria-label="Profil Lapak"
+          className="flex size-9 items-center justify-center rounded-control border border-line text-ink-muted transition-colors hover:bg-bg hover:text-ink"
+        >
+          <UserIcon className="size-4" />
+        </Link>
       }
     >
       {children}

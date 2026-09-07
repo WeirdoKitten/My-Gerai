@@ -2,6 +2,17 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Revert layout responsif + header dashboard = nama Lapak + Profil jadi ikon
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§4), kode (semua file yang disentuh commit "layout responsif" + `DashboardShell.tsx`, layout Pedagang/Admin, `Wordmark.tsx`, `icons.tsx`)
+**Alasan:** User: "tidak usah dibuat responsif, hasilnya jelek — revert semua yang berhubungan dengan responsif." Plus: header dashboard tampilkan **nama Lapak** (bukan "MyGerai"), tombol **Profil jadi ikon saja**.
+**Ringkasan:**
+- **Revert responsif** (commit `91d82ab`): grid `sm:/lg:grid-cols-2`, shell `max-w-5xl/6xl`, landing `md:grid-cols-2`, wrapper `max-w-lg/md` di alur linier — semua kembali ke **satu kolom** (`max-w-md` Pembeli, `max-w-2xl` Pedagang, `max-w-3xl` Admin), tanpa breakpoint layout. **Dipertahankan** dari commit itu: tombol Keluar `dangerOutline`, teks landing "Daftar"/"Masuk" (tanpa panah, tanpa link Admin), scrollbar nav disembunyikan. Perubahan setelahnya (Modal, Stok, Profil) utuh.
+- **Header `DashboardShell`**: prop `brand` (ReactNode). Pedagang = `<Wordmark label={stallName}>` (nama Lapak + ikon toko) menggantikan "MyGerai". Admin = `<Wordmark>` "MyGerai" + baris `Admin · <nama>`.
+- **Tombol Profil** Pedagang → ikon `UserIcon` (`<Link aria-label>` kotak `size-9 border`), bukan teks.
+- `Wordmark` dapat prop `label` (default "MyGerai"). `DESAIN-SISTEM.md §4` ditulis ulang: mobile-first satu kolom, catat percobaan responsif di-revert.
+- Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (31) lulus; nol kelas `sm:/lg:/md:grid-cols`/`max-w-5xl`/`max-w-6xl` tersisa; discreenshot desktop + mobile.
+
 ## 2026-09-08 — Profil Pedagang + header dashboard tanpa nama Lapak
 
 **Dampak:** [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`src/components/DashboardShell.tsx` + `DashboardNav.tsx`, `src/app/(merchant)/dashboard/layout.tsx` + `profil/page.tsx` baru, `src/components/merchant/MerchantProfileForm.tsx` baru, `src/server/merchants.ts`, `src/lib/validation/merchant.schema.ts`, `src/types/merchant.ts`)

@@ -19,9 +19,5 @@ export default async function OrderStatusPage(
     );
   }
 
-  return (
-    <div className="mx-auto max-w-md">
-      <OrderStatusView initialOrder={order} />
-    </div>
-  );
+  return <OrderStatusView initialOrder={order} />;
 }
