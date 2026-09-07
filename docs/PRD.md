@@ -39,7 +39,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 ## 4. Lingkup MVP (In Scope)
 
 - [ ] Pedagang daftar mandiri (nama Lapak, kategori, kontak, foto) → status `pending` → Admin approve → Lapak dapat **QR Lapak** unik.
-- [ ] Pedagang kelola daftar Item (nama, harga, foto, status tersedia/habis) di dashboard sendiri.
+- [ ] Pedagang kelola daftar Item (nama, harga, foto, **stok opsional**, status tersedia/habis) di dashboard sendiri. Stok `null` = tidak dibatasi; kalau diisi angka, berkurang saat Pesanan `dibayar` & Item hilang dari katalog Pembeli begitu stok 0.
 - [ ] Pembeli scan **QR Lapak** → lihat katalog Item Lapak tsb (tanpa login).
 - [ ] Pembeli pilih Item + qty + catatan → Keranjang (di sisi browser) → Checkout.
 - [ ] Saat checkout, Pembeli **wajib isi Nama** (field lain tidak ada).

@@ -14,6 +14,7 @@
 | Pedagang / Lapak | `Merchant` / `Stall` (MVP: 1 tabel `merchants`, lihat [DATA-MODEL.md](DATA-MODEL.md)) |
 | Pembeli | `Buyer` (tidak ada tabel akun, hanya field `buyer_name`) |
 | Item | `Product` |
+| Stok Item | `stock` (kolom `products.stock`, `null` = tak terbatas) |
 | Keranjang | `Cart` |
 | Pesanan | `Order` |
 | Kode Pesanan | `orderCode` |

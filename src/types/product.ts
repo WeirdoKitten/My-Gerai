@@ -26,6 +26,8 @@ export type MerchantProductView = {
   name: string;
   description: string | null;
   price: number;
+  /** `null` = stok tidak dibatasi. */
+  stock: number | null;
   photoUrl: string | null;
   status: "available" | "sold_out";
 };

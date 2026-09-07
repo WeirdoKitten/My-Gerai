@@ -22,7 +22,7 @@ export function PlatformConfigHistoryList({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="grid gap-2 sm:grid-cols-2">
       {history.map((entry) => (
         <Card
           key={entry.id}

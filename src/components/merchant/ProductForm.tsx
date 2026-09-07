@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
@@ -27,6 +26,9 @@ export function ProductForm({
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(product ? String(product.price) : "");
+  const [stock, setStock] = useState(
+    product?.stock != null ? String(product.stock) : "",
+  );
   const [photoUrl, setPhotoUrl] = useState<string | null>(
     product?.photoUrl ?? null,
   );
@@ -66,18 +68,21 @@ export function ProductForm({
     setError(null);
 
     const priceNumber = Number(price);
+    const stockValue = stock.trim() === "" ? null : Number(stock);
     const result = product
       ? await updateProduct({
           productId: product.id,
           name,
           description: description || undefined,
           price: priceNumber,
+          stock: stockValue,
           photoUrl,
         })
       : await createProduct({
           name,
           description: description || undefined,
           price: priceNumber,
+          stock: stockValue,
           photoUrl,
         });
 
@@ -90,7 +95,7 @@ export function ProductForm({
   }
 
   return (
-    <Card as="form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Field label="Nama Item">
         <Input
           type="text"
@@ -116,6 +121,16 @@ export function ProductForm({
           onChange={(e) => setPrice(e.target.value)}
           required
           min={0}
+        />
+      </Field>
+      <Field label="Stok" hint="Kosongkan kalau tidak dibatasi.">
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={stock}
+          onChange={(e) => setStock(e.target.value)}
+          min={0}
+          placeholder="Tidak dibatasi"
         />
       </Field>
 
@@ -173,6 +188,6 @@ export function ProductForm({
           Batal
         </Button>
       </div>
-    </Card>
+    </form>
   );
 }

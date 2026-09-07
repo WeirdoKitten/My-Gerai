@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { cn } from "@/lib/utils/cn";
 import { formatRupiah } from "@/lib/utils/money";
@@ -18,19 +19,6 @@ export function ProductListItem({
 }) {
   const [editing, setEditing] = useState(false);
   const [toggling, setToggling] = useState(false);
-
-  if (editing) {
-    return (
-      <ProductForm
-        product={product}
-        onDone={() => {
-          setEditing(false);
-          onChanged();
-        }}
-        onCancel={() => setEditing(false)}
-      />
-    );
-  }
 
   async function handleToggle() {
     setToggling(true);
@@ -53,6 +41,16 @@ export function ProductListItem({
         <p className="truncate font-semibold text-ink">{product.name}</p>
         <p className="text-sm tabular-nums text-ink-muted">
           {formatRupiah(product.price)}
+          {product.stock !== null ? (
+            <span
+              className={cn(
+                "ml-2",
+                product.stock === 0 ? "font-semibold text-danger" : "",
+              )}
+            >
+              · Stok {product.stock}
+            </span>
+          ) : null}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -77,6 +75,17 @@ export function ProductListItem({
           Ubah
         </button>
       </div>
+
+      <Modal open={editing} onClose={() => setEditing(false)} title="Ubah Item">
+        <ProductForm
+          product={product}
+          onDone={() => {
+            setEditing(false);
+            onChanged();
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </Modal>
     </Card>
   );
 }

@@ -1,11 +1,5 @@
-import Link from "next/link";
 import { ButtonLink } from "@/components/ui/ButtonLink";
-import {
-  ArrowRightIcon,
-  CartIcon,
-  QrIcon,
-  StoreIcon,
-} from "@/components/ui/icons";
+import { CartIcon, QrIcon, StoreIcon } from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/Wordmark";
 
 const STEPS = [
@@ -28,50 +22,43 @@ const STEPS = [
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 py-10">
+    <main className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8 sm:py-16">
       <Wordmark className="text-lg" />
 
-      <h1 className="mt-8 text-3xl font-extrabold leading-tight tracking-tight text-ink">
-        Terima pesanan lewat QR, tanpa antre.
-      </h1>
-      <p className="mt-3 text-ink-muted">
-        MyGerai membantu pedagang kaki lima menerima pesanan yang sudah dibayar
-        QRIS langsung ke HP — pembeli cukup scan, pilih, bayar.
-      </p>
+      <div className="mt-10 grid items-center gap-10 md:mt-14 md:grid-cols-2 md:gap-16">
+        <div>
+          <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-ink sm:text-4xl">
+            Terima pesanan lewat QR, tanpa antre.
+          </h1>
+          <p className="mt-4 text-ink-muted sm:text-lg">
+            MyGerai membantu pedagang kaki lima menerima pesanan yang sudah
+            dibayar QRIS langsung ke HP — pembeli cukup scan, pilih, bayar.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:max-w-xs">
+            <ButtonLink href="/daftar" fullWidth>
+              Daftar
+            </ButtonLink>
+            <ButtonLink href="/login" variant="secondary" fullWidth>
+              Masuk
+            </ButtonLink>
+          </div>
+        </div>
 
-      <div className="mt-8 flex flex-col gap-3">
-        <ButtonLink href="/daftar" fullWidth>
-          Daftar jadi Pedagang
-          <ArrowRightIcon className="size-4" />
-        </ButtonLink>
-        <ButtonLink href="/login" variant="secondary" fullWidth>
-          Masuk Pedagang
-        </ButtonLink>
-      </div>
-
-      <ol className="mt-12 flex flex-col gap-5">
-        {STEPS.map((step, index) => (
-          <li key={step.title} className="flex gap-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand">
-              <step.icon className="size-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-ink">
-                {index + 1}. {step.title}
-              </p>
-              <p className="text-sm text-ink-muted">{step.text}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <div className="mt-auto pt-12">
-        <Link
-          href="/admin/login"
-          className="text-sm font-semibold text-ink-muted transition-colors hover:text-brand-strong"
-        >
-          Masuk sebagai Admin
-        </Link>
+        <ol className="flex flex-col gap-5 rounded-card border border-line bg-surface p-6">
+          {STEPS.map((step, index) => (
+            <li key={step.title} className="flex gap-4">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand">
+                <step.icon className="size-5" />
+              </div>
+              <div>
+                <p className="font-semibold text-ink">
+                  {index + 1}. {step.title}
+                </p>
+                <p className="text-sm text-ink-muted">{step.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </main>
   );

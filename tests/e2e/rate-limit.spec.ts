@@ -21,7 +21,8 @@ test("loginMerchant diblokir setelah percobaan berulang (rate-limit sisi server)
     await page.getByLabel("Password").fill("password-salah");
     await page.getByRole("button", { name: "Masuk" }).click();
 
-    const errorText = page.locator("p.text-red-600");
+    // Scope ke dalam <form> supaya tidak ketangkap alert overlay Next.js dev.
+    const errorText = page.locator("form").getByRole("alert");
     await expect(errorText).toBeVisible();
     lastMessage = (await errorText.innerText()).trim();
 

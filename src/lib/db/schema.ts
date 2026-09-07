@@ -91,6 +91,8 @@ export const products = pgTable("products", {
   name: text().notNull(),
   description: text(),
   price: integer().notNull(),
+  /** Sisa stok. `null` = tidak dibatasi. Berkurang saat Pesanan `dibayar`. */
+  stock: integer(),
   photoUrl: text(),
   status: productStatusEnum().notNull().default("available"),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),

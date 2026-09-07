@@ -33,7 +33,8 @@
 │   │   │   └── dashboard/
 │   │   │       ├── page.tsx                   # Daftar Pesanan masuk (polling)
 │   │   │       ├── produk/page.tsx            # Kelola Item
-│   │   │       └── qr/page.tsx                # QR Lapak (tab terpisah — cetak/unduh)
+│   │   │       ├── qr/page.tsx                # QR Lapak (tab terpisah — cetak/unduh)
+│   │   │       └── profil/page.tsx            # Profil Lapak (nama/kategori/info rekening) — via tombol "Profil" di header
 │   │   ├── (admin)/
 │   │   │   └── admin/
 │   │   │       ├── login/page.tsx             # DI LUAR (dashboard) — self-redirect kalau sudah login

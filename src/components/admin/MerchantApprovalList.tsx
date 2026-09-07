@@ -34,7 +34,7 @@ export function MerchantApprovalList({
             Tidak ada Pedagang yang menunggu.
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid items-start gap-3 sm:grid-cols-2">
             {pending.map((merchant) => (
               <MerchantApprovalRow
                 key={merchant.id}
@@ -54,7 +54,7 @@ export function MerchantApprovalList({
             title="Belum ada Pedagang"
           />
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             {others.map((merchant) => (
               <Card
                 key={merchant.id}

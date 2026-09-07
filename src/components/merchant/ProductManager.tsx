@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ImageOffIcon, PlusIcon } from "@/components/ui/icons";
+import { Modal } from "@/components/ui/Modal";
 import { listMerchantProducts } from "@/server/products";
 import type { MerchantProductView } from "@/types/product";
 import { ProductForm } from "./ProductForm";
@@ -23,33 +24,24 @@ export function ProductManager({
 
   return (
     <div className="flex flex-col gap-4">
-      {showForm ? (
-        <ProductForm
-          onDone={async () => {
-            setShowForm(false);
-            await refresh();
-          }}
-          onCancel={() => setShowForm(false)}
-        />
-      ) : (
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setShowForm(true)}
-        >
-          <PlusIcon className="size-4" />
-          Tambah Item
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="secondary"
+        className="sm:self-start"
+        onClick={() => setShowForm(true)}
+      >
+        <PlusIcon className="size-4" />
+        Tambah Item
+      </Button>
 
-      {products.length === 0 && !showForm ? (
+      {products.length === 0 ? (
         <EmptyState
           icon={<ImageOffIcon className="size-10" />}
           title="Belum ada Item"
           description="Tambahkan menu pertamamu supaya pembeli bisa memesan."
         />
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {products.map((product) => (
             <ProductListItem
               key={product.id}
@@ -59,6 +51,20 @@ export function ProductManager({
           ))}
         </div>
       )}
+
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Tambah Item"
+      >
+        <ProductForm
+          onDone={async () => {
+            setShowForm(false);
+            await refresh();
+          }}
+          onCancel={() => setShowForm(false)}
+        />
+      </Modal>
     </div>
   );
 }
