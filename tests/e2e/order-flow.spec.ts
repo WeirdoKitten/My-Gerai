@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 // Kredensial & fixture dari src/lib/db/seed.ts.
 const MERCHANT_SLUG = "bakso-pak-budi";
-const MERCHANT_PHONE = "081200000001";
-const MERCHANT_PASSWORD = "Password123!";
+const MERCHANT_PHONE = "082222222222";
+const MERCHANT_PASSWORD = "password";
 
 test.describe
   .serial("alur checkout Pembeli & alur Pedagang", () => {

@@ -18,7 +18,7 @@ import { admins, merchants, platformConfig, products } from "./schema";
  * guard localhost) — itu mereset DB ke kondisi bersih untuk uji manual/E2E.
  * `seed-demo.ts` di sini bukan penggantinya, hanya untuk mengisi server.
  */
-const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "Password123!";
+const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "password";
 
 async function main(): Promise<void> {
   const sudahAda = await db.query.merchants.findFirst({
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
 
   await db
     .insert(admins)
-    .values({ name: "Admin MyGerai", phone: "081299999999", passwordHash })
+    .values({ name: "Admin MyGerai", phone: "081111111111", passwordHash })
     .onConflictDoNothing({ target: admins.phone });
 
   const [merchant] = await db
@@ -45,7 +45,7 @@ async function main(): Promise<void> {
       stallName: "Bakso Pak Budi",
       ownerName: "Budi Santoso",
       category: "Makanan",
-      phone: "081200000001",
+      phone: "082222222222",
       passwordHash,
       status: "approved",
     })
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
       stallName: "Warung Cak Slamet",
       ownerName: "Slamet Riyadi",
       category: "Makanan",
-      phone: "081200000003",
+      phone: "084444444444",
       passwordHash,
       status: "approved",
     })
@@ -74,7 +74,7 @@ async function main(): Promise<void> {
         stallName: "Batagor Bu Siti",
         ownerName: "Siti Aminah",
         category: "Makanan",
-        phone: "081200000002",
+        phone: "083333333333",
         passwordHash,
         status: "pending",
       },
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
         stallName: "Cakue Mang Udin",
         ownerName: "Udin Saepudin",
         category: "Makanan",
-        phone: "081200000004",
+        phone: "085555555555",
         passwordHash,
         status: "pending",
       },
@@ -152,8 +152,8 @@ async function main(): Promise<void> {
   }
 
   console.log("Seed data demo selesai.");
-  console.log(`  Pedagang approved : 081200000001 / ${DEMO_PASSWORD}`);
-  console.log(`  Admin             : 081299999999 / ${DEMO_PASSWORD}`);
+  console.log(`  Pedagang approved : 082222222222 / ${DEMO_PASSWORD}`);
+  console.log(`  Admin             : 081111111111 / ${DEMO_PASSWORD}`);
 }
 
 main()

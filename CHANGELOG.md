@@ -2,6 +2,20 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Kredensial akun uji seed dibuat berpola & mudah diingat
+
+**Dampak:** kode (`src/lib/db/seed.ts`, `src/lib/db/seed-demo.ts`, `tests/e2e/order-flow.spec.ts`)
+**Alasan:** User: nomor & password akun dummy Pedagang/Admin terlalu rumit — minta pola sederhana (mis. `082222222222` / `password`).
+**Ringkasan:**
+- Password semua akun seed: `Password123!` → **`password`** (8 karakter, tetap lolos aturan registrasi `min(8)`). `seed-demo.ts` masih hormati env `SEED_DEMO_PASSWORD` bila server demo publik ingin password lebih kuat.
+- Nomor HP jadi berpola "digit diulang" (tetap lolos regex registrasi `^08\d{8,11}$`):
+  - Admin: `081299999999` → `081111111111`
+  - Pedagang approved (Bakso Pak Budi): `081200000001` → `082222222222`
+  - Pending #1 / uji APPROVE (Batagor Bu Siti): `081200000002` → `083333333333`
+  - Approved #2 / uji isolasi (Warung Cak Slamet): `081200000003` → `084444444444`
+  - Pending #2 / uji REJECT (Cakue Mang Udin): `081200000004` → `085555555555`
+- Diverifikasi: `pnpm lint` + `pnpm test` (31) lulus; `pnpm db:seed` jalan; `pnpm test:e2e order-flow` (2) lulus — login Pedagang dengan kredensial baru tembus sampai dashboard.
+
 ## 2026-09-08 — Tambah ke Keranjang: notifikasi toast (bukan ubah label tombol)
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§3 komponen `Toast`), kode (`src/components/ui/Toast.tsx` baru, `src/app/globals.css` keyframes, `src/app/(buyer)/layout.tsx`, `src/components/buyer/AddToCartControls.tsx`)

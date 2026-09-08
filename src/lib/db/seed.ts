@@ -15,7 +15,7 @@ import {
   sessions,
 } from "./schema";
 
-const SEED_PASSWORD = "Password123!";
+const SEED_PASSWORD = "password";
 
 const connectionString = process.env.DATABASE_URL ?? "";
 if (
@@ -41,7 +41,7 @@ async function main() {
 
   await db.insert(admins).values({
     name: "Admin MyGerai",
-    phone: "081299999999",
+    phone: "081111111111",
     passwordHash,
   });
 
@@ -52,7 +52,7 @@ async function main() {
       stallName: "Bakso Pak Budi",
       ownerName: "Budi Santoso",
       category: "Makanan",
-      phone: "081200000001",
+      phone: "082222222222",
       passwordHash,
       status: "approved",
     })
@@ -64,7 +64,7 @@ async function main() {
     stallName: "Batagor Bu Siti",
     ownerName: "Siti Aminah",
     category: "Makanan",
-    phone: "081200000002",
+    phone: "083333333333",
     passwordHash,
     status: "pending",
   });
@@ -76,7 +76,7 @@ async function main() {
     stallName: "Cakue Mang Udin",
     ownerName: "Udin Saepudin",
     category: "Makanan",
-    phone: "081200000004",
+    phone: "085555555555",
     passwordHash,
     status: "pending",
   });
@@ -90,7 +90,7 @@ async function main() {
       stallName: "Warung Cak Slamet",
       ownerName: "Slamet Riyadi",
       category: "Makanan",
-      phone: "081200000003",
+      phone: "084444444444",
       passwordHash,
       status: "approved",
     })
@@ -152,20 +152,20 @@ async function main() {
   console.log("");
   console.log("Kredensial uji Pedagang (login di /login):");
   console.log(
-    `  Approved  : 081200000001 / ${SEED_PASSWORD} -> masuk dashboard`,
+    `  Approved  : 082222222222 / ${SEED_PASSWORD} -> masuk dashboard`,
   );
   console.log(
-    `  Pending #1: 081200000002 / ${SEED_PASSWORD} -> untuk uji APPROVE`,
+    `  Pending #1: 083333333333 / ${SEED_PASSWORD} -> untuk uji APPROVE`,
   );
   console.log(
-    `  Approved2 : 081200000003 / ${SEED_PASSWORD} -> Lapak kedua, untuk uji isolasi`,
+    `  Approved2 : 084444444444 / ${SEED_PASSWORD} -> Lapak kedua, untuk uji isolasi`,
   );
   console.log(
-    `  Pending #2: 081200000004 / ${SEED_PASSWORD} -> untuk uji REJECT`,
+    `  Pending #2: 085555555555 / ${SEED_PASSWORD} -> untuk uji REJECT`,
   );
   console.log("");
   console.log("Kredensial uji Admin (login di /admin/login):");
-  console.log(`  081299999999 / ${SEED_PASSWORD}`);
+  console.log(`  081111111111 / ${SEED_PASSWORD}`);
 }
 
 main()
