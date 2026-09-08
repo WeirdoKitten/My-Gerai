@@ -69,7 +69,11 @@ function mapStatus(
 const chargeResponseSchema = z.object({
   transaction_id: z.string().min(1),
   transaction_status: z.string(),
+  // `qr_string` ada di sebagian versi respons; kalau tidak, pakai `actions`.
   qr_string: z.string().min(1).optional(),
+  actions: z
+    .array(z.object({ name: z.string(), url: z.string().min(1) }))
+    .optional(),
   status_code: z.string().optional(),
   status_message: z.string().optional(),
 });
@@ -121,7 +125,16 @@ export const midtransPaymentProvider: PaymentProvider = {
     const json: unknown = await response.json().catch(() => null);
     const parsed = chargeResponseSchema.safeParse(json);
 
-    if (!response.ok || !parsed.success || !parsed.data.qr_string) {
+    // Sumber QR: `qr_string` (payload EMV, dirender lokal) kalau ada; kalau
+    // tidak, URL gambar `generate-qr-code` dari `actions` (dipakai apa adanya
+    // sebagai `<img src>`). Salah satunya WAJIB ada.
+    const qrSource =
+      (parsed.success ? parsed.data.qr_string : undefined) ??
+      (parsed.success
+        ? parsed.data.actions?.find((a) => a.name === "generate-qr-code")?.url
+        : undefined);
+
+    if (!response.ok || !parsed.success || !qrSource) {
       const detail =
         parsed.success && parsed.data.status_message
           ? parsed.data.status_message
@@ -131,7 +144,7 @@ export const midtransPaymentProvider: PaymentProvider = {
 
     return {
       referenceId: parsed.data.transaction_id,
-      qrString: parsed.data.qr_string,
+      qrString: qrSource,
       // Pakai durasi yang kita minta sendiri (custom_expiry) — hindari
       // parsing format tanggal Midtrans yang tidak ISO.
       expiresAt: new Date(Date.now() + expiryMinutes * 60_000),

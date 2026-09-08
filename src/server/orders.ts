@@ -272,10 +272,14 @@ export async function getOrderStatus(
     db.query.payments.findFirst({ where: eq(payments.orderId, current.id) }),
   ]);
 
-  const qrImageUrl =
-    current.status === "menunggu_pembayaran" && payment?.qrString
-      ? await QRCode.toDataURL(payment.qrString)
-      : null;
+  // `qrString` bisa payload EMV (dirender lokal jadi data URI) ATAU URL gambar
+  // dari Midtrans (dipakai apa adanya). Mock selalu payload.
+  let qrImageUrl: string | null = null;
+  if (current.status === "menunggu_pembayaran" && payment?.qrString) {
+    qrImageUrl = payment.qrString.startsWith("http")
+      ? payment.qrString
+      : await QRCode.toDataURL(payment.qrString);
+  }
 
   const sandboxQrUrl =
     current.status === "menunggu_pembayaran" &&

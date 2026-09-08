@@ -38,6 +38,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("midtransPaymentProvider.handleCallback — verifikasi signature", () => {
@@ -108,6 +109,69 @@ describe("midtransPaymentProvider.handleCallback — peta status", () => {
       expect(r?.status).toBe(expected);
     });
   }
+});
+
+describe("midtransPaymentProvider.createPayment — sumber QR", () => {
+  const input = { orderId: ORDER_ID, grossAmount: 27000, expiryMinutes: 15 };
+
+  function stubCharge(json: unknown, ok = true) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok,
+        status: ok ? 200 : 400,
+        json: async () => json,
+      })),
+    );
+  }
+
+  it("pakai qr_string kalau ada", async () => {
+    stubCharge({
+      transaction_id: "trx-1",
+      transaction_status: "pending",
+      qr_string: "00020101021226...",
+    });
+    const r = await midtransPaymentProvider.createPayment(input);
+    expect(r).toMatchObject({
+      referenceId: "trx-1",
+      qrString: "00020101021226...",
+    });
+  });
+
+  it("fallback ke actions generate-qr-code kalau qr_string tidak ada", async () => {
+    stubCharge({
+      transaction_id: "trx-2",
+      transaction_status: "pending",
+      actions: [
+        {
+          name: "generate-qr-code",
+          url: "https://api.sandbox.midtrans.com/v2/qris/trx-2/qr-code",
+        },
+      ],
+    });
+    const r = await midtransPaymentProvider.createPayment(input);
+    expect(r.qrString).toBe(
+      "https://api.sandbox.midtrans.com/v2/qris/trx-2/qr-code",
+    );
+  });
+
+  it("melempar kalau qr_string DAN actions tidak ada", async () => {
+    stubCharge({
+      transaction_id: "trx-3",
+      transaction_status: "pending",
+      status_message: "no qr",
+    });
+    await expect(midtransPaymentProvider.createPayment(input)).rejects.toThrow(
+      /Midtrans charge gagal/,
+    );
+  });
+
+  it("melempar kalau HTTP tidak ok", async () => {
+    stubCharge({ status_message: "invalid" }, false);
+    await expect(midtransPaymentProvider.createPayment(input)).rejects.toThrow(
+      /Midtrans charge gagal/,
+    );
+  });
 });
 
 describe("getPaymentProvider — pemilihan lewat env", () => {
