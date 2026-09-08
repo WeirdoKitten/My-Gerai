@@ -6,7 +6,7 @@ Dokumen ini otomatis dibaca setiap sesi Claude Code di proyek ini. Tujuannya: **
 
 **MyGerai** (nama kerja, lihat [docs/PRD.md](docs/PRD.md#nama-produk)) adalah sistem pemesanan berbasis QR + QRIS untuk pedagang kecil pinggir jalan/pasar (bakso, batagor, cakue, baju, dll) — versi sangat disederhanakan dari **[ESB Order](https://www.esb.id/id/solusi/produk/order)**. Alur inti: **Pembeli scan QR → pilih Item → bayar QRIS → Pesanan masuk ke Pedagang setelah lunas.** Pembeli **tanpa akun**, cukup isi Nama.
 
-Status saat ini: **fase ground truth selesai, kode produksi belum ada** (lihat [docs/BACKLOG.md](docs/BACKLOG.md) untuk fase berikutnya).
+Status saat ini: **Fase 0–5 + Fase Tampilan + Profil/Stok/Foto Item selesai** (alur Pembeli, Pedagang, Admin, desain sistem, pengujian). **Sedang dikerjakan:** Fase 6 — payment nyata Midtrans + Pencairan otomatis "Model B" (branch `feat/payment-midtrans-model-b`). Lihat [docs/BACKLOG.md](docs/BACKLOG.md) & [CHANGELOG.md](CHANGELOG.md).
 
 ## Ground Truth — WAJIB Dibaca Sebelum Kerja
 
@@ -38,18 +38,18 @@ Semua keputusan produk/arsitektur ada di `docs/`. **Ini satu-satunya sumber kebe
 4. **Sederhana, cepat, ringan.** Hindari over-engineering (skala target: pedagang kaki lima, bukan enterprise). Prioritaskan performa halaman Pembeli (mobile, jaringan lambat).
 5. **Pembeli tidak login** — identifikasi cukup field Nama. Jangan tambah friksi tanpa persetujuan User.
 6. **Uang selalu dapat dikonfigurasi** (Biaya Layanan default Rp1.000, dsb) dan nilainya di-snapshot per Pesanan agar histori tidak berubah retroaktif.
-7. **Pembayaran tahap ini disimulasikan** (`MockPaymentProvider`) — belum integrasi nyata ke Tripay. Tetap tulis kode lewat abstraksi `PaymentProvider` (lihat [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md#payment-provider-abstraction)) supaya migrasi ke provider nyata tidak perlu bongkar arsitektur.
+7. **Pembayaran**: dev/test disimulasikan (`MockPaymentProvider`); staging/produksi pakai **Midtrans** (Fase 6, env `PAYMENT_PROVIDER`). Pencairan ke Pedagang **otomatis** via Midtrans Iris ("Model B"). Semua lewat abstraksi `PaymentProvider`/`DisbursementProvider` (lihat [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) ADR 2026-09-08). **MDR QRIS tidak boleh dibebankan ke Pembeli** (regulasi BI).
 8. **`/security-review` wajib** untuk kode yang menyentuh pembayaran/auth/webhook/RLS.
 9. Fitur baru masuk [docs/BACKLOG.md](docs/BACKLOG.md) dulu sebelum dikerjakan (kecuali bugfix kecil).
 10. Jangan tandai selesai tanpa verifikasi nyata (jalankan/coba, bukan cuma yakin dari membaca kode).
 
 ## Istilah Kunci (lengkap di [docs/GLOSSARY.md](docs/GLOSSARY.md))
 
-**Aplikator** = pemilik platform (User) · **Pedagang/Lapak** = penjual · **Pembeli** = customer tanpa akun · **Item** = produk/menu · **Pesanan** = order · **Biaya Layanan** = fee Rp1.000/transaksi (configurable) · **Model Agregator** = dana masuk 1 akun platform dulu, baru dicairkan ke Pedagang.
+**Aplikator** = pemilik platform (User) · **Pedagang/Lapak** = penjual · **Pembeli** = customer tanpa akun · **Item** = produk/menu · **Pesanan** = order · **Biaya Layanan** = fee Rp1.000/transaksi (configurable, dipotong dari bagian Pedagang) · **MDR** = biaya QRIS gateway, ditanggung Aplikator (jangan ke Pembeli) · **Model Agregator** = dana masuk 1 akun platform dulu, lalu dicairkan otomatis ke Pedagang (Iris, Fase 6).
 
 ## Stack Ringkas (detail & alasan di [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md))
 
-Next.js (App Router) + TypeScript + Tailwind CSS v4 (font Plus Jakarta Sans, desain sistem terang/hangat — lihat [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md)) + PostgreSQL (self-hosted) + Drizzle ORM + Zod + Biome + Vitest/Playwright + pnpm. Auth/Realtime/Storage dibangun custom (bukan Supabase). Hosting: server sendiri (Garuda) via Dokploy + Cloudflare Tunnel. Payment gateway masa depan: Tripay (perorangan, KTP saja) — untuk sekarang disimulasikan.
+Next.js (App Router) + TypeScript + Tailwind CSS v4 (font Plus Jakarta Sans, desain sistem terang/hangat — lihat [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md)) + PostgreSQL (self-hosted) + Drizzle ORM + Zod + Biome + Vitest/Playwright + pnpm. Auth/Realtime/Storage dibangun custom (bukan Supabase). Hosting: server sendiri (Garuda) via Dokploy + Cloudflare Tunnel. Payment gateway: **Midtrans** (Core API QRIS + Iris disbursement, Fase 6) — `MockPaymentProvider` untuk dev/test.
 
 ## Alur Kerja Default untuk Task Apa Pun
 

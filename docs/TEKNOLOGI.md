@@ -16,8 +16,9 @@
 | Styling | **Tailwind CSS v4** (config via `@theme` di `globals.css`) | Utility-first, CSS hasil build kecil (hanya class yang dipakai). Token desain (warna/tipografi/radius/shadow) didefinisikan sekali di `@theme` — lihat [DESAIN-SISTEM.md](DESAIN-SISTEM.md). |
 | Font | **Plus Jakarta Sans** (via `next/font/google`) | Dibuat untuk konteks Indonesia, hangat & modern. Satu family (tanpa mono — angka pakai `tabular-nums`). |
 | Komponen UI dasar | **Primitif buatan sendiri** di `src/components/ui/` (Button, Input, Field, Card, Badge, Alert, dst) | Tanpa library UI/ikon eksternal (shadcn/Radix tidak jadi dipakai) — komponen proyek ini sederhana, sedikit, dan sepenuhnya dikontrol; ikon = inline SVG (`ui/icons.tsx`). Hindari beban bundle di halaman Pembeli. |
-| Payment Gateway (tahap lanjutan) | **Tripay** | Salah satu dari sedikit payment gateway Indonesia yang bisa didaftarkan dengan **KTP saja** (cocok dengan status badan usaha Aplikator: **perorangan**). Mendukung QRIS. Lihat detail di bawah. |
-| Payment Gateway (tahap MVP sekarang) | **MockPaymentProvider** (buatan sendiri, disimulasikan) | Lihat [Payment Provider Abstraction](#payment-provider-abstraction) di bawah. |
+| Payment Gateway (produksi, Fase 6) | **Midtrans** — Core API (`payment_type: "qris"`) untuk QRIS dinamis | Dipilih User (2026-09-08) menggantikan Tripay: satu ekosistem dengan **Iris** (disbursement) untuk Pencairan otomatis "Model B", sandbox lengkap, dokumentasi & SDK matang. Mendukung QRIS. Lihat [Payment Provider Abstraction](#payment-provider-abstraction) & [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08. **Catatan**: fitur split/marketplace Midtrans kemungkinan butuh badan usaha — Model B **tidak** memakainya (cukup akun standar), perlu diverifikasi User sebelum go-live. |
+| Disbursement (Pencairan otomatis, Fase 6) | **Midtrans Iris** (`/api/v1/payouts`) | Transfer **Saldo Pedagang** otomatis ke rekening/e-wallet tiap Lapak (batch harian). Diakses lewat abstraksi `DisbursementProvider` (mirror `PaymentProvider`). Biaya transfer per payout ditanggung Pedagang (dipotong dari Pencairan). |
+| Payment Gateway (dev/unit/E2E test) | **MockPaymentProvider** + **MockDisbursementProvider** (buatan sendiri) | Dipilih lewat env `PAYMENT_PROVIDER=mock` / `DISBURSEMENT_PROVIDER=mock`. Tombol "Simulasikan Pembayaran Berhasil" tetap ada untuk uji alur tanpa Midtrans. Lihat [Payment Provider Abstraction](#payment-provider-abstraction). |
 | Hosting app & database | **Server sendiri (Garuda)** via **Dokploy** + **Cloudflare Tunnel** | Sama seperti proyek User yang lain (MyPlaza) — pola ops yang sudah dikenal, tanpa akun cloud baru, tanpa biaya hosting tambahan. Cloudflare Tunnel menghindari perlu buka port publik/IP statis. Migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); deploy = set env var di Dokploy lalu klik Deploy. |
 | Package manager | **pnpm** | Lebih hemat disk & lebih cepat install dibanding npm/yarn. |
 | Lint & Format | **Biome** | Satu tool cepat (berbasis Rust) untuk lint+format, menggantikan kombinasi ESLint+Prettier yang lebih berat & butuh konfigurasi ganda. |
@@ -31,24 +32,58 @@
 
 - **Astro/SvelteKit** dipertimbangkan untuk halaman Pembeli (JS lebih minim), tapi memisahkan framework untuk buyer vs seller/admin menambah kompleksitas & konteks yang harus dikelola (kurang cocok untuk tim kecil + AI-assisted dev). Next.js dengan disiplin RSC (lihat [BEST-PRACTICES.md](BEST-PRACTICES.md#performa)) dianggap cukup ringan sambil tetap satu ekosistem.
 - **Prisma** dipertimbangkan (DX lebih ramah pemula) tapi Drizzle dipilih karena lebih ringan saat runtime — trade-off ini diterima karena Claude yang menulis sebagian besar query, bukan User langsung.
-- **Midtrans/Xendit** dipertimbangkan tapi secara historis lebih menyasar bisnis berbadan hukum (PT skala menengah–besar); approval untuk akun **perorangan** lebih lambat/rumit dibanding Tripay. Bisa dipertimbangkan ulang jika Aplikator naik status jadi PT/CV (lihat [PRD.md](PRD.md#8-risiko--catatan)).
+- **Tripay** sempat jadi pilihan (2026-09-05) karena bisa didaftar dengan **KTP saja** (Aplikator = perorangan). **Diganti Midtrans (2026-09-08)** setelah User memutuskan Pencairan otomatis ("Model B"): Midtrans punya **Iris** (disbursement) dalam satu ekosistem, sedangkan Tripay tidak sekuat itu untuk payout. Payment nyata dasar (QRIS acceptance) di Midtrans bisa untuk akun perorangan/UMKM; yang berpotensi butuh badan usaha adalah fitur **split/marketplace** — dan Model B **tidak** memakainya. Perlu diverifikasi User ke Midtrans sebelum go-live (lihat [PRD.md §8](PRD.md#8-risiko--catatan)).
+- **Xendit** (xenPlatform punya split payment kuat) dipertimbangkan untuk model Split-Marketplace tapi model itu ditunda (butuh badan usaha & onboarding sub-merchant per Lapak) — lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08.
 - **Supabase Cloud** (Postgres+Auth+Realtime+Storage terkelola) sempat jadi rencana awal (lihat [CHANGELOG.md](../CHANGELOG.md) 2026-09-05 entri inisialisasi), tapi diganti ke **self-hosted di server Garuda** setelah dibahas dengan User: User sudah punya server + pola ops (Dokploy + Cloudflare Tunnel) yang terbukti jalan untuk proyek lain (MyPlaza), jadi tidak perlu akun cloud baru atau biaya tambahan. Konsekuensinya: Auth, Realtime, dan Storage yang tadinya "gratis" dari Supabase sekarang harus dibangun sendiri (lihat baris terkait di tabel atas) — trade-off yang diterima karena reuse infrastruktur & pengalaman yang sudah ada lebih diutamakan daripada fitur bawaan Supabase.
 
-## Payment Provider Abstraction
+## Payment Provider & Disbursement Provider Abstraction
 
-Karena keputusan User: **"untuk payment buat simulasi pembayaran sampai berhasil saja dulu, tidak perlu benar-benar terintegrasi"** — pembayaran nyata **bukan** bagian dari MVP awal. Supaya nanti gampang "dicolok" ke Tripay tanpa bongkar arsitektur, payment diakses lewat satu interface:
+Pembayaran & pencairan diakses lewat dua interface supaya implementasi nyata (Midtrans) bisa "dicolok" tanpa bongkar arsitektur, dan versi `mock` tetap dipakai untuk dev/unit/E2E test.
 
 ```ts
 interface PaymentProvider {
-  createPayment(order: Order): Promise<{ qrImageUrl: string; referenceId: string }>;
-  // Dipanggil oleh webhook (nyata) ATAU tombol simulasi (mock)
-  handleCallback(payload: unknown): Promise<{ referenceId: string; status: "success" | "failed" }>;
+  createPayment(order: Order): Promise<{ qrImageUrl: string; referenceId: string; expiresAt?: Date }>;
+  // Dipanggil oleh webhook (Midtrans) ATAU tombol simulasi (mock)
+  handleCallback(payload: unknown): Promise<{ referenceId: string; status: "success" | "failed" | "pending" }>;
+}
+
+interface DisbursementProvider {
+  validateBankAccount(bankCode: string, accountNumber: string): Promise<{ ok: boolean; accountHolder?: string }>;
+  createPayout(p: { merchantId: string; amount: number; bankCode: string; accountNumber: string }): Promise<{ referenceId: string; transferFee: number; status: "processing" | "completed" | "failed" }>;
+  handleCallback(payload: unknown): Promise<{ referenceId: string; status: "completed" | "failed"; failureReason?: string }>;
 }
 ```
 
-- **`MockPaymentProvider`** (dipakai sekarang): `createPayment` mengembalikan gambar QR placeholder/dummy; ada tombol khusus di halaman status Pesanan ("Simulasikan Pembayaran Berhasil") yang langsung memanggil `handleCallback` dengan status sukses.
-- **`TripayPaymentProvider`** (dipakai nanti, lihat [BACKLOG.md](BACKLOG.md)): `createPayment` memanggil API Tripay untuk membuat QRIS dinamis; `handleCallback` dipanggil dari endpoint webhook yang **wajib** verifikasi signature Tripay sebelum memproses (lihat [RULES.md](RULES.md#7-keamanan)).
-- Field `provider` disimpan di tabel `payments` (lihat [DATA-MODEL.md](DATA-MODEL.md)) supaya jelas transaksi mana yang mock vs nyata — **penting agar data simulasi tidak pernah tercampur dengan data transaksi nyata setelah go-live**.
+- **`MockPaymentProvider`** (env `PAYMENT_PROVIDER=mock`, default): `createPayment` mengembalikan QR dummy; tombol "Simulasikan Pembayaran Berhasil" di halaman status Pesanan memanggil `handleCallback` sukses langsung.
+- **`MidtransPaymentProvider`** (env `PAYMENT_PROVIDER=midtrans`): `createPayment` → Midtrans Core API `/v2/charge` (`payment_type: "qris"`), `qr_string` dirender jadi gambar lokal pakai lib `qrcode`. `handleCallback` dipanggil dari `POST /api/webhooks/payment` yang **wajib** verifikasi `signature_key` = `SHA512(order_id + status_code + gross_amount + ServerKey)` sebelum memproses (lihat [RULES.md §7](RULES.md#7-keamanan)).
+- **`MockDisbursementProvider`** / **`IrisDisbursementProvider`** (env `DISBURSEMENT_PROVIDER=mock|iris`): Iris `/api/v1/payouts` untuk transfer nyata; callback status masuk `POST /api/webhooks/payout`.
+- Field `provider` disimpan di tabel `payments` **dan** `payouts` supaya jelas mana `mock` vs `midtrans`/`iris` — **penting agar data simulasi tidak pernah tercampur dengan transaksi nyata setelah go-live** (lihat [DATA-MODEL.md](DATA-MODEL.md)).
+
+### Environment variables (Fase 6)
+
+```
+PAYMENT_PROVIDER=mock            # mock (default, dev/test) | midtrans
+MIDTRANS_SERVER_KEY=             # dari dashboard.sandbox.midtrans.com → Settings → Access Keys
+MIDTRANS_CLIENT_KEY=
+MIDTRANS_IS_PRODUCTION=false     # "true" hanya di produksi
+
+DISBURSEMENT_PROVIDER=mock       # mock (default) | iris
+DISBURSEMENT_ENABLED=false       # "true" untuk mengaktifkan job Pencairan harian
+IRIS_API_KEY=                    # Iris "Creator" API key (sandbox: dashboard Iris)
+IRIS_IS_PRODUCTION=false
+
+CRON_SECRET=                     # bearer token untuk POST /api/cron/disburse (di-set di Scheduled Job Dokploy)
+```
+
+`MIDTRANS_CLIENT_KEY` boleh terekspos ke klien (dipakai Snap.js kalau nanti perlu); **Server Key & Iris API Key TIDAK PERNAH** ke klien — hanya dipakai di Server Action/Route Handler.
+
+### Setup Midtrans sandbox (ringkas — langkah lengkap diberikan ke User per sesi)
+
+1. Daftar akun di `dashboard.sandbox.midtrans.com` (gratis, tanpa verifikasi bisnis untuk sandbox).
+2. **Settings → Access Keys**: salin `Server Key` + `Client Key` sandbox → isi `.env`.
+3. **Settings → Configuration → Payment Notification URL**: `https://<domain-tunnel>/api/webhooks/payment` (butuh URL publik — pakai Cloudflare Tunnel yang sudah ada, atau `cloudflared tunnel` sementara untuk dev).
+4. **Iris (menu terpisah di dashboard)**: aktifkan, buat/ambil `Creator` API key sandbox, set callback URL `https://<domain>/api/webhooks/payout`. Sandbox Iris memberi saldo virtual + daftar rekening dummy untuk uji payout.
+5. Uji bayar: buat Pesanan → buka `simulator.sandbox.midtrans.com` (QRIS) → tandai "Paid" → webhook masuk → status jadi `dibayar`.
 
 ## Autentikasi
 
@@ -64,5 +99,5 @@ interface PaymentProvider {
 ## Batasan Biaya (estimasi, untuk kesadaran User)
 
 - Hosting app & database: **tanpa biaya tambahan** — pakai server Garuda yang sudah ada, sama seperti proyek User lainnya (MyPlaza).
-- Tripay: tidak ada biaya bulanan, potongan hanya per transaksi QRIS sukses (mengikuti tarif QRIS yang diatur Bank Indonesia, MDR ~0,3% untuk UMKM) — ditagih ke Aplikator, bukan ke Pedagang secara langsung (Aplikator yang mengatur berapa yang diteruskan ke Pedagang lewat Biaya Layanan).
+- Midtrans: tidak ada biaya bulanan. **MDR QRIS** per transaksi sukses (~0,7% umum, bisa 0% untuk transaksi kecil skema "QRIS bebas biaya" UMI — tergantung klasifikasi akun, cek ke Midtrans) — **ditagih ke akun Aplikator**, dan **ditanggung Aplikator** (dipotong dari margin Biaya Layanan; **tidak boleh** dibebankan ke Pembeli — [PBI 23/6/PBI/2021 Ps. 52](https://peraturan.bpk.go.id/Details/207042/peraturan-bi-no-236pbi2021)). **Iris** (disbursement): biaya per transfer (~Rp2.500–5.000 bank; lebih murah/gratis e-wallet) — **ditanggung Pedagang** (dipotong dari tiap Pencairan). Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08.
 - Storage foto (kalau nanti pilih Cloudflare R2): tier gratis R2 cukup besar (10GB/bulan) untuk skala awal.

@@ -1,6 +1,6 @@
 # Arsitektur Folder
 
-> Struktur ini adalah **target** struktur folder. Setelah Fase 1-5 ([BACKLOG.md](BACKLOG.md)): `src/lib/db/{schema.ts,client.ts,seed.ts}`, `drizzle.config.ts`, `drizzle/` (migrasi), route group `(buyer)`, `(merchant)` & `(admin)` lengkap, `components/{buyer,merchant,admin}/`, `server/{orders,products,merchants,admins,config,payouts}.ts`, `lib/{payment,validation,utils,cart,auth,rate-limit}/`, `types/`, `tests/{unit,e2e}/` **sudah nyata ada**. Folder `lib/cart/` dan `lib/auth/` **tidak** ada di rencana awal — ditambahkan saat implementasi (keranjang sisi klien di Fase 2; hash password & sesi login di Fase 3, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)). `docker-compose.dev.yml` (Postgres dev lokal) & `Dockerfile`+`.dockerignore` (image produksi untuk Dokploy) di root juga baru. **Fase Tampilan (2026-09-07)**: `src/components/ui/` (primitif desain sistem) kini nyata ada — bukan "shadcn-style" tapi buatan sendiri (lihat [DESAIN-SISTEM.md](DESAIN-SISTEM.md)); plus `components/{AuthShell,DashboardShell,DashboardNav}.tsx` (kerangka bersama) dan `lib/utils/cn.ts`. `docker-entrypoint.sh` + `.gitattributes` (2026-09-07) ditambahkan supaya migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); menyusul juga `src/lib/db/{migrate,seed-demo,create-admin}.ts` (skrip DB yang di-*bundle* esbuild jadi `scripts/*.mjs` di dalam image — folder `scripts/` di root adalah output build, tidak di-commit). `server/config.ts` & `server/payouts.ts` (Fase 4) juga tidak persis seperti rencana awal — `admins.ts` dan `payouts.ts` **tidak** ada di target semula, ditambahkan karena approve/reject Pedagang & login Admin ternyata cukup besar untuk file sendiri (bukan digabung ke `merchants.ts`/`config.ts`). Halaman Admin juga punya route group bersarang `(dashboard)` yang tidak direncanakan semula — dipakai supaya `merchants/`, `config/`, `payouts/` berbagi guard sesi + header lewat satu layout, tanpa ikut membungkus `admin/login`. `lib/rate-limit/` (Fase 5) juga tidak ada di rencana awal — rate-limiter kecil (in-memory) dipisah dari `lib/auth/` karena dipakai juga oleh `createOrder` (bukan cuma alur auth). Sisanya (`components/ui`, `lib/realtime/`, `api/webhooks/payment/`, `lib/payment/tripay-provider.ts`) masih target, dibuat bertahap di fase-fase berikutnya (realtime & payment nyata = Fase 6). Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
+> Struktur ini adalah **target** struktur folder. Setelah Fase 1-5 ([BACKLOG.md](BACKLOG.md)): `src/lib/db/{schema.ts,client.ts,seed.ts}`, `drizzle.config.ts`, `drizzle/` (migrasi), route group `(buyer)`, `(merchant)` & `(admin)` lengkap, `components/{buyer,merchant,admin}/`, `server/{orders,products,merchants,admins,config,payouts}.ts`, `lib/{payment,validation,utils,cart,auth,rate-limit}/`, `types/`, `tests/{unit,e2e}/` **sudah nyata ada**. Folder `lib/cart/` dan `lib/auth/` **tidak** ada di rencana awal — ditambahkan saat implementasi (keranjang sisi klien di Fase 2; hash password & sesi login di Fase 3, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)). `docker-compose.dev.yml` (Postgres dev lokal) & `Dockerfile`+`.dockerignore` (image produksi untuk Dokploy) di root juga baru. **Fase Tampilan (2026-09-07)**: `src/components/ui/` (primitif desain sistem) kini nyata ada — bukan "shadcn-style" tapi buatan sendiri (lihat [DESAIN-SISTEM.md](DESAIN-SISTEM.md)); plus `components/{AuthShell,DashboardShell,DashboardNav}.tsx` (kerangka bersama) dan `lib/utils/cn.ts`. `docker-entrypoint.sh` + `.gitattributes` (2026-09-07) ditambahkan supaya migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); menyusul juga `src/lib/db/{migrate,seed-demo,create-admin}.ts` (skrip DB yang di-*bundle* esbuild jadi `scripts/*.mjs` di dalam image — folder `scripts/` di root adalah output build, tidak di-commit). `server/config.ts` & `server/payouts.ts` (Fase 4) juga tidak persis seperti rencana awal — `admins.ts` dan `payouts.ts` **tidak** ada di target semula, ditambahkan karena approve/reject Pedagang & login Admin ternyata cukup besar untuk file sendiri (bukan digabung ke `merchants.ts`/`config.ts`). Halaman Admin juga punya route group bersarang `(dashboard)` yang tidak direncanakan semula — dipakai supaya `merchants/`, `config/`, `payouts/` berbagi guard sesi + header lewat satu layout, tanpa ikut membungkus `admin/login`. `lib/rate-limit/` (Fase 5) juga tidak ada di rencana awal — rate-limiter kecil (in-memory) dipisah dari `lib/auth/` karena dipakai juga oleh `createOrder` (bukan cuma alur auth). Sisanya (`lib/realtime/`, `api/webhooks/`, `api/cron/disburse/`, `lib/payment/midtrans-provider.ts`, `lib/disbursement/`) masih target Fase 6 (payment nyata Midtrans + Pencairan otomatis "Model B", branch `feat/payment-midtrans-model-b`) — `lib/payment/tripay-provider.ts` **dibatalkan** (Tripay diganti Midtrans, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08). Kalau struktur ini berubah signifikan setelah scaffolding nyata, dokumen ini **wajib** diperbarui (lihat [RULES.md §3](RULES.md#3-ground-truth-adalah-satu-satunya-sumber-kebenaran)).
 
 ```
 /
@@ -42,10 +42,12 @@
 │   │   │           ├── layout.tsx             # getAdminSession() -> redirect /admin/login kalau null
 │   │   │           ├── merchants/page.tsx     # Approve/reject Pedagang (+ alasan saat reject)
 │   │   │           ├── config/page.tsx        # Atur Biaya Layanan & durasi kedaluwarsa + histori
-│   │   │           └── payouts/page.tsx       # Saldo Pedagang, Daftar Transaksi, catat Pencairan manual
+│   │   │           └── payouts/page.tsx       # Saldo Pedagang, Daftar Transaksi, riwayat Pencairan (read-only sejak Fase 6)
 │   │   ├── uploads/[...path]/route.ts         # Sajikan foto Item dari UPLOADS_DIR (volume Docker) — path-sanitized, publik
-│   │   └── api/
-│   │       └── webhooks/payment/route.ts      # (target Fase 6) Endpoint webhook saat provider nyata aktif
+│   │   └── api/                               # (Fase 6) Route Handler tanpa sesi — diautentikasi lewat signature/secret
+│   │       ├── webhooks/payment/route.ts      # Notifikasi Midtrans — verifikasi signature_key SHA512
+│   │       ├── webhooks/payout/route.ts       # Callback status Iris (Pencairan)
+│   │       └── cron/disburse/route.ts         # Batch Pencairan harian — guard header CRON_SECRET
 │   ├── components/
 │   │   ├── ui/                                # Primitif desain sistem: Button, ButtonLink, Input, Textarea, Field, Card, Badge, OrderStatusBadge, Alert, QuantityStepper, PageHeader, EmptyState, Spinner, Wordmark, icons — lihat DESAIN-SISTEM.md
 │   │   ├── AuthShell.tsx                      # Kerangka halaman login/daftar (wordmark + kartu di tengah)
@@ -59,7 +61,7 @@
 │   │   ├── merchants.ts                       # + listMerchantsForAdmin/approveMerchant/rejectMerchant (Fase 4)
 │   │   ├── admins.ts                          # loginAdmin/logoutAdmin (Fase 4, tidak ada di rencana awal)
 │   │   ├── config.ts                          # getActivePlatformConfig (dipakai bareng alur Pembeli) + update & histori (Admin)
-│   │   └── payouts.ts                         # Saldo Pedagang, catat Pencairan (Fase 4, tidak ada di rencana awal)
+│   │   └── payouts.ts                         # Saldo Pedagang (formula payout_id IS NULL) + runDisbursementBatch (Fase 6) + laporan
 │   ├── lib/
 │   │   ├── db/                                # Drizzle schema & client
 │   │   │   ├── schema.ts
@@ -71,7 +73,11 @@
 │   │   ├── payment/                           # Payment Provider abstraction
 │   │   │   ├── types.ts                       # interface PaymentProvider
 │   │   │   ├── mock-provider.ts
-│   │   │   └── tripay-provider.ts             # (target Fase 6)
+│   │   │   └── midtrans-provider.ts           # (Fase 6) Core API QRIS + verifikasi signature
+│   │   ├── disbursement/                      # (Fase 6) Disbursement Provider abstraction — mirror payment/
+│   │   │   ├── types.ts                       # interface DisbursementProvider
+│   │   │   ├── mock-provider.ts
+│   │   │   └── iris-provider.ts               # Midtrans Iris (validateBankAccount, createPayout, handleCallback)
 │   │   ├── cart/                              # Keranjang sisi klien (Context + localStorage)
 │   │   ├── upload/                            # storage.ts (tulis file ke UPLOADS_DIR + validasi magic-bytes), resize-image.ts (resize di klien)
 │   │   ├── auth/                              # Hash password (scrypt) & sesi login: session.ts (Pedagang), admin-session.ts (Admin, Fase 4)

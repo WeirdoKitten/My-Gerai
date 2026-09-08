@@ -2,6 +2,18 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Ground truth Fase 6: payment nyata Midtrans + Pencairan otomatis ("Model B")
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (4 ADR baru + §Alur Data Pencairan Otomatis), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (Midtrans+Iris menggantikan Tripay, abstraksi + env + setup sandbox), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom `orders.payout_id`, `merchants.payout_*`, `payments`, `payouts` restruktur, `platform_config.qris_mdr_bps`, formula Saldo, gerbang Route Handler non-sesi), [docs/PRD.md](docs/PRD.md) (§4/§5/§6.3/§7/§8), [docs/GLOSSARY.md](docs/GLOSSARY.md), [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 6 ditulis ulang), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [CLAUDE.md](CLAUDE.md), `.env.example`
+**Alasan:** User memutuskan menghapus Pencairan manual Admin → uang sampai ke Pedagang otomatis. Setelah membandingkan 3 model (Agregator+manual / Agregator+auto-disburse / Split-Marketplace), dipilih **Model B** (Agregator + Pencairan otomatis via disbursement API). Gateway diganti dari Tripay ke **Midtrans** karena punya **Iris** (disbursement) satu ekosistem + sandbox lengkap. Keputusan uang dikonfirmasi User via AskUserQuestion. Branch: `feat/payment-midtrans-model-b`. **Belum ada kode** — ground truth dulu, implementasi menyusul setelah User setuju.
+**Ringkasan:**
+- **Settlement tetap Agregator**, tapi Pencairan **otomatis**: dana Pembeli masuk 1 akun Midtrans Aplikator → job harian (`POST /api/cron/disburse`, guard `CRON_SECRET`, dipicu Scheduled Job Dokploy) memanggil **Midtrans Iris** untuk transfer Saldo tiap Lapak. Pencairan manual & `recordPayout` **dihapus**; `/admin/payouts` jadi read-only.
+- **Payment nyata** via `MidtransPaymentProvider` (Core API `payment_type: qris`), dipilih env `PAYMENT_PROVIDER` (`mock` default). Webhook `POST /api/webhooks/payment` **wajib** verifikasi `signature_key` SHA512. `MockPaymentProvider` + tombol simulasi tetap untuk dev/test. Abstraksi baru `DisbursementProvider` (mock/iris).
+- **Uang (keputusan User)**: **MDR QRIS ditanggung Aplikator, TIDAK boleh dibebankan ke Pembeli** (PBI 23/6/PBI/2021 Ps. 52 — Pembeli bayar persis harga Item, nol perubahan kalkulasi Pesanan). **Biaya transfer Iris ditanggung Pedagang** (dipotong tiap Pencairan → `net_amount`). Pencairan **harian, tanpa ambang**. Uang cair ke rekening Pedagang **H+1 hari kerja** (sifat siklus settlement QRIS).
+- **Skema**: `orders.payout_id` (link ke Pencairan; Saldo = `SUM(total_for_merchant) WHERE payout_id IS NULL`); `merchants` info rekening jadi terstruktur + tervalidasi Iris; `payments` (+`midtrans`, `gross_amount`, `qr_string`); `payouts` (batch harian, `UNIQUE(merchant_id, period_date)`, status `pending|processing|completed|failed`, `beneficiary_*` snapshot).
+- **Ditunda**: refund/pembatalan setelah `dibayar`, Split/Marketplace (butuh badan usaha), instant settlement.
+- **PR User sebelum go-live**: verifikasi ke Midtrans bahwa akun perorangan bisa aktivasi Core API QRIS + Iris.
+
 ## 2026-09-08 — Kredensial akun uji seed dibuat berpola & mudah diingat
 
 **Dampak:** kode (`src/lib/db/seed.ts`, `src/lib/db/seed-demo.ts`, `tests/e2e/order-flow.spec.ts`)

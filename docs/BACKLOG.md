@@ -106,18 +106,47 @@
 - [ ] **Langkah Dokploy (User)**: `mygerai-app` → Advanced → Volumes → Volume Mount (named, mis. `mygerai_uploads`) → Mount Path `/app/uploads`. **Wajib sebelum deploy versi ini**, kalau tidak foto hilang tiap redeploy.
 - [ ] Foto Lapak (`merchants.photo_url`) — mekanisme sama, belum dikerjakan.
 
-## Fase 6 — Integrasi Payment Nyata (Tripay)
+## Fase 6 — Payment Nyata (Midtrans) + Pencairan Otomatis ("Model B")
 
-- [ ] Daftar akun Tripay (perorangan, KTP) — dilakukan User, bukan Claude.
-- [ ] Implementasi `TripayPaymentProvider` (createPayment via API Tripay).
-- [ ] Endpoint webhook `/api/webhooks/payment` + verifikasi signature Tripay.
-- [ ] Uji coba transaksi nyata nominal kecil sebelum go-live penuh.
-- [ ] Rencana migrasi: matikan `MockPaymentProvider` di production, pastikan tidak ada campur data `provider=mock` di laporan (lihat [DATA-MODEL.md](DATA-MODEL.md#payments)).
+> Ground truth: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08 (4 baris) + §Alur Data Pencairan Otomatis, [TEKNOLOGI.md §Payment Provider & Disbursement Provider Abstraction](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [DATA-MODEL.md](DATA-MODEL.md). Branch: `feat/payment-midtrans-model-b`. Keputusan uang dikonfirmasi User (AskUserQuestion 2026-09-08): MDR ditanggung Aplikator (tak pernah ke Pembeli), biaya transfer Iris ditanggung Pedagang, Pencairan harian tanpa ambang, Pencairan manual dihapus.
+
+### Persiapan (User)
+- [ ] Daftar akun **Midtrans sandbox** (`dashboard.sandbox.midtrans.com`) → ambil `Server Key` + `Client Key`.
+- [ ] Aktifkan **Iris** (sandbox) → ambil `Creator` API key.
+- [ ] Set Payment Notification URL + Iris callback URL ke domain tunnel (`/api/webhooks/payment`, `/api/webhooks/payout`).
+- [ ] (sebelum produksi) Verifikasi ke Midtrans: akun perorangan bisa aktivasi Core API QRIS + Iris; limit transaksi; tarif MDR nyata.
+
+### Skema DB (migrasi baru)
+- [ ] `orders.payout_id` (FK nullable). `merchants`: ganti `payout_account_info` → `payout_bank_code` + `payout_account_number` + `payout_account_holder`.
+- [ ] `payments`: enum `provider` +`midtrans`; kolom `gross_amount`, `qr_string`, `expires_at`.
+- [ ] `payouts`: kolom `provider`, `period_date` (+`UNIQUE(merchant_id, period_date)`), `transfer_fee`, `net_amount`, `reference_id`, `beneficiary_*`, `failure_reason`; enum status → `pending|processing|completed|failed`.
+- [ ] `platform_config`: seed `qris_mdr_bps` = `70`.
+
+### Payment (QRIS)
+- [ ] `PaymentProvider` diperluas (`expiresAt`, status `pending`); `MidtransPaymentProvider` (`/v2/charge` `payment_type: qris`, render `qr_string` lokal via `qrcode`). Pemilihan lewat `PAYMENT_PROVIDER`.
+- [ ] `POST /api/webhooks/payment` — verifikasi `signature_key` (`SHA512`), map status Midtrans → `payments.status` + transisi `menunggu_pembayaran → dibayar` (pindahkan logika dari `simulatePaymentSuccess`, sisakan jalur mock).
+- [ ] Halaman status Pesanan: QR nyata, tombol simulasi hanya muncul kalau provider `mock`.
+- [ ] Cek copy Pembeli tidak menyiratkan ada biaya tambahan (mis. `CartSummary`: "termasuk Biaya Layanan" → perjelas bahwa Pembeli bayar persis harga Item; Biaya Layanan & MDR bukan beban Pembeli).
+
+### Pencairan otomatis (Iris)
+- [ ] `DisbursementProvider` + `MockDisbursementProvider` + `IrisDisbursementProvider` (`validateBankAccount`, `createPayout`, `handleCallback`).
+- [ ] `/dashboard/profil`: field rekening pencairan terstruktur + tombol validasi (Iris `validate_bank_account`). `/admin/merchants`: penanda Lapak yang info rekeningnya belum lengkap.
+- [ ] `POST /api/cron/disburse` (guard `CRON_SECRET`) — batch harian: per Lapak dengan Saldo > 0 & rekening valid → transaksi (buat `payouts` + link `orders.payout_id`) → `IrisDisbursementProvider.createPayout`. Idempoten via `period_date`.
+- [ ] `POST /api/webhooks/payout` — callback status Iris → `completed`/`failed` (unlink Pesanan kalau gagal).
+- [ ] `src/server/payouts.ts`: hapus `recordPayout` (manual); Saldo Pedagang pakai formula `payout_id IS NULL`. `/admin/payouts` jadi read-only (Saldo + riwayat + estimasi margin Aplikator dari `qris_mdr_bps`).
+- [ ] Scheduled Job di Dokploy memanggil `/api/cron/disburse` 1×/hari.
+
+### Verifikasi & rilis
+- [ ] Unit test: map status Midtrans/Iris, verifikasi signature, kalkulasi batch Pencairan (idempotensi, unlink saat gagal).
+- [ ] E2E/integration (sandbox): bayar QRIS via `simulator.sandbox.midtrans.com` → webhook → `dibayar`; jalankan `/api/cron/disburse` → payout `processing` → callback → `completed`.
+- [ ] `/security-review` (wajib — payment + webhook + cron + lintas-Lapak).
+- [ ] Uji transaksi **produksi** nominal kecil sebelum go-live penuh. Pastikan tidak ada data `provider=mock` tercampur laporan produksi ([DATA-MODEL.md](DATA-MODEL.md#payments)).
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] OTP untuk login Pedagang/Admin (hardening keamanan).
-- [ ] Pencairan otomatis via disbursement API.
+- [ ] Model settlement Split/Marketplace (uang langsung ter-split ke Pedagang) — kalau Aplikator naik jadi badan usaha.
+- [ ] Refund/pembatalan Pesanan setelah `dibayar` (Midtrans refund API + penyesuaian Saldo/Pencairan).
 - [ ] Varian Item (ukuran, level pedas, dll).
 - [ ] Multi-Lapak per Pedagang.
 - [ ] Notifikasi WhatsApp ke Pedagang saat ada Pesanan baru.
