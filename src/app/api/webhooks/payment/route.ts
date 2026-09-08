@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { payments } from "@/lib/db/schema";
 import { getPaymentProvider } from "@/lib/payment";
@@ -21,16 +22,31 @@ export async function POST(request: Request): Promise<Response> {
 
   const result = await getPaymentProvider().handleCallback(body);
   if (!result) {
+    console.warn("[webhook/payment] keaslian tidak terverifikasi — ditolak");
     return new Response("invalid signature", { status: 403 });
+  }
+
+  // `order_id` MyGerai selalu UUID. Notifikasi uji dari dashboard Midtrans
+  // memakai `order_id` non-UUID (mis. "payment_notif_test_...") — balas 200
+  // supaya tombol "Test" di dashboard tetap hijau, tanpa menyentuh DB.
+  if (!z.uuid().safeParse(result.orderId).success) {
+    console.warn(
+      `[webhook/payment] order_id=${result.orderId} bukan UUID — kemungkinan notif uji, diabaikan`,
+    );
+    return new Response("ok", { status: 200 });
   }
 
   const payment = await db.query.payments.findFirst({
     where: eq(payments.orderId, result.orderId),
   });
-  // Balapan langka: notifikasi tiba sebelum baris `payments` sempat ditulis
-  // `createOrder`. 404 → Midtrans retry (2x, jeda beberapa menit) — cukup.
+  // Keaslian sudah lolos tapi Pesanannya tidak ada di sistem ini: Pesanan
+  // yang sudah dibersihkan, atau `reference_id` tidak cocok. Balas 200
+  // (bukan retry) + catat.
   if (!payment || payment.referenceId !== result.referenceId) {
-    return new Response("not found", { status: 404 });
+    console.warn(
+      `[webhook/payment] order_id=${result.orderId} tidak ditemukan / referenceId tidak cocok — diabaikan`,
+    );
+    return new Response("ok", { status: 200 });
   }
 
   // Simpan payload mentah untuk audit/debug (docs/DATA-MODEL.md §payments).
@@ -38,6 +54,10 @@ export async function POST(request: Request): Promise<Response> {
     .update(payments)
     .set({ rawPayload: JSON.stringify(body) })
     .where(eq(payments.orderId, result.orderId));
+
+  console.log(
+    `[webhook/payment] order_id=${result.orderId} status=${result.status}`,
+  );
 
   switch (result.status) {
     case "success":
