@@ -58,7 +58,9 @@ export function OrderStatusView({
       {order.qrImageUrl ? (
         <Card pad="lg" className="flex flex-col items-center gap-3">
           <p className="text-sm text-ink-muted">
-            Pindai untuk bayar (simulasi)
+            {order.canSimulate
+              ? "Pindai untuk bayar (simulasi)"
+              : "Pindai dengan aplikasi apa pun yang mendukung QRIS"}
           </p>
           {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
           <img
@@ -66,15 +68,27 @@ export function OrderStatusView({
             alt="QR pembayaran"
             className="size-48 rounded-control"
           />
-          <Button
-            type="button"
-            fullWidth
-            loading={simulating}
-            onClick={handleSimulate}
-          >
-            {simulating ? "Memproses..." : "Simulasikan Pembayaran Berhasil"}
-          </Button>
-          {simulateError ? <Alert tone="error">{simulateError}</Alert> : null}
+          {order.canSimulate ? (
+            <>
+              <Button
+                type="button"
+                fullWidth
+                loading={simulating}
+                onClick={handleSimulate}
+              >
+                {simulating
+                  ? "Memproses..."
+                  : "Simulasikan Pembayaran Berhasil"}
+              </Button>
+              {simulateError ? (
+                <Alert tone="error">{simulateError}</Alert>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-center text-xs text-ink-muted">
+              Halaman ini otomatis diperbarui setelah pembayaran diterima.
+            </p>
+          )}
         </Card>
       ) : null}
 

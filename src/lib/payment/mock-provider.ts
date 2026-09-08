@@ -1,32 +1,53 @@
-import QRCode from "qrcode";
 import { z } from "zod";
 import type { PaymentProvider } from "./types";
 
-const mockCallbackPayloadSchema = z.object({ referenceId: z.string().min(1) });
+const mockCallbackPayloadSchema = z.object({
+  referenceId: z.string().min(1),
+});
+
+/** `referenceId` mock deterministik: `MOCK-<orderId>`. */
+function refFor(orderId: string): string {
+  return `MOCK-${orderId}`;
+}
+
+function orderIdFromRef(referenceId: string): string | null {
+  return referenceId.startsWith("MOCK-")
+    ? referenceId.slice("MOCK-".length)
+    : null;
+}
 
 /**
- * Simulasi Payment Provider — lihat docs/TEKNOLOGI.md#payment-provider-abstraction.
- * `qrImageUrl` BUKAN QRIS asli (bukan format EMV), cuma QR yang bisa dipindai
- * berisi teks ringkasan, untuk kebutuhan demo alur — tidak pernah dipakai
- * untuk transaksi uang sungguhan.
+ * Simulasi Payment Provider — lihat docs/TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction.
+ * `qrString` BUKAN QRIS asli (bukan format EMV), cuma teks ringkasan supaya
+ * bisa dipindai untuk demo alur — tidak pernah dipakai untuk uang sungguhan.
+ * `handleCallback` di sini dipanggil dari tombol "Simulasikan Pembayaran
+ * Berhasil" (bukan webhook) — hanya aktif saat `PAYMENT_PROVIDER=mock`.
  */
 export const mockPaymentProvider: PaymentProvider = {
-  async createPayment(order) {
-    const referenceId = `MOCK-${order.id}`;
-    const payload = [
+  name: "mock",
+
+  async createPayment({ orderId, grossAmount }) {
+    const referenceId = refFor(orderId);
+    const qrString = [
       "MYGERAI-MOCK-PAYMENT",
-      `orderId=${order.id}`,
-      `amount=${order.subtotal}`,
+      `orderId=${orderId}`,
+      `amount=${grossAmount}`,
       `ref=${referenceId}`,
     ].join("|");
-    const qrImageUrl = await QRCode.toDataURL(payload);
-    return { qrImageUrl, referenceId };
+    return { referenceId, qrString, expiresAt: null };
   },
 
   async handleCallback(payload) {
-    // TripayPaymentProvider (Fase 6) WAJIB verifikasi signature di titik ini
-    // sebelum memproses apa pun — lihat docs/RULES.md §7.2.
-    const parsed = mockCallbackPayloadSchema.parse(payload);
-    return { referenceId: parsed.referenceId, status: "success" };
+    const parsed = mockCallbackPayloadSchema.safeParse(payload);
+    if (!parsed.success) return null;
+
+    const orderId = orderIdFromRef(parsed.data.referenceId);
+    if (!orderId) return null;
+
+    return {
+      referenceId: parsed.data.referenceId,
+      orderId,
+      status: "success",
+    };
   },
 };

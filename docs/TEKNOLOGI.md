@@ -41,12 +41,20 @@
 Pembayaran & pencairan diakses lewat dua interface supaya implementasi nyata (Midtrans) bisa "dicolok" tanpa bongkar arsitektur, dan versi `mock` tetap dipakai untuk dev/unit/E2E test.
 
 ```ts
+// src/lib/payment/types.ts — implementasi final Fase 6a
 interface PaymentProvider {
-  createPayment(order: Order): Promise<{ qrImageUrl: string; referenceId: string; expiresAt?: Date }>;
-  // Dipanggil oleh webhook (Midtrans) ATAU tombol simulasi (mock)
-  handleCallback(payload: unknown): Promise<{ referenceId: string; status: "success" | "failed" | "pending" }>;
+  readonly name: "mock" | "midtrans";
+  createPayment(input: { orderId: string; grossAmount: number; expiryMinutes: number }):
+    Promise<{ referenceId: string; qrString: string; expiresAt: Date | null }>;
+  // Dipanggil dari webhook (Midtrans) ATAU tombol simulasi (mock).
+  // `null` = keaslian tidak terverifikasi (signature salah) → WAJIB ditolak.
+  handleCallback(payload: unknown):
+    Promise<{ referenceId: string; orderId: string; status: "success" | "pending" | "expired" | "failed" } | null>;
+  // Backstop kalau webhook telat/hilang (mock: undefined).
+  getTransactionStatus?(orderId: string): Promise<{ status: "success" | "pending" | "expired" | "failed" } | null>;
 }
 
+// (target Fase 6b)
 interface DisbursementProvider {
   validateBankAccount(bankCode: string, accountNumber: string): Promise<{ ok: boolean; accountHolder?: string }>;
   createPayout(p: { merchantId: string; amount: number; bankCode: string; accountNumber: string }): Promise<{ referenceId: string; transferFee: number; status: "processing" | "completed" | "failed" }>;
@@ -54,8 +62,8 @@ interface DisbursementProvider {
 }
 ```
 
-- **`MockPaymentProvider`** (env `PAYMENT_PROVIDER=mock`, default): `createPayment` mengembalikan QR dummy; tombol "Simulasikan Pembayaran Berhasil" di halaman status Pesanan memanggil `handleCallback` sukses langsung.
-- **`MidtransPaymentProvider`** (env `PAYMENT_PROVIDER=midtrans`): `createPayment` → Midtrans Core API `/v2/charge` (`payment_type: "qris"`), `qr_string` dirender jadi gambar lokal pakai lib `qrcode`. `handleCallback` dipanggil dari `POST /api/webhooks/payment` yang **wajib** verifikasi `signature_key` = `SHA512(order_id + status_code + gross_amount + ServerKey)` sebelum memproses (lihat [RULES.md §7](RULES.md#7-keamanan)).
+- **`MockPaymentProvider`** (env `PAYMENT_PROVIDER=mock`, default): `createPayment` mengembalikan `qrString` dummy; tombol "Simulasikan Pembayaran Berhasil" di halaman status Pesanan memanggil `handleCallback` sukses langsung. `simulatePaymentSuccess` **menolak** kalau provider bukan `mock`.
+- **`MidtransPaymentProvider`** (env `PAYMENT_PROVIDER=midtrans`, Fase 6a): `createPayment` → Midtrans Core API `POST /v2/charge` (`payment_type: "qris"`, `custom_expiry` = durasi kedaluwarsa Pesanan); `qr_string` disimpan di `payments` & dirender jadi gambar **di server** pakai lib `qrcode` (`getOrderStatus`, tidak charge ulang tiap poll). `handleCallback` dipanggil dari `POST /api/webhooks/payment` yang **wajib** verifikasi `signature_key` = `SHA512(order_id + status_code + gross_amount + ServerKey)` (`timingSafeEqual`) sebelum memproses (lihat [RULES.md §7](RULES.md#7-keamanan)). Logika transisi status bersama ada di `src/lib/payment/settle.ts` (modul biasa, bukan Server Action).
 - **`MockDisbursementProvider`** / **`IrisDisbursementProvider`** (env `DISBURSEMENT_PROVIDER=mock|iris`): Iris `/api/v1/payouts` untuk transfer nyata; callback status masuk `POST /api/webhooks/payout`.
 - Field `provider` disimpan di tabel `payments` **dan** `payouts` supaya jelas mana `mock` vs `midtrans`/`iris` — **penting agar data simulasi tidak pernah tercampur dengan transaksi nyata setelah go-live** (lihat [DATA-MODEL.md](DATA-MODEL.md)).
 

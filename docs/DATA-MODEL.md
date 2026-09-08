@@ -164,8 +164,9 @@ erDiagram
 
 ### `payments`
 - `provider = mock` untuk transaksi dev/test, `provider = midtrans` untuk staging/produksi (lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction)). **Wajib** difilter/dipisah per `provider` di semua laporan keuangan, supaya uang "palsu" (mock) tidak tercampur perhitungan real. Enum lama `tripay` dibiarkan di definisi enum (tidak pernah dipakai) — tidak perlu migrasi menghapusnya.
-- `gross_amount` = nominal yang dikirim ke gateway = `orders.subtotal`. Dicek cocok dengan `gross_amount` di payload webhook Midtrans sebagai bagian verifikasi `signature_key`.
-- `qr_string` = payload QRIS mentah dari Midtrans; dirender jadi gambar **di server MyGerai** pakai lib `qrcode` (tidak mengambil gambar dari host Midtrans → tidak perlu `remotePatterns`). Untuk `MockPaymentProvider` boleh `null` (QR dummy digenerate langsung).
+- `gross_amount` = nominal yang dikirim ke gateway = `orders.subtotal`. Nilai `gross_amount` di payload webhook sudah terikat ke `signature_key` (SHA512), jadi verifikasi signature otomatis menolak payload yang nominalnya diutak-atik. Nullable: baris `mock` lama.
+- `qr_string` = payload QRIS mentah (Midtrans `qr_string` / payload teks dummy dari mock). Dirender jadi gambar **di server MyGerai** pakai lib `qrcode` di `getOrderStatus` — tidak mengambil gambar dari host Midtrans (tidak perlu `remotePatterns`) dan tidak charge ulang tiap polling. Nullable (baris lama).
+- `expires_at` = kedaluwarsa QRIS dari gateway (Midtrans: `custom_expiry` sesuai `order_expiry_minutes`; mock: `null`). Informasional — kedaluwarsa otoritatif tetap `orders.expires_at`.
 - `raw_payload` menyimpan payload mentah webhook (nyata) atau payload simulasi (mock) untuk audit/debug.
 
 ### `payouts` (Pencairan) — Fase 6: otomatis, bukan manual lagi

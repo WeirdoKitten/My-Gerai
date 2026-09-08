@@ -2,6 +2,21 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Fase 6a: payment QRIS nyata via Midtrans (kode selesai, tinggal uji sandbox)
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md), kode (`drizzle/0004_fixed_electro.sql`, `src/lib/db/schema.ts`, `src/lib/payment/{types,index,mock-provider,midtrans-provider,settle}.ts`, `src/app/api/webhooks/payment/route.ts` baru, `src/server/orders.ts`, `src/types/order.ts`, `src/components/buyer/{OrderStatusView,CartSummary}.tsx`, `tests/unit/payment-midtrans.test.ts` baru)
+**Alasan:** Fase 6 dipecah 6a/6b (portal Iris sandbox belum bisa diakses User). 6a = pembeli membayar QRIS Midtrans sungguhan; pencairan **manual** tetap dipertahankan sampai 6b. Plan mode disetujui User.
+**Ringkasan:**
+- **Migrasi `0004`**: `payment_provider` enum +`midtrans`; `payments` tambah `gross_amount`, `qr_string`, `expires_at` (nullable).
+- **Abstraksi**: `PaymentProvider` interface baru (`name`, `createPayment({orderId,grossAmount,expiryMinutes})→{referenceId,qrString,expiresAt}`, `handleCallback→{...}|null`, `getTransactionStatus?`). Factory `getPaymentProvider()` pilih `mock` (default) / `midtrans` dari env `PAYMENT_PROVIDER`, fail-fast tanpa `MIDTRANS_SERVER_KEY`.
+- **`MidtransPaymentProvider`**: `POST /v2/charge` (`payment_type: qris`, `custom_expiry`), Basic Auth, timeout 10s. `handleCallback` verifikasi `signature_key` = `SHA512(order_id+status_code+gross_amount+ServerKey)` (`timingSafeEqual`), map 8 status transaksi. `getTransactionStatus` (reconcile).
+- **`src/lib/payment/settle.ts`** (modul biasa, **bukan** `"use server"`): `settleOrderPayment` (transisi `menunggu_pembayaran→dibayar` + kurang stok, idempoten via guard WHERE) dipakai webhook & `simulatePaymentSuccess`. Sengaja bukan Server Action supaya tidak jadi RPC "tandai lunas".
+- **`POST /api/webhooks/payment`** (baru): verifikasi signature → cari `payments` by `order_id` → `success`→settle, `expired`/`failed`→tandai, simpan `raw_payload`. Signature invalid → 403; payment belum ada → 404 (Midtrans retry).
+- **`createOrder`**: `orderId` di-generate dulu → `createPayment` **sebelum** tulis DB (gagal → tidak ada Pesanan yatim).
+- **`getOrderStatus`**: render QR dari `payments.qr_string` tersimpan (bukan charge ulang tiap poll — wart lama dibersihkan); reconcile-on-poll via `getTransactionStatus` untuk Pesanan >10 dtk yang masih menunggu (backstop kalau webhook telat).
+- **UX**: tombol "Simulasikan Pembayaran Berhasil" & `simulatePaymentSuccess` hanya aktif saat `PAYMENT_PROVIDER=mock`; `CartSummary` copy diperjelas ("Kamu membayar persis jumlah ini").
+- **Diverifikasi**: `tsc`/`lint`/`build` lulus; `pnpm test` 51 (20 baru; dibuktikan menangkap bug — sabotase `safeEqualHex` → 3 gagal → revert); `pnpm test:e2e` 3 hijau (mock). **Uji sandbox nyata & `/security-review` menyusul** setelah User siapkan akun Midtrans sandbox + deploy staging.
+
 ## 2026-09-08 — Ground truth Fase 6: payment nyata Midtrans + Pencairan otomatis ("Model B")
 
 **Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (4 ADR baru + §Alur Data Pencairan Otomatis), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (Midtrans+Iris menggantikan Tripay, abstraksi + env + setup sandbox), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom `orders.payout_id`, `merchants.payout_*`, `payments`, `payouts` restruktur, `platform_config.qris_mdr_bps`, formula Saldo, gerbang Route Handler non-sesi), [docs/PRD.md](docs/PRD.md) (§4/§5/§6.3/§7/§8), [docs/GLOSSARY.md](docs/GLOSSARY.md), [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 6 ditulis ulang), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [CLAUDE.md](CLAUDE.md), `.env.example`

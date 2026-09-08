@@ -44,10 +44,10 @@
 │   │   │           ├── config/page.tsx        # Atur Biaya Layanan & durasi kedaluwarsa + histori
 │   │   │           └── payouts/page.tsx       # Saldo Pedagang, Daftar Transaksi, riwayat Pencairan (read-only sejak Fase 6)
 │   │   ├── uploads/[...path]/route.ts         # Sajikan foto Item dari UPLOADS_DIR (volume Docker) — path-sanitized, publik
-│   │   └── api/                               # (Fase 6) Route Handler tanpa sesi — diautentikasi lewat signature/secret
-│   │       ├── webhooks/payment/route.ts      # Notifikasi Midtrans — verifikasi signature_key SHA512
-│   │       ├── webhooks/payout/route.ts       # Callback status Iris (Pencairan)
-│   │       └── cron/disburse/route.ts         # Batch Pencairan harian — guard header CRON_SECRET
+│   │   └── api/                               # Route Handler tanpa sesi — diautentikasi lewat signature/secret
+│   │       ├── webhooks/payment/route.ts      # Notifikasi Midtrans — verifikasi signature_key SHA512 (Fase 6a, NYATA)
+│   │       ├── webhooks/payout/route.ts       # (target Fase 6b) Callback status Iris (Pencairan)
+│   │       └── cron/disburse/route.ts         # (target Fase 6b) Batch Pencairan harian — guard header CRON_SECRET
 │   ├── components/
 │   │   ├── ui/                                # Primitif desain sistem: Button, ButtonLink, Input, Textarea, Field, Card, Badge, OrderStatusBadge, Alert, QuantityStepper, PageHeader, EmptyState, Spinner, Wordmark, icons — lihat DESAIN-SISTEM.md
 │   │   ├── AuthShell.tsx                      # Kerangka halaman login/daftar (wordmark + kartu di tengah)
@@ -72,9 +72,11 @@
 │   │   │   └── create-admin.ts                # Buat 1 akun Admin manual (pnpm admin:create / node scripts/create-admin.mjs)
 │   │   ├── payment/                           # Payment Provider abstraction
 │   │   │   ├── types.ts                       # interface PaymentProvider
+│   │   │   ├── index.ts                       # getPaymentProvider() — pilih mock|midtrans dari env PAYMENT_PROVIDER
 │   │   │   ├── mock-provider.ts
-│   │   │   └── midtrans-provider.ts           # (Fase 6) Core API QRIS + verifikasi signature
-│   │   ├── disbursement/                      # (Fase 6) Disbursement Provider abstraction — mirror payment/
+│   │   │   ├── midtrans-provider.ts           # (Fase 6a) Core API QRIS /v2/charge + verifikasi signature webhook
+│   │   │   └── settle.ts                      # settleOrderPayment/markPaymentTerminal — dipakai orders.ts & webhook (BUKAN Server Action)
+│   │   ├── disbursement/                      # (target Fase 6b) Disbursement Provider abstraction — mirror payment/
 │   │   │   ├── types.ts                       # interface DisbursementProvider
 │   │   │   ├── mock-provider.ts
 │   │   │   └── iris-provider.ts               # Midtrans Iris (validateBankAccount, createPayout, handleCallback)

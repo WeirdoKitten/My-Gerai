@@ -112,7 +112,7 @@
 >
 > **Dipecah 6a / 6b (2026-09-08)**: akses portal Iris sandbox belum beres di sisi User → kerjakan **6a (payment)** dulu, **6b (Iris)** menyusul. Selama 6b belum jalan, **pencairan manual `/admin/payouts` + `recordPayout` DIPERTAHANKAN** (penghapusannya digeser ke 6b).
 
-### Fase 6a — Payment Midtrans (QRIS) — SEDANG DIKERJAKAN
+### Fase 6a — Payment Midtrans (QRIS) — KODE SELESAI, tinggal uji sandbox nyata
 
 **Persiapan (User)**
 - [ ] Ambil `Server Key` + `Client Key` **sandbox** dari `dashboard.sandbox.midtrans.com` → Settings → Access Keys.
@@ -120,23 +120,25 @@
 - [ ] Set env staging: `PAYMENT_PROVIDER=midtrans`, `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION=false`.
 - [ ] Midtrans dashboard → Settings → Configuration → Payment Notification URL = `https://<domain-staging>/api/webhooks/payment`.
 
-**Skema DB (migrasi `0004`)**
-- [ ] `payments`: enum `provider` +`midtrans`; kolom `gross_amount`, `qr_string` (nullable), `expires_at` (nullable).
+**Skema DB (migrasi `0004_fixed_electro.sql`)**
+- [x] `payments`: enum `provider` +`midtrans`; kolom `gross_amount`, `qr_string`, `expires_at` (semua nullable).
 
 **Kode**
-- [ ] `PaymentProvider` diperluas (`expiresAt?`, status `"pending"`); factory `getPaymentProvider()` pilih `mock` (default) / `midtrans` dari env `PAYMENT_PROVIDER`.
-- [ ] `src/lib/payment/midtrans-provider.ts` — `createPayment` → Core API `/v2/charge` (`payment_type: "qris"`, `acquirer: "gopay"` atau default), simpan `qr_string`+`expires_at` ke `payments`, render QR lokal via `qrcode`. `handleCallback` → verifikasi `signature_key` = `SHA512(order_id + status_code + gross_amount + ServerKey)`, map status (`settlement`/`capture` → success, `expire`/`deny`/`cancel` → failed/expired, `pending` → pending).
-- [ ] `src/app/api/webhooks/payment/route.ts` — terima notifikasi Midtrans, verifikasi via `handleCallback`, lalu transisi Pesanan `menunggu_pembayaran → dibayar` (ekstrak logika bersama dari `simulatePaymentSuccess`: update `payments`, `orders.status/paid_at`, kurangi stok — semua dalam 1 transaksi dengan guard `WHERE status='menunggu_pembayaran'`).
-- [ ] `simulatePaymentSuccess` tetap ada, tapi Server Action-nya **menolak** kalau `PAYMENT_PROVIDER !== "mock"` (cegah "pembayaran gratis" di staging/produksi).
-- [ ] Halaman status Pesanan: tombol "Simulasikan Pembayaran Berhasil" hanya render kalau provider `mock` (flag dari server). QR nyata untuk `midtrans`.
-- [ ] `CartSummary`/checkout: perjelas copy — Pembeli bayar **persis harga Item** (hapus "termasuk Biaya Layanan" yang menyesatkan; Biaya Layanan & MDR bukan beban Pembeli).
-- [ ] `.env.example` sudah punya var-nya (commit `f844324`); pastikan `getPaymentProvider` fail-fast kalau `midtrans` dipilih tapi key kosong.
+- [x] `PaymentProvider` interface baru (`src/lib/payment/types.ts`): `createPayment({orderId,grossAmount,expiryMinutes}) → {referenceId,qrString,expiresAt}`, `handleCallback` return `{referenceId,orderId,status}|null`, `getTransactionStatus?`. Factory `src/lib/payment/index.ts` (`getPaymentProvider`/`getPaymentProviderName`), fail-fast kalau `midtrans` tanpa `MIDTRANS_SERVER_KEY`.
+- [x] `src/lib/payment/midtrans-provider.ts` — `createPayment` → `POST /v2/charge` (`payment_type: "qris"`, `acquirer: "gopay"`, `custom_expiry` = durasi kedaluwarsa kita), Basic Auth Server Key, timeout 10s. `handleCallback` verifikasi `signature_key` = `SHA512(order_id+status_code+gross_amount+ServerKey)` (`timingSafeEqual`), map status. `getTransactionStatus` → `GET /v2/{order_id}/status`.
+- [x] `src/lib/payment/settle.ts` (modul biasa, BUKAN `"use server"`) — `settleOrderPayment` (transisi `menunggu_pembayaran → dibayar` + kurang stok, guard WHERE, idempoten) & `markPaymentTerminal`. Dipakai `orders.ts` **dan** webhook route. Sengaja bukan Server Action supaya tidak jadi RPC "tandai lunas".
+- [x] `src/app/api/webhooks/payment/route.ts` — POST, verifikasi via `handleCallback`, cari `payments` by `order_id` (+cek `reference_id` cocok), `success` → `settleOrderPayment`, `expired`/`failed` → `markPaymentTerminal`. Signature invalid → 403, payment belum ada → 404 (Midtrans retry).
+- [x] `createOrder`: `orderId` di-`randomUUID()` di awal → `provider.createPayment` **sebelum** transaksi DB (gagal → `{ok:false}`, tidak ada baris yatim) → transaksi insert `orders`+`order_items`+`payments`.
+- [x] `getOrderStatus`: render QR dari `payments.qr_string` tersimpan (bukan charge ulang tiap poll — wart lama dihapus); reconcile via `getTransactionStatus` kalau Pesanan >10 dtk masih menunggu (backstop webhook telat); tambah `canSimulate` ke view.
+- [x] `simulatePaymentSuccess` menolak kalau `getPaymentProviderName() !== "mock"`.
+- [x] `OrderStatusView`: tombol simulasi hanya kalau `order.canSimulate`; kalau QR ada tapi bukan mock → teks "otomatis diperbarui setelah pembayaran diterima".
+- [x] `CartSummary`: copy "termasuk Biaya Layanan" → "Kamu membayar persis jumlah ini".
 
 **Verifikasi 6a**
-- [ ] Unit test: verifikasi `signature_key` (valid/invalid), map semua status Midtrans, `simulatePaymentSuccess` ditolak saat provider != mock.
-- [ ] `pnpm test` (existing 31 + baru) / `tsc` / `lint` / `build` lulus. E2E `order-flow` tetap hijau (masih `mock` di test).
-- [ ] Uji sandbox nyata di staging: Pesanan → QRIS Midtrans tampil → bayar via `simulator.sandbox.midtrans.com` → webhook masuk → status `dibayar` + stok berkurang + muncul di dashboard Pedagang. Uji juga webhook `expire` & signature palsu (ditolak).
-- [ ] `/security-review` (payment + webhook).
+- [x] Unit test `tests/unit/payment-midtrans.test.ts` (20 test): verifikasi signature valid/palsu/gross_amount-diubah/order_id-diubah/case-insensitive, peta 8 status, factory (default→mock, midtrans+key→midtrans, midtrans tanpa key→throw), bentuk baru mock. Dibuktikan menangkap bug (sabotase `safeEqualHex` → 3 test gagal → revert).
+- [x] `pnpm test` (51) / `tsc --noEmit` / `pnpm lint` / `pnpm build` lulus. `pnpm test:e2e` (3) hijau — `webServer.env` tanpa `PAYMENT_PROVIDER` → mock, tombol simulasi tetap ada.
+- [ ] **Uji sandbox nyata di staging** (butuh User selesaikan Persiapan): Pesanan → QRIS Midtrans tampil (tanpa tombol simulasi) → bayar via `simulator.sandbox.midtrans.com` → webhook → status `dibayar` + stok berkurang + muncul di dashboard. Uji juga: webhook `expire` → `payments.status='expired'`; POST signature palsu → 403; webhook dimatikan sebentar → reconcile-on-poll tetap menuntaskan.
+- [ ] `/security-review` (payment + webhook) — jalankan setelah uji sandbox.
 
 ### Fase 6b — Pencairan Otomatis (Midtrans Iris) — DITUNDA (akses Iris)
 

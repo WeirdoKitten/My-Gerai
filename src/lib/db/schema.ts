@@ -45,6 +45,7 @@ export const orderStatusEnum = pgEnum("order_status", [
 export const paymentProviderEnum = pgEnum("payment_provider", [
   "mock",
   "tripay",
+  "midtrans",
 ]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
@@ -137,7 +138,7 @@ export const orderItems = pgTable("order_items", {
   note: text(),
 });
 
-/** Catatan transaksi payment gateway (mock sekarang, Tripay nanti). */
+/** Catatan transaksi payment gateway (mock dev/test, Midtrans produksi). */
 export const payments = pgTable("payments", {
   id: uuid().primaryKey().defaultRandom(),
   orderId: uuid()
@@ -146,8 +147,14 @@ export const payments = pgTable("payments", {
     .references(() => orders.id),
   provider: paymentProviderEnum().notNull(),
   referenceId: text().notNull(),
+  /** Nominal yang dikirim ke gateway (= orders.subtotal). Nullable: baris `mock` lama. */
+  grossAmount: integer(),
+  /** Payload QRIS mentah (Midtrans `qr_string` / payload dummy mock). Dirender lokal jadi gambar. */
+  qrString: text(),
   status: paymentStatusEnum().notNull().default("pending"),
   rawPayload: text(),
+  /** Kedaluwarsa QRIS dari gateway. Nullable. */
+  expiresAt: timestamp({ withTimezone: true }),
   paidAt: timestamp({ withTimezone: true }),
 });
 

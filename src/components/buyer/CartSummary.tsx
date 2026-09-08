@@ -56,8 +56,8 @@ export function CartSummary() {
         </span>
       </div>
       <p className="px-4 pb-4 text-xs text-ink-muted">
-        Total akhir (termasuk Biaya Layanan) dihitung ulang di halaman
-        berikutnya.
+        Kamu membayar persis jumlah ini. Total dihitung ulang di server saat
+        Pesanan dibuat.
       </p>
     </Card>
   );

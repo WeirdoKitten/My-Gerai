@@ -1,6 +1,8 @@
 "use server";
 
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, gte, inArray } from "drizzle-orm";
+import QRCode from "qrcode";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
@@ -12,7 +14,8 @@ import {
   payments,
   products,
 } from "@/lib/db/schema";
-import { mockPaymentProvider } from "@/lib/payment/mock-provider";
+import { getPaymentProvider, getPaymentProviderName } from "@/lib/payment";
+import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
 import {
   calculateOrderTotals,
@@ -170,41 +173,60 @@ export async function createOrder(
   const expiresAt = new Date(Date.now() + orderExpiryMinutes * 60_000);
   const orderCode = await generateUniqueOrderCode(merchant.id);
 
-  const createdOrder = await db.transaction(async (tx) => {
-    const [order] = await tx
-      .insert(orders)
-      .values({
-        merchantId: merchant.id,
-        orderCode,
-        buyerName,
-        status: "menunggu_pembayaran",
-        subtotal,
-        platformFeeSnapshot,
-        totalForMerchant,
-        expiresAt,
-      })
-      .returning();
+  // ID Pesanan dibuat lebih dulu supaya pembayaran di gateway bisa dibuat
+  // SEBELUM ada baris DB apa pun — kalau gateway gagal, tidak ada Pesanan
+  // "yatim" yang tertinggal.
+  const orderId = randomUUID();
+  const provider = getPaymentProvider();
+
+  let payment: {
+    referenceId: string;
+    qrString: string;
+    expiresAt: Date | null;
+  };
+  try {
+    payment = await provider.createPayment({
+      orderId,
+      grossAmount: subtotal,
+      expiryMinutes: orderExpiryMinutes,
+    });
+  } catch (error) {
+    console.error("createPayment gagal:", error);
+    return {
+      ok: false,
+      message: "Gagal menyiapkan pembayaran. Silakan coba lagi.",
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.insert(orders).values({
+      id: orderId,
+      merchantId: merchant.id,
+      orderCode,
+      buyerName,
+      status: "menunggu_pembayaran",
+      subtotal,
+      platformFeeSnapshot,
+      totalForMerchant,
+      expiresAt,
+    });
 
     await tx
       .insert(orderItems)
-      .values(orderItemRows.map((row) => ({ ...row, orderId: order.id })));
+      .values(orderItemRows.map((row) => ({ ...row, orderId })));
 
-    return order;
+    await tx.insert(payments).values({
+      orderId,
+      provider: provider.name,
+      referenceId: payment.referenceId,
+      grossAmount: subtotal,
+      qrString: payment.qrString,
+      status: "pending",
+      expiresAt: payment.expiresAt,
+    });
   });
 
-  const { referenceId } = await mockPaymentProvider.createPayment(createdOrder);
-  await db.insert(payments).values({
-    orderId: createdOrder.id,
-    provider: "mock",
-    referenceId,
-    status: "pending",
-  });
-
-  return {
-    ok: true,
-    orderId: createdOrder.id,
-    orderCode: createdOrder.orderCode,
-  };
+  return { ok: true, orderId, orderCode };
 }
 
 export async function getOrderStatus(
@@ -217,19 +239,39 @@ export async function getOrderStatus(
   });
   if (!order) return null;
 
-  const current = await expireOrderIfNeeded(order);
+  let current = await expireOrderIfNeeded(order);
 
-  const [merchant, items] = await Promise.all([
+  // Backstop: kalau webhook Midtrans telat/hilang, tanyakan status langsung ke
+  // gateway setelah Pesanan berumur >10 dtk (webhook biasanya sudah datang
+  // sebelum itu). Mock tidak punya `getTransactionStatus` → dilewati.
+  if (
+    current.status === "menunggu_pembayaran" &&
+    Date.now() - current.createdAt.getTime() > 10_000
+  ) {
+    const provider = getPaymentProvider();
+    const remote = await provider
+      .getTransactionStatus?.(orderId)
+      .catch(() => null);
+    if (remote?.status === "success") {
+      await settleOrderPayment(orderId);
+      current =
+        (await db.query.orders.findFirst({ where: eq(orders.id, orderId) })) ??
+        current;
+    }
+  }
+
+  const [merchant, items, payment] = await Promise.all([
     db.query.merchants.findFirst({
       where: eq(merchants.id, current.merchantId),
     }),
     db.query.orderItems.findMany({ where: eq(orderItems.orderId, current.id) }),
+    db.query.payments.findFirst({ where: eq(payments.orderId, current.id) }),
   ]);
 
-  let qrImageUrl: string | null = null;
-  if (current.status === "menunggu_pembayaran") {
-    qrImageUrl = (await mockPaymentProvider.createPayment(current)).qrImageUrl;
-  }
+  const qrImageUrl =
+    current.status === "menunggu_pembayaran" && payment?.qrString
+      ? await QRCode.toDataURL(payment.qrString)
+      : null;
 
   return {
     id: current.id,
@@ -251,12 +293,21 @@ export async function getOrderStatus(
       note: item.note,
     })),
     qrImageUrl,
+    canSimulate:
+      getPaymentProviderName() === "mock" &&
+      current.status === "menunggu_pembayaran",
   };
 }
 
 export async function simulatePaymentSuccess(
   orderId: string,
 ): Promise<SimulatePaymentResult> {
+  if (getPaymentProviderName() !== "mock") {
+    return {
+      ok: false,
+      message: "Simulasi pembayaran hanya tersedia di mode pengujian.",
+    };
+  }
   if (!z.uuid().safeParse(orderId).success) {
     return { ok: false, message: "Pesanan tidak ditemukan." };
   }
@@ -287,54 +338,14 @@ export async function simulatePaymentSuccess(
     return { ok: false, message: "Data pembayaran tidak ditemukan." };
   }
 
-  const callbackResult = await mockPaymentProvider.handleCallback({
+  const callbackResult = await getPaymentProvider().handleCallback({
     referenceId: payment.referenceId,
   });
-  if (callbackResult.status !== "success") {
+  if (callbackResult?.status !== "success") {
     return { ok: false, message: "Simulasi pembayaran gagal." };
   }
 
-  const paidAt = new Date();
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payments)
-      .set({ status: "success", paidAt })
-      .where(eq(payments.id, payment.id));
-
-    const [paidOrder] = await tx
-      .update(orders)
-      .set({ status: "dibayar", paidAt })
-      .where(
-        and(
-          eq(orders.id, current.id),
-          eq(orders.status, "menunggu_pembayaran"),
-        ),
-      )
-      .returning({ id: orders.id });
-
-    // Kurangi stok hanya kalau transisi menunggu -> dibayar benar terjadi
-    // (guard di WHERE di atas mencegah pengurangan ganda).
-    if (paidOrder) {
-      const lines = await tx.query.orderItems.findMany({
-        where: eq(orderItems.orderId, current.id),
-        columns: { productId: true, qty: true },
-      });
-      for (const line of lines) {
-        await tx
-          .update(products)
-          .set({ stock: sql`GREATEST(${products.stock} - ${line.qty}, 0)` })
-          .where(
-            and(
-              eq(products.id, line.productId),
-              eq(products.merchantId, current.merchantId),
-              // Hanya Item yang stoknya dibatasi.
-              sql`${products.stock} IS NOT NULL`,
-            ),
-          );
-      }
-    }
-  });
-
+  await settleOrderPayment(current.id);
   return { ok: true };
 }
 
