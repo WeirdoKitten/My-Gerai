@@ -92,6 +92,19 @@ export function OrderStatusView({
         </Card>
       ) : null}
 
+      {order.sandboxQrUrl ? (
+        <Card className="flex flex-col gap-1.5">
+          <p className="text-xs font-semibold text-ink-muted">
+            Sandbox — tempel URL ini ke simulator QRIS Midtrans
+            (simulator.sandbox.midtrans.com/v2/qris), lalu Scan QR → PIN 123456
+            → Pay.
+          </p>
+          <code className="block overflow-x-auto rounded-control bg-bg p-2 text-xs text-ink">
+            {order.sandboxQrUrl}
+          </code>
+        </Card>
+      ) : null}
+
       <Card className="flex flex-col gap-3">
         <div>
           <p className="font-semibold text-ink">{order.stallName}</p>

@@ -31,6 +31,21 @@ function authHeader(): string {
   return `Basic ${Buffer.from(`${serverKey()}:`).toString("base64")}`;
 }
 
+/** True kalau sedang pakai kredensial sandbox (bukan produksi). */
+export function midtransIsSandbox(): boolean {
+  return process.env.MIDTRANS_IS_PRODUCTION !== "true";
+}
+
+/**
+ * URL gambar QR di sisi Midtrans (endpoint `generate-qr-code`). Formatnya
+ * deterministik dari `transaction_id`. Dipakai HANYA sebagai bantuan uji di
+ * sandbox — halaman status Pesanan menampilkannya supaya bisa ditempel ke
+ * simulator QRIS Midtrans (`simulator.sandbox.midtrans.com/v2/qris`).
+ */
+export function midtransQrImageUrl(transactionId: string): string {
+  return `${baseUrl()}/v2/qris/${transactionId}/qr-code`;
+}
+
 /** Peta status transaksi Midtrans → status internal. */
 function mapStatus(
   transactionStatus: string,

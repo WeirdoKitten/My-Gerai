@@ -14,8 +14,9 @@
 - **`POST /api/webhooks/payment`** (baru): verifikasi signature → cari `payments` by `order_id` → `success`→settle, `expired`/`failed`→tandai, simpan `raw_payload`. Signature invalid → 403; payment belum ada → 404 (Midtrans retry).
 - **`createOrder`**: `orderId` di-generate dulu → `createPayment` **sebelum** tulis DB (gagal → tidak ada Pesanan yatim).
 - **`getOrderStatus`**: render QR dari `payments.qr_string` tersimpan (bukan charge ulang tiap poll — wart lama dibersihkan); reconcile-on-poll via `getTransactionStatus` untuk Pesanan >10 dtk yang masih menunggu (backstop kalau webhook telat).
-- **UX**: tombol "Simulasikan Pembayaran Berhasil" & `simulatePaymentSuccess` hanya aktif saat `PAYMENT_PROVIDER=mock`; `CartSummary` copy diperjelas ("Kamu membayar persis jumlah ini").
-- **Diverifikasi**: `tsc`/`lint`/`build` lulus; `pnpm test` 51 (20 baru; dibuktikan menangkap bug — sabotase `safeEqualHex` → 3 gagal → revert); `pnpm test:e2e` 3 hijau (mock). **Uji sandbox nyata & `/security-review` menyusul** setelah User siapkan akun Midtrans sandbox + deploy staging.
+- **UX**: tombol "Simulasikan Pembayaran Berhasil" & `simulatePaymentSuccess` hanya aktif saat `PAYMENT_PROVIDER=mock`; `CartSummary` copy diperjelas ("Kamu membayar persis jumlah ini"). Halaman status Pesanan menampilkan **URL gambar QR Midtrans** (deterministik dari `transaction_id`) HANYA di sandbox (`MIDTRANS_IS_PRODUCTION != true`) — untuk ditempel ke simulator QRIS Midtrans (`simulator.sandbox.midtrans.com/v2/qris`).
+- **Webhook robust untuk tombol "Test" Midtrans**: `order_id` non-UUID (notif uji dashboard) / Pesanan tak ada → balas `200` + log (bukan 404/500/retry). Signature tetap wajib lolos (403 kalau tidak).
+- **Diverifikasi**: `tsc`/`lint`/`build` lulus; `pnpm test` 51 (20 baru; dibuktikan menangkap bug — sabotase `safeEqualHex` → 3 gagal → revert); `pnpm test:e2e` 3 hijau (mock). Webhook happy-path + idempotensi + 400/403/405/non-UUID diuji manual lewat dev server. **Uji sandbox nyata & `/security-review` menyusul** setelah User siapkan akun Midtrans sandbox + deploy staging.
 
 ## 2026-09-08 — Ground truth Fase 6: payment nyata Midtrans + Pencairan otomatis ("Model B")
 

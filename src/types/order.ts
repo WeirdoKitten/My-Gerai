@@ -34,6 +34,8 @@ export type BuyerOrderStatusView = {
   qrImageUrl: string | null;
   /** `true` hanya di mode pengujian (`PAYMENT_PROVIDER=mock`) & masih menunggu pembayaran. */
   canSimulate: boolean;
+  /** URL gambar QR di Midtrans, HANYA di sandbox — untuk ditempel ke simulator QRIS. `null` di produksi/mock. */
+  sandboxQrUrl: string | null;
 };
 
 export type CreateOrderResult =

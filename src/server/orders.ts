@@ -15,6 +15,10 @@ import {
   products,
 } from "@/lib/db/schema";
 import { getPaymentProvider, getPaymentProviderName } from "@/lib/payment";
+import {
+  midtransIsSandbox,
+  midtransQrImageUrl,
+} from "@/lib/payment/midtrans-provider";
 import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
 import {
@@ -273,6 +277,14 @@ export async function getOrderStatus(
       ? await QRCode.toDataURL(payment.qrString)
       : null;
 
+  const sandboxQrUrl =
+    current.status === "menunggu_pembayaran" &&
+    getPaymentProviderName() === "midtrans" &&
+    midtransIsSandbox() &&
+    payment?.referenceId
+      ? midtransQrImageUrl(payment.referenceId)
+      : null;
+
   return {
     id: current.id,
     orderCode: current.orderCode,
@@ -296,6 +308,7 @@ export async function getOrderStatus(
     canSimulate:
       getPaymentProviderName() === "mock" &&
       current.status === "menunggu_pembayaran",
+    sandboxQrUrl,
   };
 }
 
