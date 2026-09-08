@@ -13,6 +13,7 @@
 - **Skema**: `orders.payout_id` (link ke Pencairan; Saldo = `SUM(total_for_merchant) WHERE payout_id IS NULL`); `merchants` info rekening jadi terstruktur + tervalidasi Iris; `payments` (+`midtrans`, `gross_amount`, `qr_string`); `payouts` (batch harian, `UNIQUE(merchant_id, period_date)`, status `pending|processing|completed|failed`, `beneficiary_*` snapshot).
 - **Ditunda**: refund/pembatalan setelah `dibayar`, Split/Marketplace (butuh badan usaha), instant settlement.
 - **PR User sebelum go-live**: verifikasi ke Midtrans bahwa akun perorangan bisa aktivasi Core API QRIS + Iris.
+- **Fase 6 dipecah 6a / 6b** (portal Iris sandbox belum bisa diakses User): **6a** = payment Midtrans (QRIS + webhook + migrasi `payments`), dikerjakan lebih dulu; **6b** = Iris disbursement + hapus pencairan manual. **Selama 6b belum jalan, `recordPayout` / `/admin/payouts` manual TETAP dipertahankan** (penghapusan digeser ke 6b). Detail checklist di [docs/BACKLOG.md](docs/BACKLOG.md).
 
 ## 2026-09-08 — Kredensial akun uji seed dibuat berpola & mudah diingat
 

@@ -108,39 +108,64 @@
 
 ## Fase 6 — Payment Nyata (Midtrans) + Pencairan Otomatis ("Model B")
 
-> Ground truth: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08 (4 baris) + §Alur Data Pencairan Otomatis, [TEKNOLOGI.md §Payment Provider & Disbursement Provider Abstraction](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [DATA-MODEL.md](DATA-MODEL.md). Branch: `feat/payment-midtrans-model-b`. Keputusan uang dikonfirmasi User (AskUserQuestion 2026-09-08): MDR ditanggung Aplikator (tak pernah ke Pembeli), biaya transfer Iris ditanggung Pedagang, Pencairan harian tanpa ambang, Pencairan manual dihapus.
+> Ground truth: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08 (4 baris) + §Alur Data Pencairan Otomatis, [TEKNOLOGI.md §Payment Provider & Disbursement Provider Abstraction](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [DATA-MODEL.md](DATA-MODEL.md). Branch: `feat/payment-midtrans-model-b`. Keputusan uang dikonfirmasi User (AskUserQuestion 2026-09-08): MDR ditanggung Aplikator (tak pernah ke Pembeli), biaya transfer Iris ditanggung Pedagang, Pencairan harian tanpa ambang, Pencairan manual dihapus (di 6b).
+>
+> **Dipecah 6a / 6b (2026-09-08)**: akses portal Iris sandbox belum beres di sisi User → kerjakan **6a (payment)** dulu, **6b (Iris)** menyusul. Selama 6b belum jalan, **pencairan manual `/admin/payouts` + `recordPayout` DIPERTAHANKAN** (penghapusannya digeser ke 6b).
 
-### Persiapan (User)
-- [ ] Daftar akun **Midtrans sandbox** (`dashboard.sandbox.midtrans.com`) → ambil `Server Key` + `Client Key`.
-- [ ] Aktifkan **Iris** (sandbox) → ambil `Creator` API key.
-- [ ] Set Payment Notification URL + Iris callback URL ke domain tunnel (`/api/webhooks/payment`, `/api/webhooks/payout`).
-- [ ] (sebelum produksi) Verifikasi ke Midtrans: akun perorangan bisa aktivasi Core API QRIS + Iris; limit transaksi; tarif MDR nyata.
+### Fase 6a — Payment Midtrans (QRIS) — SEDANG DIKERJAKAN
 
-### Skema DB (migrasi baru)
+**Persiapan (User)**
+- [ ] Ambil `Server Key` + `Client Key` **sandbox** dari `dashboard.sandbox.midtrans.com` → Settings → Access Keys.
+- [ ] Deploy branch ke **app Dokploy staging terpisah** (bukan menimpa produksi) → catat domain.
+- [ ] Set env staging: `PAYMENT_PROVIDER=midtrans`, `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION=false`.
+- [ ] Midtrans dashboard → Settings → Configuration → Payment Notification URL = `https://<domain-staging>/api/webhooks/payment`.
+
+**Skema DB (migrasi `0004`)**
+- [ ] `payments`: enum `provider` +`midtrans`; kolom `gross_amount`, `qr_string` (nullable), `expires_at` (nullable).
+
+**Kode**
+- [ ] `PaymentProvider` diperluas (`expiresAt?`, status `"pending"`); factory `getPaymentProvider()` pilih `mock` (default) / `midtrans` dari env `PAYMENT_PROVIDER`.
+- [ ] `src/lib/payment/midtrans-provider.ts` — `createPayment` → Core API `/v2/charge` (`payment_type: "qris"`, `acquirer: "gopay"` atau default), simpan `qr_string`+`expires_at` ke `payments`, render QR lokal via `qrcode`. `handleCallback` → verifikasi `signature_key` = `SHA512(order_id + status_code + gross_amount + ServerKey)`, map status (`settlement`/`capture` → success, `expire`/`deny`/`cancel` → failed/expired, `pending` → pending).
+- [ ] `src/app/api/webhooks/payment/route.ts` — terima notifikasi Midtrans, verifikasi via `handleCallback`, lalu transisi Pesanan `menunggu_pembayaran → dibayar` (ekstrak logika bersama dari `simulatePaymentSuccess`: update `payments`, `orders.status/paid_at`, kurangi stok — semua dalam 1 transaksi dengan guard `WHERE status='menunggu_pembayaran'`).
+- [ ] `simulatePaymentSuccess` tetap ada, tapi Server Action-nya **menolak** kalau `PAYMENT_PROVIDER !== "mock"` (cegah "pembayaran gratis" di staging/produksi).
+- [ ] Halaman status Pesanan: tombol "Simulasikan Pembayaran Berhasil" hanya render kalau provider `mock` (flag dari server). QR nyata untuk `midtrans`.
+- [ ] `CartSummary`/checkout: perjelas copy — Pembeli bayar **persis harga Item** (hapus "termasuk Biaya Layanan" yang menyesatkan; Biaya Layanan & MDR bukan beban Pembeli).
+- [ ] `.env.example` sudah punya var-nya (commit `f844324`); pastikan `getPaymentProvider` fail-fast kalau `midtrans` dipilih tapi key kosong.
+
+**Verifikasi 6a**
+- [ ] Unit test: verifikasi `signature_key` (valid/invalid), map semua status Midtrans, `simulatePaymentSuccess` ditolak saat provider != mock.
+- [ ] `pnpm test` (existing 31 + baru) / `tsc` / `lint` / `build` lulus. E2E `order-flow` tetap hijau (masih `mock` di test).
+- [ ] Uji sandbox nyata di staging: Pesanan → QRIS Midtrans tampil → bayar via `simulator.sandbox.midtrans.com` → webhook masuk → status `dibayar` + stok berkurang + muncul di dashboard Pedagang. Uji juga webhook `expire` & signature palsu (ditolak).
+- [ ] `/security-review` (payment + webhook).
+
+### Fase 6b — Pencairan Otomatis (Midtrans Iris) — DITUNDA (akses Iris)
+
+**Persiapan (User)**
+- [ ] Akses portal Iris sandbox (`app.sandbox.midtrans.com/iris/sessions/new`) / minta aktivasi ke `support@midtrans.com` → ambil `Creator` API key + set auto-approve.
+- [ ] (sebelum produksi) Verifikasi ke Midtrans: akun perorangan bisa aktivasi Iris produksi; limit; tarif MDR nyata.
+
+**Skema DB (migrasi `0005`)**
 - [ ] `orders.payout_id` (FK nullable). `merchants`: ganti `payout_account_info` → `payout_bank_code` + `payout_account_number` + `payout_account_holder`.
-- [ ] `payments`: enum `provider` +`midtrans`; kolom `gross_amount`, `qr_string`, `expires_at`.
 - [ ] `payouts`: kolom `provider`, `period_date` (+`UNIQUE(merchant_id, period_date)`), `transfer_fee`, `net_amount`, `reference_id`, `beneficiary_*`, `failure_reason`; enum status → `pending|processing|completed|failed`.
 - [ ] `platform_config`: seed `qris_mdr_bps` = `70`.
 
-### Payment (QRIS)
-- [ ] `PaymentProvider` diperluas (`expiresAt`, status `pending`); `MidtransPaymentProvider` (`/v2/charge` `payment_type: qris`, render `qr_string` lokal via `qrcode`). Pemilihan lewat `PAYMENT_PROVIDER`.
-- [ ] `POST /api/webhooks/payment` — verifikasi `signature_key` (`SHA512`), map status Midtrans → `payments.status` + transisi `menunggu_pembayaran → dibayar` (pindahkan logika dari `simulatePaymentSuccess`, sisakan jalur mock).
-- [ ] Halaman status Pesanan: QR nyata, tombol simulasi hanya muncul kalau provider `mock`.
-- [ ] Cek copy Pembeli tidak menyiratkan ada biaya tambahan (mis. `CartSummary`: "termasuk Biaya Layanan" → perjelas bahwa Pembeli bayar persis harga Item; Biaya Layanan & MDR bukan beban Pembeli).
-
-### Pencairan otomatis (Iris)
-- [ ] `DisbursementProvider` + `MockDisbursementProvider` + `IrisDisbursementProvider` (`validateBankAccount`, `createPayout`, `handleCallback`).
+**Kode**
+- [ ] `src/lib/disbursement/` — `types.ts` (`DisbursementProvider`), `mock-provider.ts`, `iris-provider.ts` (`validateBankAccount`, `createPayout`, `handleCallback`). Factory dari `DISBURSEMENT_PROVIDER`.
 - [ ] `/dashboard/profil`: field rekening pencairan terstruktur + tombol validasi (Iris `validate_bank_account`). `/admin/merchants`: penanda Lapak yang info rekeningnya belum lengkap.
-- [ ] `POST /api/cron/disburse` (guard `CRON_SECRET`) — batch harian: per Lapak dengan Saldo > 0 & rekening valid → transaksi (buat `payouts` + link `orders.payout_id`) → `IrisDisbursementProvider.createPayout`. Idempoten via `period_date`.
+- [ ] `POST /api/cron/disburse` (guard `CRON_SECRET` via `timingSafeEqual`) — batch harian: per Lapak dengan Saldo > 0 & rekening valid → transaksi (buat `payouts` + link `orders.payout_id`) → `createPayout`. Idempoten via `period_date`.
 - [ ] `POST /api/webhooks/payout` — callback status Iris → `completed`/`failed` (unlink Pesanan kalau gagal).
-- [ ] `src/server/payouts.ts`: hapus `recordPayout` (manual); Saldo Pedagang pakai formula `payout_id IS NULL`. `/admin/payouts` jadi read-only (Saldo + riwayat + estimasi margin Aplikator dari `qris_mdr_bps`).
+- [ ] `src/server/payouts.ts`: **hapus `recordPayout`** (manual) + form/komponen Admin terkait; Saldo Pedagang pakai formula `payout_id IS NULL`. `/admin/payouts` jadi read-only (Saldo + riwayat + estimasi margin Aplikator dari `qris_mdr_bps`).
 - [ ] Scheduled Job di Dokploy memanggil `/api/cron/disburse` 1×/hari.
 
-### Verifikasi & rilis
-- [ ] Unit test: map status Midtrans/Iris, verifikasi signature, kalkulasi batch Pencairan (idempotensi, unlink saat gagal).
-- [ ] E2E/integration (sandbox): bayar QRIS via `simulator.sandbox.midtrans.com` → webhook → `dibayar`; jalankan `/api/cron/disburse` → payout `processing` → callback → `completed`.
-- [ ] `/security-review` (wajib — payment + webhook + cron + lintas-Lapak).
-- [ ] Uji transaksi **produksi** nominal kecil sebelum go-live penuh. Pastikan tidak ada data `provider=mock` tercampur laporan produksi ([DATA-MODEL.md](DATA-MODEL.md#payments)).
+**Verifikasi 6b**
+- [ ] Unit test: kalkulasi batch (idempotensi, unlink saat gagal), verifikasi callback Iris.
+- [ ] Uji sandbox: `/api/cron/disburse` → payout `processing` → callback → `completed`; Saldo Lapak jadi 0; `/admin/payouts` menampilkan riwayat.
+- [ ] `/security-review` (disbursement + cron + lintas-Lapak).
+
+### Rilis produksi (setelah 6a + 6b lulus sandbox)
+- [ ] Set `*_IS_PRODUCTION=true` + key produksi, webhook URL domain produksi, Scheduled Job produksi.
+- [ ] Uji transaksi **produksi** nominal kecil. Pastikan tidak ada data `provider=mock` tercampur laporan produksi ([DATA-MODEL.md](DATA-MODEL.md#payments)).
+- [ ] `SEED_DEMO` dimatikan di produksi.
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
