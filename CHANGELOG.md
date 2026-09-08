@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-08 — Tambah ke Keranjang: notifikasi toast (bukan ubah label tombol)
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§3 komponen `Toast`), kode (`src/components/ui/Toast.tsx` baru, `src/app/globals.css` keyframes, `src/app/(buyer)/layout.tsx`, `src/components/buyer/AddToCartControls.tsx`)
+**Alasan:** User: tombol "Tambah" jangan berubah jadi "Ditambahkan" saat diklik — notifikasi lewat cara lain yang lebih menarik & nyaman.
+**Ringkasan:**
+- `ToastProvider` + `useToast()` (`ui/Toast.tsx`): pil `bg-ink` di `top-4` tengah, `pointer-events-none`, slide-in + fade-out (`@keyframes toast-in`/`toast-out`, `motion-safe:`), auto-hilang ~2,1 dtk. Satu toast aktif; toast baru menimpa yang lama.
+- `AddToCartControls`: hapus state `justAdded` — tombol tetap "Tambah". Setelah `addItem` → `showToast("<nama Item> ditambahkan"` / "N <nama> ditambahkan" kalau qty > 1). `FloatingCartBar` (total keranjang) tetap jadi umpan balik kedua.
+- Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (31) lulus; discreenshot (toast muncul, tombol tidak berubah).
+
 ## 2026-09-08 — Navigasi dashboard jadi bottom nav (ikon + label, ala aplikasi HP)
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§4), kode (`src/components/DashboardNav.tsx` + `DashboardShell.tsx`, layout Pedagang/Admin, `src/components/ui/icons.tsx`)

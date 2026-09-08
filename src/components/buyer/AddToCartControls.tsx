@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { CheckIcon } from "@/components/ui/icons";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
+import { useToast } from "@/components/ui/Toast";
 import { useCart } from "@/lib/cart/cart-context";
 import type { BuyerProductView } from "@/types/product";
 
@@ -16,9 +16,9 @@ export function AddToCartControls({
   stallSlug: string;
 }) {
   const { addItem } = useCart();
+  const { showToast } = useToast();
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState("");
-  const [justAdded, setJustAdded] = useState(false);
 
   function handleAdd() {
     addItem(stallSlug, {
@@ -29,10 +29,13 @@ export function AddToCartControls({
       qty,
       note,
     });
-    setJustAdded(true);
+    showToast(
+      qty > 1
+        ? `${qty} ${product.name} ditambahkan`
+        : `${product.name} ditambahkan`,
+    );
     setQty(1);
     setNote("");
-    window.setTimeout(() => setJustAdded(false), 1500);
   }
 
   return (
@@ -54,14 +57,7 @@ export function AddToCartControls({
           onIncrement={() => setQty((q) => Math.min(50, q + 1))}
         />
         <Button type="button" size="sm" onClick={handleAdd} className="flex-1">
-          {justAdded ? (
-            <>
-              <CheckIcon className="size-4" />
-              Ditambahkan
-            </>
-          ) : (
-            "Tambah"
-          )}
+          Tambah
         </Button>
       </div>
     </div>
