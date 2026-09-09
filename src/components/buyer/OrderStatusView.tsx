@@ -58,7 +58,7 @@ export function OrderStatusView({
 
       {order.qrImageUrl ? (
         <Card pad="lg" className="flex flex-col items-center gap-3">
-          <p className="text-sm text-ink-muted">
+          <p className="text-center text-sm text-ink-muted">
             {order.canSimulate
               ? "Pindai untuk bayar (simulasi)"
               : "Pindai dengan aplikasi apa pun yang mendukung QRIS"}
