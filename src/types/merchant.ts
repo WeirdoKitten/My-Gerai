@@ -7,7 +7,7 @@ export type LoginMerchantResult =
   | { ok: true; status: "pending" | "rejected" | "suspended"; message: string }
   | { ok: false; message: string };
 
-export type QrLapakView = {
+export type QrMenuView = {
   url: string;
   qrImageUrl: string;
 };

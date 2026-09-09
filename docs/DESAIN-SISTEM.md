@@ -168,8 +168,8 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 | Panel Admin (`DashboardShell` width `max-w-3xl`) | `max-w-3xl` |
 
 - **Root:** `<body>` = `min-h-dvh bg-bg text-ink font-sans`. Kartu (`bg-surface`) yang memberi kontras.
-- **Dashboard = pola aplikasi HP** (komponen `DashboardShell`): **top bar** sticky (`bg-bg/85 backdrop-blur`) berisi slot `brand` di kiri (Pedagang = **nama Lapak** via `<Wordmark label={stallName}>` + baris kecil opsional; Admin = `<Wordmark>` "MyGerai" + `Admin · <nama>`) + `headerAction` + tombol **Keluar** (`dangerOutline`). **Bottom nav** `fixed` (`DashboardNav`): ikon + label per tab, `max-w-md` di tengah, aktif = `text-brand-strong`, tab "index" (`/dashboard`) aktif hanya saat cocok **persis**. Konten `<main>` pakai `pb-24` supaya tidak tertutup bottom nav. `NavItem.icon` = **string** (bukan komponen) supaya bisa dilempar dari Server Component.
-- **Ikon header Pedagang** = **QR Lapak** (`QrIcon`) + **Profil** (`UserIcon`) di `headerAction` — dua `<Link>` ber-`aria-label`, kotak `size-9 border border-line rounded-control` (kelas dibagi lewat konstanta `HEADER_ICON_CLASS` di layout). Ini tujuan **sesekali** (cetak QR sekali, atur profil jarang) → tidak makan slot bottom nav.
+- **Dashboard = pola aplikasi HP** (komponen `DashboardShell`): **top bar** sticky (`bg-bg/85 backdrop-blur`) berisi slot `brand` di kiri (Pedagang = **nama Lapak** via `<Wordmark label={stallName}>` + baris kecil opsional; Admin = `<Wordmark>` "MyGerai" + `Admin · <nama>`) + `headerAction` + tombol **Keluar** (`dangerOutline`, buka konfirmasi `Modal` dulu — lihat §6). **Bottom nav** `fixed` (`DashboardNav`): ikon + label per tab, `max-w-md` di tengah, aktif = `text-brand-strong`, tab "index" (`/dashboard`) aktif hanya saat cocok **persis**. Konten `<main>` pakai `pb-24` supaya tidak tertutup bottom nav. `NavItem.icon` = **string** (bukan komponen) supaya bisa dilempar dari Server Component.
+- **Ikon header Pedagang** = **QR Menu** (`QrIcon`) + **Profil** (`UserIcon`) di `headerAction` — dua `<Link>` ber-`aria-label`, kotak `size-9 border border-line rounded-control` (kelas dibagi lewat konstanta `HEADER_ICON_CLASS` di layout). Ini tujuan **sesekali** (cetak QR sekali, atur profil jarang) → tidak makan slot bottom nav.
 - **Jarak antar-blok** dalam satu halaman: `gap-4` (padat) atau `gap-6` (longgar, antar-seksi). Konsisten pakai `flex flex-col gap-*`, bukan `space-y` campur `mb-*`.
 - **Grid Item (menu Pembeli):** tetap **satu kolom** untuk MVP (fokus & sederhana). Multi-kolom di desktop dicatat sebagai peningkatan opsional, bukan sekarang.
 
@@ -187,9 +187,12 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 
 ## 6. Ikon
 
-Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `chart` (tab Laporan), `lightbulb` (kartu asisten), `settings`, `wallet`, `user`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
+Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `chart` (tab Laporan), `lightbulb` (kartu asisten), `copy` (tombol salin), `settings`, `wallet`, `user`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
 
-**Bottom nav Pedagang = 4 tab** dengan urutan **Pesanan · Item · Riwayat · Laporan** — dua kiri = kerja harian (tangani Pesanan, kelola Item), dua kanan = tinjauan (riwayat, analitik). **QR Lapak** & **Profil** pindah ke ikon header (lihat §5). Kalau nanti perlu tab ke-5, pertimbangkan pindahkan lagi ke ikon header, jangan langsung tambah tab.
+- **`CopyButton` (`src/components/ui/CopyButton.tsx`)** — tombol ikon `size-9` (border kotak seperti ikon header) untuk menyalin sebuah string ke clipboard; umpan balik inline (ikon → centang ±2 dtk), **tidak** butuh `ToastProvider`. Dipakai di samping link (QR Menu, URL QRIS sandbox).
+- **Konfirmasi "Keluar" (`src/components/LogoutButton.tsx`)** — tombol Keluar di `DashboardShell` (Pedagang & Admin) membuka `Modal` "Keluar dari dashboard?" dengan tombol **Batal** (`secondary`) + **Ya, keluar** (`danger`), bukan langsung submit form logout.
+
+**Bottom nav Pedagang = 4 tab** dengan urutan **Pesanan · Item · Riwayat · Laporan** — dua kiri = kerja harian (tangani Pesanan, kelola Item), dua kanan = tinjauan (riwayat, analitik). **QR Menu** & **Profil** pindah ke ikon header (lihat §5). Kalau nanti perlu tab ke-5, pertimbangkan pindahkan lagi ke ikon header, jangan langsung tambah tab.
 
 ## 7. Yang dihindari
 

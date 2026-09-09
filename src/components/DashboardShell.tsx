@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { DashboardNav, type NavItem } from "@/components/DashboardNav";
-import { Button } from "@/components/ui/Button";
+import { LogoutButton } from "@/components/LogoutButton";
 import { cn } from "@/lib/utils/cn";
 
 export function DashboardShell({
@@ -39,11 +39,7 @@ export function DashboardShell({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {headerAction}
-            <form action={logoutAction}>
-              <Button type="submit" variant="dangerOutline" size="sm">
-                Keluar
-              </Button>
-            </form>
+            <LogoutButton action={logoutAction} />
           </div>
         </div>
       </header>

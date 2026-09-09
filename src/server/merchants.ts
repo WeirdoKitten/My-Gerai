@@ -38,7 +38,7 @@ import type {
 import type {
   LoginMerchantResult,
   MerchantProfileView,
-  QrLapakView,
+  QrMenuView,
   RegisterMerchantResult,
   UpdateMerchantProfileResult,
 } from "@/types/merchant";
@@ -220,7 +220,7 @@ export async function updateMerchantProfile(
   return { ok: true, message: "Profil diperbarui." };
 }
 
-export async function getMerchantQrLapak(): Promise<QrLapakView | null> {
+export async function getMerchantQrMenu(): Promise<QrMenuView | null> {
   const session = await getMerchantSession();
   if (!session) return null;
 

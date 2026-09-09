@@ -38,9 +38,9 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 
 ## 4. Lingkup MVP (In Scope)
 
-- [ ] Pedagang daftar mandiri (nama Lapak, kategori, kontak, foto) → status `pending` → Admin approve → Lapak dapat **QR Lapak** unik.
+- [ ] Pedagang daftar mandiri (nama Lapak, kategori, kontak, foto) → status `pending` → Admin approve → Lapak dapat **QR Menu** unik.
 - [ ] Pedagang kelola daftar Item (nama, harga, foto, **stok opsional**, status tersedia/habis) di dashboard sendiri. Stok `null` = tidak dibatasi; kalau diisi angka, berkurang saat Pesanan `dibayar` & Item hilang dari katalog Pembeli begitu stok 0.
-- [ ] Pembeli scan **QR Lapak** → lihat katalog Item Lapak tsb (tanpa login).
+- [ ] Pembeli scan **QR Menu** → lihat katalog Item Lapak tsb (tanpa login).
 - [ ] Pembeli pilih Item + qty + catatan → Keranjang (di sisi browser) → Checkout.
 - [ ] Saat checkout, Pembeli **wajib isi Nama** (field lain tidak ada). Checkout menampilkan rincian **Subtotal + Biaya Layanan = Total** yang harus dibayar.
 - [ ] Sistem membuat Pesanan berstatus `menunggu_pembayaran` + menampilkan QRIS sejumlah `subtotal + Biaya Layanan`.
@@ -81,7 +81,7 @@ sequenceDiagram
     participant PG as Payment Provider
     participant Ped as Dashboard Pedagang
 
-    P->>App: Scan QR Lapak
+    P->>App: Scan QR Menu
     App-->>P: Tampilkan katalog Item Lapak
     P->>App: Pilih Item, atur qty & catatan
     P->>App: Checkout + isi Nama
@@ -104,7 +104,7 @@ sequenceDiagram
 1. Buka halaman daftar Pedagang → isi nama Lapak, kategori, nama pemilik, kontak (nomor HP), foto/banner.
 2. Buat akun (nomor HP + password — lihat [TEKNOLOGI.md](TEKNOLOGI.md#autentikasi) untuk alasan tanpa OTP di MVP).
 3. Status Lapak `pending` → menunggu Admin approve.
-4. Setelah `approved` → Pedagang bisa login ke dashboard, tambah Item, dan **QR Lapak** aktif (bisa didownload/dicetak).
+4. Setelah `approved` → Pedagang bisa login ke dashboard, tambah Item, dan **QR Menu** aktif (bisa didownload/dicetak).
 5. Pesanan yang masuk sebelum approve tidak mungkin terjadi (QR belum aktif/tidak bisa diakses publik).
 
 ### 6.3. Alur Admin
@@ -120,7 +120,7 @@ sequenceDiagram
 - **MDR QRIS** (biaya gateway ~0–0,7% yang ditagih Midtrans ke Aplikator): **ditanggung Aplikator**, mengurangi margin bersihnya. **Dilarang** di-surcharge ke Pembeli ([PBI 23/6/PBI/2021 Ps. 52](https://peraturan.bpk.go.id/Details/207042/peraturan-bi-no-236pbi2021)) — MDR **tidak pernah** ditambahkan ke tagihan Pembeli. (Beda dari **Biaya Layanan** platform di butir atas, yang boleh di-on-top — analog biaya layanan aplikasi pesan-antar. Framing ini **perlu dikonfirmasi User** ke konsultan/Midtrans sebelum go-live — lihat [BACKLOG.md](BACKLOG.md).)
 - **Model settlement**: **Agregator** — semua pembayaran QRIS masuk ke satu akun Midtrans milik Aplikator; Pedagang **tidak** perlu akun payment gateway sendiri. **Pencairan otomatis** (Fase 6): job harian mentransfer Saldo tiap Pedagang via Midtrans Iris; **biaya transfer per Pencairan ditanggung Pedagang** (dipotong dari nominal cair). Tanpa ambang minimum. Uang cair ke rekening Pedagang **H+1 hari kerja** (sifat siklus settlement QRIS, bukan pilihan MyGerai).
 - **Kedaluwarsa Pesanan**: default 15 menit sejak dibuat jika belum `dibayar`. Dapat dikonfigurasi Admin.
-- **Approval Pedagang**: wajib di-approve Admin sebelum QR Lapak bisa dipakai publik (kontrol kualitas dasar, cegah penyalahgunaan).
+- **Approval Pedagang**: wajib di-approve Admin sebelum QR Menu bisa dipakai publik (kontrol kualitas dasar, cegah penyalahgunaan).
 - **Pembeli tanpa akun**: hanya field **Nama** (bebas isi, tidak diverifikasi) — tidak ada validasi identitas.
 
 ## 8. Risiko & Catatan

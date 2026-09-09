@@ -26,7 +26,7 @@
 | Testing | **Vitest** (unit) + **Playwright** (E2E, alur kritikal: checkout, webhook) | Ringan, cepat, terintegrasi baik dengan Next.js/TypeScript. |
 | Validasi input | **Zod** | Skema validasi type-safe, dipakai di form & server action. |
 | Monitoring error (nanti) | **Sentry** (free tier) | Ditambahkan setelah MVP jalan, bukan blocker awal. |
-| QR Code generator | Library `qrcode` (Node) | Generate QR Lapak (server-side) sebagai gambar untuk diunduh/dicetak Pedagang. |
+| QR Code generator | Library `qrcode` (Node) | Generate QR Menu (server-side) sebagai gambar untuk diunduh/dicetak Pedagang. |
 
 ## Kenapa Bukan Alternatif Lain?
 

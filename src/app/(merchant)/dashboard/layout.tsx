@@ -9,7 +9,7 @@ import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
 import { logoutMerchant } from "@/server/merchants";
 
-// QR Lapak & Profil = tujuan sesekali (cetak QR sekali, atur profil jarang) →
+// QR Menu & Profil = tujuan sesekali (cetak QR sekali, atur profil jarang) →
 // ikon di header, bukan tab bawah. Bottom nav disisakan untuk 4 layar harian.
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Pesanan", icon: "receipt" },
@@ -39,7 +39,7 @@ export default async function DashboardLayout({
           <>
             <Link
               href="/dashboard/qr"
-              aria-label="QR Lapak"
+              aria-label="QR Menu"
               className={HEADER_ICON_CLASS}
             >
               <QrIcon className="size-4" />

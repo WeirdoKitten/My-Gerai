@@ -5,7 +5,7 @@ import { Wordmark } from "@/components/ui/Wordmark";
 const STEPS = [
   {
     icon: QrIcon,
-    title: "Pembeli scan QR Lapak",
+    title: "Pembeli scan QR Menu",
     text: "Tanpa unduh aplikasi, tanpa daftar akun.",
   },
   {

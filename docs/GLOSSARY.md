@@ -15,7 +15,7 @@
 | **Pesanan** | Transaksi resmi yang tercipta saat Pembeli checkout. Setara "order". Punya **Kode Pesanan** dan **Status Pesanan**. |
 | **Kode Pesanan** | Kode pendek unik (mis. `B231`) yang ditampilkan ke Pembeli untuk ditunjukkan/disebutkan ke Pedagang saat mengambil Pesanan. |
 | **Status Pesanan** | Salah satu dari: `menunggu_pembayaran`, `dibayar`, `diproses`, `siap_diambil`, `selesai`, `dibatalkan`, `kedaluwarsa`. Detail lihat [DATA-MODEL.md](DATA-MODEL.md). |
-| **QR Lapak** | QR statis permanen milik satu Lapak, mengarah ke halaman katalog Lapak tsb. Dicetak/ditempel Pedagang di gerobak/lapaknya. |
+| **QR Menu** | QR statis permanen milik satu Lapak, mengarah ke halaman katalog (menu) Lapak tsb. Dicetak/ditempel Pedagang di gerobak atau meja. _(Dulu disebut "QR Lapak" — diganti 2026-09-09 agar lebih jelas ke Pedagang. Identifier kode: `StallQrCode` / `getMerchantQrMenu` / `QrMenuView`.)_ |
 | **QRIS Dinamis** | QR pembayaran unik per Pesanan dengan nominal sesuai total belanja, dibuat saat checkout. Dev/test: **disimulasikan** (`MockPaymentProvider`). Staging/produksi (Fase 6): **nyata via Midtrans** Core API (lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction)). |
 | **Payment Provider** | Lapisan abstraksi kode untuk pembayaran. `MockPaymentProvider` (dev/test) \| `MidtransPaymentProvider` (produksi). Dipilih lewat env `PAYMENT_PROVIDER`. |
 | **Disbursement Provider** | Lapisan abstraksi kode untuk **Pencairan** otomatis. `MockDisbursementProvider` (dev/test) \| `IrisDisbursementProvider` (Midtrans Iris, produksi). Env `DISBURSEMENT_PROVIDER`. |

@@ -35,7 +35,7 @@
 │   │   │       ├── riwayat/page.tsx           # Riwayat Pesanan (status akhir, read-only) — tab terpisah
 │   │   │       ├── laporan/page.tsx           # Laporan Penjualan + kartu asisten rekomendasi (?periode=) — tab terpisah
 │   │   │       ├── produk/page.tsx            # Kelola Item
-│   │   │       ├── qr/page.tsx                # QR Lapak (cetak/unduh) — via ikon QR di header
+│   │   │       ├── qr/page.tsx                # QR Menu (cetak/unduh) — via ikon QR di header
 │   │   │       └── profil/page.tsx            # Profil Lapak (nama/kategori/info rekening) — via ikon Profil di header
 │   │   ├── (admin)/
 │   │   │   └── admin/
@@ -51,9 +51,9 @@
 │   │       ├── webhooks/payout/route.ts       # (target Fase 6b) Callback status Iris (Pencairan)
 │   │       └── cron/disburse/route.ts         # (target Fase 6b) Batch Pencairan harian — guard header CRON_SECRET
 │   ├── components/
-│   │   ├── ui/                                # Primitif desain sistem: Button, ButtonLink, Input, Textarea, Field, Card, Badge, OrderStatusBadge, Alert, QuantityStepper, PageHeader, EmptyState, Spinner, Wordmark, icons — lihat DESAIN-SISTEM.md
+│   │   ├── ui/                                # Primitif desain sistem: Button, ButtonLink, Input, Textarea, Field, Card, Badge, OrderStatusBadge, Alert, QuantityStepper, PageHeader, EmptyState, Spinner, Wordmark, Modal, Toast, CopyButton, icons — lihat DESAIN-SISTEM.md
 │   │   ├── AuthShell.tsx                      # Kerangka halaman login/daftar (wordmark + kartu di tengah)
-│   │   ├── DashboardShell.tsx / DashboardNav.tsx  # Kerangka + nav tab dashboard Pedagang & Admin (header sticky)
+│   │   ├── DashboardShell.tsx / DashboardNav.tsx / LogoutButton.tsx  # Kerangka + nav tab dashboard Pedagang & Admin (header sticky); Keluar pakai konfirmasi Modal
 │   │   ├── buyer/
 │   │   ├── merchant/
 │   │   └── admin/                             # LoginAdminForm, MerchantApprovalList/Row, MerchantStatusBadge, PlatformConfigForm/History, PayoutsManager, dst
