@@ -10,8 +10,7 @@ export default async function MerchantQrPage() {
         <h2 className="text-lg font-semibold text-ink">QR Menu</h2>
         <p className="text-sm text-ink-muted">
           Cetak atau tempel QR ini di gerobak atau meja. Pembeli tinggal scan
-          pakai kamera HP untuk melihat menu dan memesan langsung — tanpa unduh
-          aplikasi, tanpa daftar akun.
+          pakai kamera HP untuk melihat menu dan memesan langsung.
         </p>
       </div>
       {qr ? (
