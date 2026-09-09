@@ -43,7 +43,7 @@ export function LogoutButton({ action }: { action: () => Promise<void> }) {
             </Button>
             <form action={action}>
               <Button type="submit" variant="danger" size="sm">
-                Ya, keluar
+                Keluar
               </Button>
             </form>
           </div>
