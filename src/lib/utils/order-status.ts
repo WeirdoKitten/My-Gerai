@@ -9,6 +9,18 @@ export const FINAL_ORDER_STATUSES: readonly OrderStatus[] = [
   "kedaluwarsa",
 ];
 
+/**
+ * Status Pesanan yang dananya sudah dianggap masuk (Pembeli sudah bayar) —
+ * dipakai untuk Saldo Pedagang (payouts.ts) & laporan penjualan (reports.ts).
+ * `menunggu_pembayaran`/`kedaluwarsa` tidak pernah dihitung sebagai penjualan.
+ */
+export const PAID_ORDER_STATUSES: readonly OrderStatus[] = [
+  "dibayar",
+  "diproses",
+  "siap_diambil",
+  "selesai",
+];
+
 export function isOrderExpired(
   status: OrderStatus,
   expiresAt: Date,

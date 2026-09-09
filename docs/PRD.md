@@ -48,6 +48,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - [ ] Begitu pembayaran terkonfirmasi (webhook Midtrans terverifikasi, atau tombol simulasi) → status jadi `dibayar` → **real-time** muncul di dashboard Pedagang.
 - [ ] Pedagang update status Pesanan: `diproses` → `siap_diambil` → `selesai`.
 - [ ] Pedagang melihat **Riwayat Pesanan** (Pesanan yang sudah `selesai`/`kedaluwarsa`/`dibatalkan`) di tab terpisah dashboard — read-only, terbaru dulu. Riwayat Pesanan **Pembeli** tetap di luar lingkup (§5).
+- [ ] Pedagang melihat **Laporan Penjualan** (tab dashboard): ringkasan omzet/jumlah Pesanan/rata-rata/bagian Pedagang per periode (hari ini / 7 hari / 30 hari) + delta vs periode sebelumnya, penjualan per hari, Item terlaris, plus **kartu "Rekomendasi Asisten"** — saran berbasis aturan (stok, jam ramai/hari sepi, fokus menu, harga/paket). Asisten **bukan AI/LLM**, murni heuristik atas data sendiri (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09). Laporan analitik yang lebih dalam & sisi Admin tetap di luar lingkup (§5).
 - [ ] Pembeli melihat status Pesanannya + **Kode Pesanan** di halaman setelah checkout (di-refresh otomatis/real-time), untuk ditunjukkan ke Pedagang saat mengambil.
 - [ ] Pesanan yang tidak dibayar dalam waktu tertentu → `kedaluwarsa` otomatis (nilai waktu dapat dikonfigurasi Admin, default 15 menit).
 - [ ] Admin: approve/reject Pedagang baru, atur nominal **Biaya Layanan** (default Rp1.000/pesanan sukses), lihat daftar transaksi & **Saldo Pedagang**. **Pencairan berjalan otomatis** (batch harian via Midtrans Iris, Fase 6) — Admin hanya memantau riwayat, tidak mencatat manual.
@@ -63,7 +64,8 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - Multi-Lapak per satu Pedagang.
 - Riwayat Pesanan Pembeli lintas sesi (karena tanpa akun).
 - Notifikasi WhatsApp/SMS ke Pembeli atau Pedagang.
-- Laporan analitik penjualan mendalam.
+- Laporan analitik penjualan **mendalam** (grafik interaktif, ekspor CSV/PDF, segmentasi Pembeli) & laporan agregat lintas-Lapak untuk Admin. _(Laporan Penjualan **ringan** untuk Pedagang + asisten rekomendasi berbasis aturan **sudah masuk lingkup**, lihat §4.)_
+- Asisten/analitik berbasis **LLM** (tanya-jawab bahasa natural atas data penjualan) — asisten yang ada murni mesin aturan, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09.
 - Aplikasi mobile native (MVP = web saja, mobile-first).
 - Multi-bahasa (MVP: Bahasa Indonesia saja).
 - Pengelompokan Lapak per lokasi/pasar fisik.

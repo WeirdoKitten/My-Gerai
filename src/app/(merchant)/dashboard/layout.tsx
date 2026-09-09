@@ -12,6 +12,7 @@ import { logoutMerchant } from "@/server/merchants";
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Pesanan", icon: "receipt" },
   { href: "/dashboard/riwayat", label: "Riwayat", icon: "history" },
+  { href: "/dashboard/laporan", label: "Laporan", icon: "chart" },
   { href: "/dashboard/produk", label: "Item", icon: "tag" },
   { href: "/dashboard/qr", label: "QR Lapak", icon: "qr" },
 ];

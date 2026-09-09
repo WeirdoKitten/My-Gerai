@@ -181,12 +181,15 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 - **Halaman status Pesanan:** Kode Pesanan jadi "hero" (lihat tipografi), badge status di bawahnya. QR pembayaran dalam `Card`. Tombol simulasi = `Button variant="primary" fullWidth`.
 - **Dashboard Pedagang — kartu Pesanan:** Kode Pesanan `text-lg font-bold tabular-nums`, `OrderStatusBadge` di kanan, daftar item ringkas, satu tombol aksi lebar untuk maju status.
 - **Dashboard Pedagang — kartu Riwayat (`MerchantOrderHistoryList`):** susunan sama seperti kartu Pesanan tapi **read-only** (tanpa tombol aksi). Baris identitas "Atas nama X · `<tanggal>`" (tanggal+jam via `formatDateTime`, `src/lib/utils/datetime.ts`, dipatok WIB). Footer `border-t`: kiri label, kanan nominal `font-bold tabular-nums` — "Bagianmu" + `total_for_merchant` untuk Pesanan `selesai`, "Nilai Pesanan" + `subtotal` untuk lainnya.
+- **Laporan Penjualan (`SalesReportView`):** semua Server Component, `flex flex-col gap-5` antar-seksi. (1) **Segmented control periode** — `<Link>` pill dalam wadah `rounded-full border bg-surface p-1`, aktif = `bg-brand-tint text-brand-strong`. (2) **Kartu "Rekomendasi Asisten"** — `<h3>` ber-`LightbulbIcon`, lalu daftar `Card` `flex gap-3`: ikon lampu dalam lingkaran `size-8 bg-brand-tint`, judul `text-sm font-semibold`, isi `text-sm text-ink-muted`. Kalau data belum cukup / belum ada saran → satu `Card` teks abu. (3) **Grid angka 2 kolom** (`Stat`) — label `text-xs text-ink-muted`, nilai `text-lg font-bold tabular-nums`, delta `text-[11px] font-semibold` warna `text-success` (▲) / `text-danger` (▼). (4) **Bar penjualan per hari & bar % Item** — CSS murni (bukan library chart): isian `bg-brand`, tumbuh dari baseline kiri, ujung data `rounded-r-[3px]`; nilai sebagai label teks di ujung (bukan tooltip — halaman Server Component, semua angka sudah terlihat). Label & angka pakai token ink, tidak pernah warna bar (lihat skill `dataviz`).
 - **Foto:** selalu `next/image`, `object-cover`, rasio tetap (`aspect-square` untuk Item). Jangan render `<img>` mentah kecuali data URI (QR).
 - **Angka uang:** selalu lewat `formatRupiah` + kelas `tabular-nums`.
 
 ## 6. Ikon
 
-Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `settings`, `wallet`, `user`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
+Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `chart` (tab Laporan), `lightbulb` (kartu asisten), `settings`, `wallet`, `user`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
+
+**Bottom nav Pedagang = 5 tab** (Pesanan · Riwayat · Laporan · Item · QR Lapak) — masih muat di `max-w-md`; label `text-[11px]`. Kalau nanti perlu tab ke-6, pindahkan salah satu ke tombol header (pola "Profil").
 
 ## 7. Yang dihindari
 

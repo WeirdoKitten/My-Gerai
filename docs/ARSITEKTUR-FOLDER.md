@@ -33,6 +33,7 @@
 │   │   │   └── dashboard/
 │   │   │       ├── page.tsx                   # Daftar Pesanan masuk (polling)
 │   │   │       ├── riwayat/page.tsx           # Riwayat Pesanan (status akhir, read-only) — tab terpisah
+│   │   │       ├── laporan/page.tsx           # Laporan Penjualan + kartu asisten rekomendasi (?periode=) — tab terpisah
 │   │   │       ├── produk/page.tsx            # Kelola Item
 │   │   │       ├── qr/page.tsx                # QR Lapak (tab terpisah — cetak/unduh)
 │   │   │       └── profil/page.tsx            # Profil Lapak (nama/kategori/info rekening) — via tombol "Profil" di header
@@ -62,7 +63,8 @@
 │   │   ├── merchants.ts                       # + listMerchantsForAdmin/approveMerchant/rejectMerchant (Fase 4)
 │   │   ├── admins.ts                          # loginAdmin/logoutAdmin (Fase 4, tidak ada di rencana awal)
 │   │   ├── config.ts                          # getActivePlatformConfig (dipakai bareng alur Pembeli) + update & histori (Admin)
-│   │   └── payouts.ts                         # Saldo Pedagang (formula payout_id IS NULL) + runDisbursementBatch (Fase 6) + laporan
+│   │   ├── payouts.ts                         # Saldo Pedagang (formula payout_id IS NULL) + runDisbursementBatch (Fase 6) + laporan
+│   │   └── reports.ts                         # getMerchantSalesReport(period) — agregat penjualan Lapak sendiri + rekomendasi asisten
 │   ├── lib/
 │   │   ├── db/                                # Drizzle schema & client
 │   │   │   ├── schema.ts
@@ -70,6 +72,7 @@
 │   │   │   ├── seed.ts                        # Data contoh untuk dev lokal (guard: hanya boleh ke localhost, pakai TRUNCATE)
 │   │   │   ├── migrate.ts                     # Migrasi produksi (migrator drizzle-orm) — di-bundle jadi scripts/migrate.mjs oleh Dockerfile
 │   │   │   ├── seed-demo.ts                   # Seed demo server: idempoten, TANPA TRUNCATE — jalan otomatis bila SEED_DEMO=true
+│   │   │   ├── seed-orders.ts                 # DEV: ±150 Pesanan historis 30 hari untuk halaman Laporan (pnpm db:seed:orders, guard localhost, idempoten)
 │   │   │   └── create-admin.ts                # Buat 1 akun Admin manual (pnpm admin:create / node scripts/create-admin.mjs)
 │   │   ├── payment/                           # Payment Provider abstraction
 │   │   │   ├── types.ts                       # interface PaymentProvider
@@ -86,6 +89,7 @@
 │   │   ├── auth/                              # Hash password (scrypt) & sesi login: session.ts (Pedagang), admin-session.ts (Admin, Fase 4)
 │   │   ├── rate-limit/                        # limiter.ts (Fase 5, tidak ada di rencana awal) — fixed-window in-memory
 │   │   ├── realtime/                          # (target) belum dipakai — status Pesanan/dashboard masih polling langsung di komponen
+│   │   ├── report/                            # insights.ts (mesin aturan asisten — fungsi pure, TANPA LLM), period.ts (resolusi periode + kunci tanggal WIB)
 │   │   ├── validation/                        # Skema Zod
 │   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan)
 │   └── types/                                 # Tipe TypeScript bersama
@@ -98,7 +102,7 @@
 ├── vitest.config.mts                          # Config Vitest (Fase 5) — alias @/*, environment node
 ├── playwright.config.ts                       # Config Playwright E2E (Fase 5) — DB terpisah (mygerai_test), port 3100
 ├── tests/
-│   ├── unit/                                  # order-calc, order-status, money, datetime — Vitest, `pnpm test`
+│   ├── unit/                                  # order-calc, order-status, money, datetime, report-insights, report-period — Vitest, `pnpm test`
 │   └── e2e/                                   # order-flow (checkout+alur Pedagang), rate-limit, global-setup.ts — Playwright, `pnpm test:e2e`
 └── public/
     └── img/menu/                              # Foto demo Item (dipakai seeder) — bakso, mie-ayam, es-teh, nasi-goreng, pangsit

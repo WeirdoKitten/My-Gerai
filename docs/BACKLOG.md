@@ -116,6 +116,17 @@
 - [x] `src/lib/utils/datetime.ts` — `formatDateTime` (`Intl.DateTimeFormat("id-ID")` medium+short), dipatok `timeZone: "Asia/Jakarta"` supaya timestamp yang dirender server (kontainer UTC) tetap tampil jam WIB.
 - [x] Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (57, +2 `tests/unit/datetime.test.ts`) lulus; `pnpm test:e2e` (3) lulus — `order-flow` diperluas: sesudah "Tandai Selesai" → buka tab Riwayat → Pesanan muncul dengan badge "Selesai" + "Bagianmu". Cek visual browser (Playwright, mobile): 2 Pesanan `selesai` + 1 `kedaluwarsa` tampil benar.
 
+## Laporan Penjualan + Asisten Rekomendasi (Pedagang) ✅
+
+> Pedagang belum punya cara melihat performa Lapak. Fitur ini = versi **ringan** dari "Laporan analitik" (dulu Ide Masa Depan). Sisi **Pedagang saja** — laporan Admin & analitik mendalam tetap di luar lingkup. Asisten = **mesin aturan deterministik, bukan LLM** (keputusan User, AskUserQuestion 2026-09-09; [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09). **Tanpa perubahan skema** — query agregat read-only atas `orders`/`order_items`.
+
+- [x] `src/server/reports.ts` — `getMerchantSalesReport(period)` (`"use server"`, identitas Lapak dari sesi). Query agregat (`sql`/`groupBy`/`mapWith(Number)` ala `payouts.ts`) paralel: ringkasan periode + periode sebelumnya (delta %), penjualan per hari, Item terlaris, dan agregat khusus asisten (per-Item 7h/30h + laku terakhir, per jam, per hari-dalam-minggu, pasangan co-occurrence). Filter penjualan = `PAID_ORDER_STATUSES` (diekstrak ke `order-status.ts`, dipakai bareng `payouts.ts`). Semua bucket waktu dipatok `Asia/Jakarta`.
+- [x] `src/lib/report/insights.ts` — mesin aturan (fungsi pure, tanpa DB). 7 rule ber-ambang: `restock`, `item_mati`, `jam_ramai`, `hari_sepi`, `fokus_menu` (Pareto 80%), `sering_bareng`, `harga`. Gerbang data global: `< 20` Pesanan dibayar / riwayat `< 7` hari → `[]` (UI tampilkan pesan "kumpulkan data dulu"). `src/lib/report/period.ts` — resolusi periode + kunci tanggal WIB (pure, teruji).
+- [x] Halaman `/dashboard/laporan` + `SalesReportView` (Server Component). Segmented control periode (`?periode=hari_ini|7_hari|30_hari`, default 7). Kartu "Rekomendasi Asisten" (maks 4, urut prioritas) di atas; grid 4 angka + delta; bar penjualan per hari (CSS, bukan library — konsul skill `dataviz`); tabel Item terlaris + bar % kontribusi.
+- [x] Tab **"Laporan"** (ikon `ChartIcon`; kartu asisten pakai `LightbulbIcon`) di `DashboardNav` → jadi **5 tab**: Pesanan · Riwayat · Laporan · Item · QR Lapak (muat di viewport HP, diverifikasi visual). Letak dikonfirmasi User (AskUserQuestion 2026-09-09).
+- [x] `src/lib/db/seed-orders.ts` + `pnpm db:seed:orders` (dev, guard localhost, idempoten via penanda `buyerNote`) — ±150 Pesanan historis 30 hari dengan pola sengaja (Bakso Urat terlaris, Pangsit "mati", puncak makan siang, Rabu sepi, kombo Bakso Urat + Es Teh).
+- [x] Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (85, +28: `report-insights` + `report-period`) lulus; `pnpm test:e2e` (3) lulus — `order-flow` diperluas cek tab Laporan (Omzet + pesan asisten-menunggu-data). Cek visual browser (Playwright, mobile) dengan `db:seed:orders`: ke-3 periode benar, delta ▲/▼ warna benar, 4 kartu asisten sesuai pola seed (restock Mie Ayam, jam 12–13 42%, Rabu sepi, kombo Bakso Urat+Es Teh).
+
 ## Fase 6 — Payment Nyata (Midtrans) + Pencairan Otomatis ("Model B")
 
 > Ground truth: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08 (4 baris) + §Alur Data Pencairan Otomatis, [TEKNOLOGI.md §Payment Provider & Disbursement Provider Abstraction](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [DATA-MODEL.md](DATA-MODEL.md). Branch: `feat/payment-midtrans-model-b`. Keputusan uang dikonfirmasi User (AskUserQuestion 2026-09-08): MDR ditanggung Aplikator (tak pernah ke Pembeli), biaya transfer Iris ditanggung Pedagang, Pencairan harian tanpa ambang, Pencairan manual dihapus (di 6b).
@@ -187,6 +198,6 @@
 - [ ] Varian Item (ukuran, level pedas, dll).
 - [ ] Multi-Lapak per Pedagang.
 - [ ] Notifikasi WhatsApp ke Pedagang saat ada Pesanan baru.
-- [ ] Laporan analitik penjualan (harian/mingguan) untuk Pedagang & Admin.
+- [x] ~~Laporan analitik penjualan (harian/mingguan) untuk Pedagang~~ — **selesai 2026-09-09** (versi ringan + asisten aturan, lihat seksi "Laporan Penjualan + Asisten Rekomendasi"). Sisa: laporan **Admin** lintas-Lapak, analitik mendalam, ekspor, asisten LLM — masih ide masa depan.
 - [ ] PWA "Add to Home Screen" untuk halaman Pembeli.
 - [ ] Pengelompokan Lapak per lokasi/pasar fisik.

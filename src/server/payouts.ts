@@ -5,6 +5,7 @@ import { getAdminSession } from "@/lib/auth/admin-session";
 import { db } from "@/lib/db/client";
 import { merchants, orders, payouts } from "@/lib/db/schema";
 import { formatRupiah } from "@/lib/utils/money";
+import { PAID_ORDER_STATUSES } from "@/lib/utils/order-status";
 import {
   type RecordPayoutInput,
   recordPayoutSchema,
@@ -16,12 +17,7 @@ import type {
 } from "@/types/payout";
 
 /** Status Pesanan yang dananya sudah dianggap milik Pedagang (lihat DATA-MODEL.md §payouts). */
-const BALANCE_ELIGIBLE_STATUSES = [
-  "dibayar",
-  "diproses",
-  "siap_diambil",
-  "selesai",
-] as const;
+const BALANCE_ELIGIBLE_STATUSES = [...PAID_ORDER_STATUSES];
 
 /**
  * Saldo Pedagang saat ini = SUM(orders.total_for_merchant status eligible)

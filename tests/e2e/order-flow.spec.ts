@@ -78,5 +78,15 @@ test.describe
         historyCard.getByText("Selesai", { exact: true }),
       ).toBeVisible();
       await expect(historyCard.getByText("Bagianmu")).toBeVisible();
+
+      // Laporan Penjualan menghitung Pesanan yang sudah dibayar; dengan 1
+      // Pesanan asisten masih menunggu data (ambang belum tercapai).
+      await page.getByRole("link", { name: "Laporan" }).click();
+      await expect(page).toHaveURL(/\/dashboard\/laporan/);
+      await expect(
+        page.getByRole("heading", { name: "Laporan Penjualan" }),
+      ).toBeVisible();
+      await expect(page.getByText("Omzet")).toBeVisible();
+      await expect(page.getByText(/Asisten butuh setidaknya/)).toBeVisible();
     });
   });
