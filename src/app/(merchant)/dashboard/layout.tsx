@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UserIcon } from "@/components/ui/icons";
+import { ToastProvider } from "@/components/ui/Toast";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
 import { logoutMerchant } from "@/server/merchants";
@@ -23,21 +24,23 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   return (
-    <DashboardShell
-      brand={<Wordmark label={session.stallName} className="text-sm" />}
-      nav={NAV}
-      logoutAction={logoutMerchant}
-      headerAction={
-        <Link
-          href="/dashboard/profil"
-          aria-label="Profil Lapak"
-          className="flex size-9 items-center justify-center rounded-control border border-line text-ink-muted transition-colors hover:bg-bg hover:text-ink"
-        >
-          <UserIcon className="size-4" />
-        </Link>
-      }
-    >
-      {children}
-    </DashboardShell>
+    <ToastProvider>
+      <DashboardShell
+        brand={<Wordmark label={session.stallName} className="text-sm" />}
+        nav={NAV}
+        logoutAction={logoutMerchant}
+        headerAction={
+          <Link
+            href="/dashboard/profil"
+            aria-label="Profil Lapak"
+            className="flex size-9 items-center justify-center rounded-control border border-line text-ink-muted transition-colors hover:bg-bg hover:text-ink"
+          >
+            <UserIcon className="size-4" />
+          </Link>
+        }
+      >
+        {children}
+      </DashboardShell>
+    </ToastProvider>
   );
 }

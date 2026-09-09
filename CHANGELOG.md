@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-09 — Toast konfirmasi saat Pedagang ubah status Pesanan
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§3 komponen `Toast`), kode (`src/app/(merchant)/dashboard/layout.tsx`, `src/components/merchant/MerchantOrderCard.tsx`, `tests/e2e/order-flow.spec.ts`)
+**Alasan:** User minta pop-up notifikasi saat Pedagang klik tombol "Tandai …" (Diproses/Siap Diambil/Selesai), sama seperti toast "Item ditambahkan" di sisi Pembeli.
+**Ringkasan:**
+- `ToastProvider` yang sudah ada (`ui/Toast.tsx`) kini juga dimount di `(merchant)/dashboard/layout.tsx` — sebelumnya hanya di `(buyer)/layout.tsx`.
+- `MerchantOrderCard`: setelah `updateOrderStatus` sukses → `showToast("Pesanan <kode> ditandai <status baru>")` sebelum `onUpdated()`. Toast dipasang di level layout supaya tetap tampil walau kartu langsung hilang dari daftar (mis. saat "Tandai Selesai" → Pesanan keluar dari daftar aktif).
+- Tanpa perubahan server / data model — murni umpan balik UI.
+- Diverifikasi: `tsc`/`lint`/`pnpm test` (55) lulus; `pnpm test:e2e order-flow` (2) lulus dengan asersi toast baru.
+
 ## 2026-09-08 — Fase 6a: payment QRIS nyata via Midtrans (kode selesai, tinggal uji sandbox)
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md), kode (`drizzle/0004_fixed_electro.sql`, `src/lib/db/schema.ts`, `src/lib/payment/{types,index,mock-provider,midtrans-provider,settle}.ts`, `src/app/api/webhooks/payment/route.ts` baru, `src/server/orders.ts`, `src/types/order.ts`, `src/components/buyer/{OrderStatusView,CartSummary}.tsx`, `tests/unit/payment-midtrans.test.ts` baru)

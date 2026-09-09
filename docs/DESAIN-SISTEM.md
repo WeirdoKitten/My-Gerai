@@ -144,7 +144,7 @@ Peta status → tone (pakai label dari `ORDER_STATUS_LABEL_ID` yang sudah ada):
 ```
 
 ### `Toast.tsx`
-Notifikasi ringan sekali-lewat (`ToastProvider` + `useToast()`). Pil `bg-ink text-white` di `fixed top-4` tengah, `pointer-events-none`, slide-in dari atas + fade-out (`@keyframes toast-in`/`toast-out` di globals.css, `motion-safe:`), auto-hilang ~2,1 dtk. Satu toast aktif. Dipakai untuk "Item ditambahkan" (tombol "Tambah" **tidak** berubah label). `ToastProvider` dimount di `(buyer)/layout.tsx`.
+Notifikasi ringan sekali-lewat (`ToastProvider` + `useToast()`). Pil `bg-ink text-white` di `fixed top-4` tengah, `pointer-events-none`, slide-in dari atas + fade-out (`@keyframes toast-in`/`toast-out` di globals.css, `motion-safe:`), auto-hilang ~2,1 dtk. Satu toast aktif. Dipakai untuk "Item ditambahkan" di sisi Pembeli (tombol "Tambah" **tidak** berubah label) dan konfirmasi ubah status Pesanan di dashboard Pedagang ("Pesanan XXXX ditandai Diproses"). `ToastProvider` dimount di `(buyer)/layout.tsx` dan `(merchant)/dashboard/layout.tsx`.
 
 ### `Modal.tsx`
 Dialog berbasis `<dialog>` bawaan (Esc + focus-trap + backdrop gratis). Panel `max-w-lg`, header (judul + tombol ✕), body `max-h-[75vh] overflow-y-auto`. Klik backdrop menutup. Dipakai untuk form Tambah/Ubah Item (bukan inline lagi).

@@ -52,6 +52,9 @@ test.describe
       // update sukses (lupa reset state `submitting`) — lihat CHANGELOG.md.
       await card.getByRole("button", { name: "Tandai Diproses" }).click();
       await expect(
+        page.getByText(`Pesanan ${orderCode} ditandai Diproses`),
+      ).toBeVisible();
+      await expect(
         card.getByRole("button", { name: "Tandai Siap Diambil" }),
       ).toBeVisible();
 

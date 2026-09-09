@@ -5,10 +5,12 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
+import { useToast } from "@/components/ui/Toast";
 import { formatRupiah } from "@/lib/utils/money";
 import {
   MERCHANT_ACTION_LABEL_ID,
   nextMerchantStatus,
+  ORDER_STATUS_LABEL_ID,
 } from "@/lib/utils/order-status";
 import { updateOrderStatus } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
@@ -20,6 +22,7 @@ export function MerchantOrderCard({
   order: MerchantOrderListItem;
   onUpdated: () => void;
 }) {
+  const { showToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +40,9 @@ export function MerchantOrderCard({
       return;
     }
     setSubmitting(false);
+    showToast(
+      `Pesanan ${order.orderCode} ditandai ${ORDER_STATUS_LABEL_ID[upcoming]}`,
+    );
     onUpdated();
   }
 
