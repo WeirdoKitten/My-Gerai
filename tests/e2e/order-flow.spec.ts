@@ -65,5 +65,18 @@ test.describe
 
       await card.getByRole("button", { name: "Tandai Selesai" }).click();
       await expect(page.getByText(orderCode, { exact: true })).toHaveCount(0);
+
+      // Pesanan yang selesai pindah dari daftar aktif ke tab Riwayat.
+      await page.getByRole("link", { name: "Riwayat" }).click();
+      await expect(page).toHaveURL(/\/dashboard\/riwayat$/);
+
+      const historyCard = page
+        .getByText(orderCode, { exact: true })
+        .locator("xpath=ancestor::*[contains(@class,'rounded-card')][1]");
+      await expect(historyCard).toBeVisible();
+      await expect(
+        historyCard.getByText("Selesai", { exact: true }),
+      ).toBeVisible();
+      await expect(historyCard.getByText("Bagianmu")).toBeVisible();
     });
   });

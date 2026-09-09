@@ -70,6 +70,25 @@ export type MerchantOrderListItem = {
 
 export type UpdateOrderStatusResult = { ok: boolean; message?: string };
 
+/**
+ * Bentuk hasil daftar Riwayat Pesanan untuk dashboard Pedagang — Pesanan milik
+ * Lapak sendiri yang sudah berstatus akhir (`selesai`/`kedaluwarsa`/`dibatalkan`),
+ * read-only, tanpa field internal seperti `merchantId`.
+ */
+export type MerchantOrderHistoryItem = {
+  id: string;
+  orderCode: string;
+  status: Order["status"];
+  buyerName: string;
+  subtotal: number;
+  platformFeeSnapshot: number;
+  totalForMerchant: number;
+  createdAt: Date;
+  paidAt: Date | null;
+  completedAt: Date | null;
+  items: MerchantOrderItemView[];
+};
+
 /** Bentuk hasil daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi). */
 export type AdminOrderListItem = {
   id: string;

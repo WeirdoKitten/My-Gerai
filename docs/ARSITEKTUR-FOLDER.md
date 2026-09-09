@@ -32,6 +32,7 @@
 │   │   │   ├── daftar/page.tsx                # Onboarding Pedagang baru
 │   │   │   └── dashboard/
 │   │   │       ├── page.tsx                   # Daftar Pesanan masuk (polling)
+│   │   │       ├── riwayat/page.tsx           # Riwayat Pesanan (status akhir, read-only) — tab terpisah
 │   │   │       ├── produk/page.tsx            # Kelola Item
 │   │   │       ├── qr/page.tsx                # QR Lapak (tab terpisah — cetak/unduh)
 │   │   │       └── profil/page.tsx            # Profil Lapak (nama/kategori/info rekening) — via tombol "Profil" di header
@@ -86,7 +87,7 @@
 │   │   ├── rate-limit/                        # limiter.ts (Fase 5, tidak ada di rencana awal) — fixed-window in-memory
 │   │   ├── realtime/                          # (target) belum dipakai — status Pesanan/dashboard masih polling langsung di komponen
 │   │   ├── validation/                        # Skema Zod
-│   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan)
+│   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan)
 │   └── types/                                 # Tipe TypeScript bersama
 ├── drizzle/                                   # File migrasi database
 ├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi
@@ -97,7 +98,7 @@
 ├── vitest.config.mts                          # Config Vitest (Fase 5) — alias @/*, environment node
 ├── playwright.config.ts                       # Config Playwright E2E (Fase 5) — DB terpisah (mygerai_test), port 3100
 ├── tests/
-│   ├── unit/                                  # order-calc, order-status, money — Vitest, `pnpm test`
+│   ├── unit/                                  # order-calc, order-status, money, datetime — Vitest, `pnpm test`
 │   └── e2e/                                   # order-flow (checkout+alur Pedagang), rate-limit, global-setup.ts — Playwright, `pnpm test:e2e`
 └── public/
     └── img/menu/                              # Foto demo Item (dipakai seeder) — bakso, mie-ayam, es-teh, nasi-goreng, pangsit

@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  HistoryIcon,
   QrIcon,
   ReceiptIcon,
   SettingsIcon,
@@ -22,6 +23,7 @@ const ICONS = {
   store: StoreIcon,
   settings: SettingsIcon,
   wallet: WalletIcon,
+  history: HistoryIcon,
 } as const;
 
 export type NavItem = {

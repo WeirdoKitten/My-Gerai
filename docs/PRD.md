@@ -47,6 +47,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
   - **Dev/test: disimulasikan** (`MockPaymentProvider`, tombol "Simulasikan Pembayaran Berhasil"). **Staging/produksi (Fase 6): QRIS dinamis nyata via Midtrans** (Core API), dipilih lewat env `PAYMENT_PROVIDER`. Lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08, [BACKLOG.md](BACKLOG.md) Fase 6.
 - [ ] Begitu pembayaran terkonfirmasi (webhook Midtrans terverifikasi, atau tombol simulasi) → status jadi `dibayar` → **real-time** muncul di dashboard Pedagang.
 - [ ] Pedagang update status Pesanan: `diproses` → `siap_diambil` → `selesai`.
+- [ ] Pedagang melihat **Riwayat Pesanan** (Pesanan yang sudah `selesai`/`kedaluwarsa`/`dibatalkan`) di tab terpisah dashboard — read-only, terbaru dulu. Riwayat Pesanan **Pembeli** tetap di luar lingkup (§5).
 - [ ] Pembeli melihat status Pesanannya + **Kode Pesanan** di halaman setelah checkout (di-refresh otomatis/real-time), untuk ditunjukkan ke Pedagang saat mengambil.
 - [ ] Pesanan yang tidak dibayar dalam waktu tertentu → `kedaluwarsa` otomatis (nilai waktu dapat dikonfigurasi Admin, default 15 menit).
 - [ ] Admin: approve/reject Pedagang baru, atur nominal **Biaya Layanan** (default Rp1.000/pesanan sukses), lihat daftar transaksi & **Saldo Pedagang**. **Pencairan berjalan otomatis** (batch harian via Midtrans Iris, Fase 6) — Admin hanya memantau riwayat, tidak mencatat manual.

@@ -106,6 +106,16 @@
 - [ ] **Langkah Dokploy (User)**: `mygerai-app` → Advanced → Volumes → Volume Mount (named, mis. `mygerai_uploads`) → Mount Path `/app/uploads`. **Wajib sebelum deploy versi ini**, kalau tidak foto hilang tiap redeploy.
 - [ ] Foto Lapak (`merchants.photo_url`) — mekanisme sama, belum dikerjakan.
 
+## Riwayat Pesanan Pedagang ✅
+
+> Sebelumnya begitu Pesanan `selesai`/`kedaluwarsa`, ia langsung hilang dari dashboard tanpa jejak. Ini murni sisi **Pedagang** — Riwayat Pesanan **Pembeli** tetap di luar lingkup ([PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd), Pembeli tanpa akun).
+
+- [x] `listMerchantOrderHistory` (`src/server/orders.ts`): Pesanan milik Lapak sendiri (identitas dari sesi login) berstatus akhir (`FINAL_ORDER_STATUSES` = `selesai`/`kedaluwarsa`/`dibatalkan`), terbaru dulu, dibatasi 50 (skala kaki lima — KISS). Tipe baru `MerchantOrderHistoryItem` (bawa uang: `subtotal`/`platformFeeSnapshot`/`totalForMerchant` + `completedAt`/`paidAt`), tanpa field internal (`merchantId` dst).
+- [x] Halaman `/dashboard/riwayat` + `MerchantOrderHistoryList` — Server Component, read-only, tanpa polling. Kartu: Kode Pesanan + `OrderStatusBadge`, "Atas nama X · <tanggal>", daftar Item, lalu "Bagianmu <total_for_merchant>" (kalau `selesai`) atau "Nilai Pesanan <subtotal>" (kalau tidak); baris kecil "Total dibayar Pembeli … · Biaya Layanan …" hanya untuk `selesai`.
+- [x] Tab **"Riwayat"** (ikon `HistoryIcon` baru) di `DashboardNav` → jadi 4 tab: Pesanan · Riwayat · Item · QR Lapak.
+- [x] `src/lib/utils/datetime.ts` — `formatDateTime` (`Intl.DateTimeFormat("id-ID")` medium+short), dipatok `timeZone: "Asia/Jakarta"` supaya timestamp yang dirender server (kontainer UTC) tetap tampil jam WIB.
+- [x] Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (57, +2 `tests/unit/datetime.test.ts`) lulus; `pnpm test:e2e` (3) lulus — `order-flow` diperluas: sesudah "Tandai Selesai" → buka tab Riwayat → Pesanan muncul dengan badge "Selesai" + "Bagianmu". Cek visual browser (Playwright, mobile): 2 Pesanan `selesai` + 1 `kedaluwarsa` tampil benar.
+
 ## Fase 6 — Payment Nyata (Midtrans) + Pencairan Otomatis ("Model B")
 
 > Ground truth: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08 (4 baris) + §Alur Data Pencairan Otomatis, [TEKNOLOGI.md §Payment Provider & Disbursement Provider Abstraction](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [DATA-MODEL.md](DATA-MODEL.md). Branch: `feat/payment-midtrans-model-b`. Keputusan uang dikonfirmasi User (AskUserQuestion 2026-09-08): MDR ditanggung Aplikator (tak pernah ke Pembeli), biaya transfer Iris ditanggung Pedagang, Pencairan harian tanpa ambang, Pencairan manual dihapus (di 6b).

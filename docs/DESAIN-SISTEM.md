@@ -180,12 +180,13 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 - **Floating cart bar:** pill mengambang `fixed inset-x-4 bottom-4 mx-auto max-w-md h-14 rounded-full bg-brand-strong text-white shadow-card px-5`, kiri "N item", kanan harga `tabular-nums` + ikon panah. Muncul hanya kalau keranjang berisi.
 - **Halaman status Pesanan:** Kode Pesanan jadi "hero" (lihat tipografi), badge status di bawahnya. QR pembayaran dalam `Card`. Tombol simulasi = `Button variant="primary" fullWidth`.
 - **Dashboard Pedagang — kartu Pesanan:** Kode Pesanan `text-lg font-bold tabular-nums`, `OrderStatusBadge` di kanan, daftar item ringkas, satu tombol aksi lebar untuk maju status.
+- **Dashboard Pedagang — kartu Riwayat (`MerchantOrderHistoryList`):** susunan sama seperti kartu Pesanan tapi **read-only** (tanpa tombol aksi). Baris identitas "Atas nama X · `<tanggal>`" (tanggal+jam via `formatDateTime`, `src/lib/utils/datetime.ts`, dipatok WIB). Footer `border-t`: kiri label, kanan nominal `font-bold tabular-nums` — "Bagianmu" + `total_for_merchant` untuk Pesanan `selesai`, "Nilai Pesanan" + `subtotal` untuk lainnya.
 - **Foto:** selalu `next/image`, `object-cover`, rasio tetap (`aspect-square` untuk Item). Jangan render `<img>` mentah kecuali data URI (QR).
 - **Angka uang:** selalu lewat `formatRupiah` + kelas `tabular-nums`.
 
 ## 6. Ikon
 
-Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — perkiraan yang dibutuhkan: `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
+Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `settings`, `wallet`, `user`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
 
 ## 7. Yang dihindari
 

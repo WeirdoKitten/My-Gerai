@@ -2,6 +2,18 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-09 — Riwayat Pesanan untuk Pedagang
+
+**Dampak:** [docs/PRD.md](docs/PRD.md) (§4 scope), [docs/BACKLOG.md](docs/BACKLOG.md) (seksi baru "Riwayat Pesanan Pedagang"), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 kartu Riwayat, §6 ikon), kode (`src/app/(merchant)/dashboard/riwayat/page.tsx` baru, `src/components/merchant/MerchantOrderHistoryList.tsx` baru, `src/lib/utils/datetime.ts` baru, `src/server/orders.ts`, `src/types/order.ts`, `src/components/ui/icons.tsx`, `src/components/DashboardNav.tsx`, `src/app/(merchant)/dashboard/layout.tsx`, `tests/unit/datetime.test.ts` baru, `tests/e2e/order-flow.spec.ts`)
+**Alasan:** User minta fitur riwayat pesanan. Lewat AskUserQuestion dipastikan sasarannya **Pedagang** (bukan Pembeli — riwayat Pesanan Pembeli lintas sesi tetap di luar lingkup, PRD §5, karena Pembeli tanpa akun). Sebelumnya begitu Pesanan `selesai`/`kedaluwarsa` ia langsung hilang dari dashboard tanpa jejak.
+**Ringkasan:**
+- **Tab "Riwayat" baru** di `DashboardNav` Pedagang (ikon `HistoryIcon` baru) → 4 tab: Pesanan · Riwayat · Item · QR Lapak.
+- **`listMerchantOrderHistory`** (`src/server/orders.ts`): Pesanan milik Lapak sendiri (identitas dari sesi) berstatus akhir (`FINAL_ORDER_STATUSES` = `selesai`/`kedaluwarsa`/`dibatalkan`), `createdAt` desc, `limit 50`. Tipe baru `MerchantOrderHistoryItem` — bawa `subtotal`/`platformFeeSnapshot`/`totalForMerchant` + `completedAt`/`paidAt`, tanpa field internal.
+- **Halaman `/dashboard/riwayat`** + `MerchantOrderHistoryList` — Server Component, read-only, **tanpa polling** (beda dari daftar Pesanan aktif yang polling 5 dtk). Kartu: "Bagianmu <total_for_merchant>" untuk `selesai`, "Nilai Pesanan <subtotal>" untuk lainnya.
+- **`src/lib/utils/datetime.ts`** — `formatDateTime` (`Intl.DateTimeFormat("id-ID")` medium+short) dipatok `timeZone: "Asia/Jakarta"` supaya timestamp yang dirender server (kontainer UTC di produksi) tampil jam WIB, bukan UTC.
+- Tanpa perubahan skema/migrasi — semua kolom (`completed_at` dst) sudah ada.
+- **Diverifikasi:** `tsc` / `lint` / `build` / `pnpm test` (57, +2 `datetime.test.ts`) lulus; `pnpm test:e2e` (3) lulus — `order-flow` diperluas: sesudah "Tandai Selesai" → buka tab Riwayat → Pesanan muncul dengan badge "Selesai" + label "Bagianmu". Cek visual browser (Playwright, viewport HP): 2 Pesanan `selesai` + 1 `kedaluwarsa` tampil benar, nav 4 tab muat.
+
 ## 2026-09-09 — Toast konfirmasi saat Pedagang ubah status Pesanan
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§3 komponen `Toast`), kode (`src/app/(merchant)/dashboard/layout.tsx`, `src/components/merchant/MerchantOrderCard.tsx`, `tests/e2e/order-flow.spec.ts`)

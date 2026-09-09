@@ -27,6 +27,7 @@ import {
 } from "@/lib/utils/order-calc";
 import { generateOrderCode } from "@/lib/utils/order-code";
 import {
+  FINAL_ORDER_STATUSES,
   isOrderExpired,
   nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
@@ -41,11 +42,15 @@ import type {
   AdminOrderListItem,
   BuyerOrderStatusView,
   CreateOrderResult,
+  MerchantOrderHistoryItem,
   MerchantOrderListItem,
   Order,
   SimulatePaymentResult,
   UpdateOrderStatusResult,
 } from "@/types/order";
+
+/** Jumlah maksimum Pesanan yang ditampilkan di Riwayat (skala kaki lima — KISS). */
+const MERCHANT_HISTORY_LIMIT = 50;
 
 /** Kode Pesanan unik per Lapak per hari (lokal), retry maks 5x kalau tabrakan. */
 async function generateUniqueOrderCode(merchantId: string): Promise<string> {
@@ -398,6 +403,59 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
     buyerName: order.buyerName,
     buyerNote: order.buyerNote,
     createdAt: order.createdAt,
+    items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
+      id: item.id,
+      productNameSnapshot: item.productNameSnapshot,
+      priceSnapshot: item.priceSnapshot,
+      qty: item.qty,
+      note: item.note,
+    })),
+  }));
+}
+
+/**
+ * Riwayat Pesanan milik Lapak sendiri — hanya Pesanan berstatus akhir
+ * (`selesai`/`kedaluwarsa`/`dibatalkan`), read-only, terbaru dulu, dibatasi
+ * {@link MERCHANT_HISTORY_LIMIT}. Identitas Lapak dari sesi login.
+ */
+export async function listMerchantOrderHistory(): Promise<
+  MerchantOrderHistoryItem[]
+> {
+  const session = await getMerchantSession();
+  if (!session) return [];
+
+  const pastOrders = await db.query.orders.findMany({
+    where: and(
+      eq(orders.merchantId, session.merchantId),
+      inArray(orders.status, [...FINAL_ORDER_STATUSES]),
+    ),
+    orderBy: (row, { desc }) => [desc(row.createdAt)],
+    limit: MERCHANT_HISTORY_LIMIT,
+  });
+  if (pastOrders.length === 0) return [];
+
+  const orderIds = pastOrders.map((order) => order.id);
+  const items = await db.query.orderItems.findMany({
+    where: inArray(orderItems.orderId, orderIds),
+  });
+  const itemsByOrderId = new Map<string, typeof items>();
+  for (const item of items) {
+    const list = itemsByOrderId.get(item.orderId) ?? [];
+    list.push(item);
+    itemsByOrderId.set(item.orderId, list);
+  }
+
+  return pastOrders.map((order) => ({
+    id: order.id,
+    orderCode: order.orderCode,
+    status: order.status,
+    buyerName: order.buyerName,
+    subtotal: order.subtotal,
+    platformFeeSnapshot: order.platformFeeSnapshot,
+    totalForMerchant: order.totalForMerchant,
+    createdAt: order.createdAt,
+    paidAt: order.paidAt,
+    completedAt: order.completedAt,
     items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
       id: item.id,
       productNameSnapshot: item.productNameSnapshot,
