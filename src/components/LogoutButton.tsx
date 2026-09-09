@@ -25,7 +25,7 @@ export function LogoutButton({ action }: { action: () => Promise<void> }) {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Keluar dari dashboard?"
+        title="Beneran mau keluar?"
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-ink-muted">
