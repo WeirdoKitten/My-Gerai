@@ -94,8 +94,8 @@ export function OrderStatusView({
       ) : null}
 
       {order.sandboxQrUrl ? (
-        <Card className="flex items-center gap-2">
-          <code className="block flex-1 overflow-x-auto rounded-control bg-bg p-2 text-xs text-ink">
+        <Card className="flex items-start gap-2">
+          <code className="min-w-0 flex-1 break-all rounded-control bg-bg p-2 text-xs text-ink">
             {order.sandboxQrUrl}
           </code>
           <CopyButton value={order.sandboxQrUrl} label="link QRIS sandbox" />
