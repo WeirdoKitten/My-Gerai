@@ -381,7 +381,9 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
       eq(orders.merchantId, session.merchantId),
       inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
     ),
-    orderBy: (row, { desc }) => [desc(row.createdAt)],
+    // Antrean FIFO: Pesanan terlama (paling lama menunggu) di atas supaya
+    // Pedagang mengerjakan sesuai urutan masuk; Pesanan baru menempel di bawah.
+    orderBy: (row, { asc }) => [asc(row.createdAt)],
   });
   if (activeOrders.length === 0) return [];
 
