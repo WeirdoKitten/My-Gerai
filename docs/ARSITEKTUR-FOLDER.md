@@ -35,8 +35,8 @@
 │   │   │       ├── riwayat/page.tsx           # Riwayat Pesanan (status akhir, read-only) — tab terpisah
 │   │   │       ├── laporan/page.tsx           # Laporan Penjualan + kartu asisten rekomendasi (?periode=) — tab terpisah
 │   │   │       ├── produk/page.tsx            # Kelola Item
-│   │   │       ├── qr/page.tsx                # QR Lapak (tab terpisah — cetak/unduh)
-│   │   │       └── profil/page.tsx            # Profil Lapak (nama/kategori/info rekening) — via tombol "Profil" di header
+│   │   │       ├── qr/page.tsx                # QR Lapak (cetak/unduh) — via ikon QR di header
+│   │   │       └── profil/page.tsx            # Profil Lapak (nama/kategori/info rekening) — via ikon Profil di header
 │   │   ├── (admin)/
 │   │   │   └── admin/
 │   │   │       ├── login/page.tsx             # DI LUAR (dashboard) — self-redirect kalau sudah login
