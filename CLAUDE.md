@@ -38,14 +38,14 @@ Semua keputusan produk/arsitektur ada di `docs/`. **Ini satu-satunya sumber kebe
 4. **Sederhana, cepat, ringan.** Hindari over-engineering (skala target: pedagang kaki lima, bukan enterprise). Prioritaskan performa halaman Pembeli (mobile, jaringan lambat).
 5. **Pembeli tidak login** — identifikasi cukup field Nama. Jangan tambah friksi tanpa persetujuan User.
 6. **Uang selalu dapat dikonfigurasi** (Biaya Layanan default Rp1.000, dsb) dan nilainya di-snapshot per Pesanan agar histori tidak berubah retroaktif.
-7. **Pembayaran**: dev/test disimulasikan (`MockPaymentProvider`); staging/produksi pakai **Midtrans** (Fase 6, env `PAYMENT_PROVIDER`). Pencairan ke Pedagang **otomatis** via Midtrans Iris ("Model B"). Semua lewat abstraksi `PaymentProvider`/`DisbursementProvider` (lihat [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) ADR 2026-09-08). **MDR QRIS tidak boleh dibebankan ke Pembeli** (regulasi BI).
+7. **Pembayaran**: dev/test disimulasikan (`MockPaymentProvider`); staging/produksi pakai **Midtrans** (Fase 6, env `PAYMENT_PROVIDER`). Pencairan ke Pedagang **otomatis** via Midtrans Iris ("Model B"). Semua lewat abstraksi `PaymentProvider`/`DisbursementProvider` (lihat [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) ADR 2026-09-08). **MDR QRIS tidak boleh di-surcharge ke Pembeli** (regulasi BI) — tapi **Biaya Layanan platform** (beda dari MDR) **dibebankan ke Pembeli** di atas harga Item sejak ADR 2026-09-09: Pembeli bayar `subtotal + Biaya Layanan`, Pedagang terima `subtotal` penuh.
 8. **`/security-review` wajib** untuk kode yang menyentuh pembayaran/auth/webhook/RLS.
 9. Fitur baru masuk [docs/BACKLOG.md](docs/BACKLOG.md) dulu sebelum dikerjakan (kecuali bugfix kecil).
 10. Jangan tandai selesai tanpa verifikasi nyata (jalankan/coba, bukan cuma yakin dari membaca kode).
 
 ## Istilah Kunci (lengkap di [docs/GLOSSARY.md](docs/GLOSSARY.md))
 
-**Aplikator** = pemilik platform (User) · **Pedagang/Lapak** = penjual · **Pembeli** = customer tanpa akun · **Item** = produk/menu · **Pesanan** = order · **Biaya Layanan** = fee Rp1.000/transaksi (configurable, dipotong dari bagian Pedagang) · **MDR** = biaya QRIS gateway, ditanggung Aplikator (jangan ke Pembeli) · **Model Agregator** = dana masuk 1 akun platform dulu, lalu dicairkan otomatis ke Pedagang (Iris, Fase 6).
+**Aplikator** = pemilik platform (User) · **Pedagang/Lapak** = penjual · **Pembeli** = customer tanpa akun · **Item** = produk/menu · **Pesanan** = order · **Biaya Layanan** = fee Rp1.000/transaksi (configurable, **dibebankan ke Pembeli** di atas harga Item sejak ADR 2026-09-09; Pedagang terima harga Item penuh) · **MDR** = biaya QRIS gateway, ditanggung Aplikator (jangan di-surcharge ke Pembeli) · **Model Agregator** = dana masuk 1 akun platform dulu, lalu dicairkan otomatis ke Pedagang (Iris, Fase 6).
 
 ## Stack Ringkas (detail & alasan di [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md))
 

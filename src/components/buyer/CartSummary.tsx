@@ -5,8 +5,13 @@ import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { useCart } from "@/lib/cart/cart-context";
 import { formatRupiah } from "@/lib/utils/money";
 
-export function CartSummary() {
+export function CartSummary({
+  platformFeeAmount,
+}: {
+  platformFeeAmount: number;
+}) {
   const { items, subtotalDisplay, updateQty, removeItem } = useCart();
+  const total = subtotalDisplay + platformFeeAmount;
 
   return (
     <Card pad="none">
@@ -49,15 +54,29 @@ export function CartSummary() {
           </li>
         ))}
       </ul>
-      <div className="flex items-center justify-between border-t border-line p-4">
-        <span className="font-semibold text-ink">Subtotal</span>
-        <span className="font-bold tabular-nums text-ink">
-          {formatRupiah(subtotalDisplay)}
-        </span>
+      <div className="flex flex-col gap-1.5 border-t border-line p-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-ink-muted">Subtotal</span>
+          <span className="tabular-nums text-ink">
+            {formatRupiah(subtotalDisplay)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-ink-muted">Biaya Layanan</span>
+          <span className="tabular-nums text-ink">
+            {formatRupiah(platformFeeAmount)}
+          </span>
+        </div>
+        <div className="mt-1 flex items-center justify-between border-t border-line pt-2">
+          <span className="font-semibold text-ink">Total</span>
+          <span className="font-bold tabular-nums text-ink">
+            {formatRupiah(total)}
+          </span>
+        </div>
       </div>
       <p className="px-4 pb-4 text-xs text-ink-muted">
-        Kamu membayar persis jumlah ini. Total dihitung ulang di server saat
-        Pesanan dibuat.
+        Biaya Layanan untuk memakai layanan pesan lewat MyGerai. Total dihitung
+        ulang di server saat Pesanan dibuat.
       </p>
     </Card>
   );

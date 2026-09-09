@@ -2,6 +2,19 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-09 — Biaya Layanan dibebankan ke Pembeli (bukan dipotong dari Pedagang)
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR baru 2026-09-09), [docs/PRD.md](docs/PRD.md) (§4/§6.1/§7/§8), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`orders`/`payments`), [CLAUDE.md](CLAUDE.md) (aturan 7 + Istilah Kunci), [docs/GLOSSARY.md](docs/GLOSSARY.md) (Biaya Layanan, Aplikator), [docs/BACKLOG.md](docs/BACKLOG.md) (seksi baru), kode (`src/lib/utils/order-calc.ts`, `src/server/orders.ts`, `src/server/reports.ts`, `src/types/{order,report}.ts`, `src/lib/db/schema.ts`, `src/app/(buyer)/checkout/page.tsx`, `src/components/buyer/{CartSummary,CheckoutForm,OrderStatusView}.tsx`, `src/components/merchant/{MerchantOrderHistoryList,SalesReportView}.tsx`, `src/components/admin/TransactionList.tsx`, `src/lib/db/seed-orders.ts`, `tests/unit/order-calc.test.ts`, `tests/e2e/order-flow.spec.ts`)
+**Alasan:** Keputusan User (AskUserQuestion 2026-09-09). Sebelumnya Biaya Layanan Rp1.000 dipotong dari bagian Pedagang & Pembeli bayar persis harga Item; User ingin **membalik** — Pembeli bayar `subtotal + Biaya Layanan` (Item Rp10.000 → Rp11.000), Pedagang terima harga Item penuh. **Hard switch**, bukan toggle configurable. User menganggap ini biaya layanan platform yang sah (analog "Biaya Layanan" GoFood), **berbeda dari surcharge MDR** yang dilarang BI — framing perlu dikonfirmasi User ke konsultan/Midtrans sebelum go-live (dicatat di BACKLOG).
+**Ringkasan:**
+- **`calculateOrderTotals`**: `totalForMerchant` sekarang = `subtotal` (tanpa potong fee); tambah `grandTotal = subtotal + platformFeeSnapshot`. Helper baru `orderGrandTotal({subtotal, platformFeeSnapshot})` — satu sumber kebenaran untuk "yang dibayar Pembeli".
+- **Tanpa migrasi / kolom baru.** `grand_total` = turunan dua kolom snapshot yang sudah immutable. Yang berubah cuma nilai **dikirim ke gateway** & disimpan `payments.gross_amount` (kini `= grand_total`).
+- `midtrans-provider` / `mock-provider` / webhook `/api/webhooks/payment` **tidak berubah** — value-agnostic (Midtrans menandatangani `gross_amount` yang kita kirim; webhook cuma cocokkan `reference_id`). `payment-midtrans.test.ts` juga tidak berubah.
+- **Checkout Pembeli** menampilkan rincian **Subtotal · Biaya Layanan · Total**; tombol "Buat Pesanan · Bayar RpX"; halaman status "Subtotal / Biaya Layanan / **Total Dibayar**". Label netral: "Biaya Layanan untuk memakai layanan pesan lewat MyGerai" — bukan "biaya QRIS".
+- **Pedagang**: Riwayat kartu "Pembeli bayar `{grandTotal}` · Biaya Layanan RpX"; Laporan `SalesSummary.merchantShare` → `platformFeeTotal` + `buyerTotal`, tile "Bagianmu" → **"Ditagih ke Pembeli"** (Omzet tetap = Σ subtotal = pendapatan Pedagang). **Admin** Daftar Transaksi: angka utama = `grandTotal`. Saldo Pedagang (`payouts.ts`) tak berubah (Σ `total_for_merchant` = Σ `subtotal`).
+- **MDR TIDAK berubah**: tetap ditanggung Aplikator, tidak pernah di-surcharge ke Pembeli.
+- **Diverifikasi**: `tsc`/`lint`/`build`/`pnpm test` (86) lulus; sabotase `order-calc` (`+`→`-`) → 5 test gagal → revert. `pnpm test:e2e` (3) lulus (`order-flow` + asersi "Biaya Layanan"/"Total Dibayar"). Alur nyata browser (Playwright): Item Rp12.000 → checkout "Total Rp13.000" → bayar → DB `payments.gross_amount=13000`, `total_for_merchant=12000`. **`/security-review` menyusul** (dicatat BACKLOG).
+
 ## 2026-09-09 — Bottom nav Pedagang dirapikan: QR Lapak → ikon header, 4 tab
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 ikon header, §6 bottom nav), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), kode (`src/app/(merchant)/dashboard/layout.tsx`)

@@ -20,12 +20,18 @@ test.describe
       await page.getByRole("link", { name: /item/i }).click();
       await expect(page).toHaveURL(/\/checkout$/);
 
+      // Biaya Layanan dibebankan ke Pembeli (ADR 2026-09-09).
+      await expect(
+        page.getByText("Biaya Layanan", { exact: true }),
+      ).toBeVisible();
+
       await page.getByLabel("Nama").fill("Pembeli E2E");
-      await page.getByRole("button", { name: "Buat Pesanan" }).click();
+      await page.getByRole("button", { name: /Buat Pesanan/ }).click();
 
       await expect(page).toHaveURL(/\/pesanan\/[0-9a-f-]+$/);
       await expect(page.getByText("Menunggu Pembayaran")).toBeVisible();
       await expect(page.getByAltText("QR pembayaran")).toBeVisible();
+      await expect(page.getByText("Total Dibayar")).toBeVisible();
 
       orderCode = (await page.locator("p.text-3xl").innerText()).trim();
       expect(orderCode).toMatch(/^[A-Z0-9]{4}$/);

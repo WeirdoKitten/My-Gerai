@@ -7,9 +7,14 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { useCart } from "@/lib/cart/cart-context";
+import { formatRupiah } from "@/lib/utils/money";
 import { createOrder } from "@/server/orders";
 
-export function CheckoutForm() {
+export function CheckoutForm({
+  platformFeeAmount,
+}: {
+  platformFeeAmount: number;
+}) {
   const router = useRouter();
   const cart = useCart();
   const [buyerName, setBuyerName] = useState("");
@@ -60,7 +65,9 @@ export function CheckoutForm() {
       </Field>
       {error ? <Alert tone="error">{error}</Alert> : null}
       <Button type="submit" fullWidth loading={submitting}>
-        {submitting ? "Membuat Pesanan..." : "Buat Pesanan"}
+        {submitting
+          ? "Membuat Pesanan..."
+          : `Buat Pesanan · Bayar ${formatRupiah(cart.subtotalDisplay + platformFeeAmount)}`}
       </Button>
     </form>
   );

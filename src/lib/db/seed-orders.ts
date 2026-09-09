@@ -185,7 +185,7 @@ async function main(): Promise<void> {
         status,
         subtotal,
         platformFeeSnapshot: 1000,
-        totalForMerchant: Math.max(0, subtotal - 1000),
+        totalForMerchant: subtotal,
         createdAt,
         paidAt,
         expiresAt: new Date(createdAt.getTime() + 15 * 60_000),

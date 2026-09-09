@@ -3,10 +3,12 @@ export type ReportPeriod = "hari_ini" | "7_hari" | "30_hari";
 
 export type SalesSummary = {
   orderCount: number;
-  /** SUM(orders.subtotal) — total yang dibayar Pembeli ("Omzet"). */
+  /** SUM(orders.subtotal) — pendapatan Pedagang ("Omzet"), diterima penuh. */
   revenue: number;
-  /** SUM(orders.total_for_merchant) — bagian Pedagang setelah Biaya Layanan. */
-  merchantShare: number;
+  /** SUM(orders.platform_fee_snapshot) — Biaya Layanan yang dibayar Pembeli. */
+  platformFeeTotal: number;
+  /** SUM yang ditagih ke Pembeli = revenue + platformFeeTotal. */
+  buyerTotal: number;
   /** revenue / orderCount, 0 kalau belum ada Pesanan. */
   avgOrderValue: number;
 };

@@ -4,6 +4,7 @@ import { HistoryIcon } from "@/components/ui/icons";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatDateTime } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
+import { orderGrandTotal } from "@/lib/utils/order-calc";
 import type { MerchantOrderHistoryItem } from "@/types/order";
 
 export function MerchantOrderHistoryList({
@@ -77,7 +78,7 @@ function MerchantOrderHistoryCard({
       </div>
       {order.status === "selesai" ? (
         <p className="-mt-1 text-right text-xs tabular-nums text-ink-muted">
-          Total dibayar Pembeli {formatRupiah(order.subtotal)} · Biaya Layanan{" "}
+          Pembeli bayar {formatRupiah(orderGrandTotal(order))} · Biaya Layanan{" "}
           {formatRupiah(order.platformFeeSnapshot)}
         </p>
       ) : null}

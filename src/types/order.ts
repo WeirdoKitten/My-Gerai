@@ -26,6 +26,8 @@ export type BuyerOrderStatusView = {
   subtotal: number;
   platformFeeSnapshot: number;
   totalForMerchant: number;
+  /** Yang dibayar Pembeli = `subtotal + platformFeeSnapshot`. */
+  grandTotal: number;
   createdAt: Date;
   expiresAt: Date;
   paidAt: Date | null;

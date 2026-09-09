@@ -117,9 +117,23 @@ export function OrderStatusView({
             </li>
           ))}
         </ul>
-        <div className="flex justify-between border-t border-line pt-3 font-bold text-ink">
-          <span>Total Dibayar</span>
-          <span className="tabular-nums">{formatRupiah(order.subtotal)}</span>
+        <div className="flex flex-col gap-1 border-t border-line pt-3">
+          <div className="flex justify-between text-sm text-ink-muted">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{formatRupiah(order.subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-ink-muted">
+            <span>Biaya Layanan</span>
+            <span className="tabular-nums">
+              {formatRupiah(order.platformFeeSnapshot)}
+            </span>
+          </div>
+          <div className="mt-1 flex justify-between border-t border-line pt-2 font-bold text-ink">
+            <span>Total Dibayar</span>
+            <span className="tabular-nums">
+              {formatRupiah(order.grandTotal)}
+            </span>
+          </div>
         </div>
       </Card>
     </div>

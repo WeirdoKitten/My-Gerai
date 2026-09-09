@@ -42,8 +42,8 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - [ ] Pedagang kelola daftar Item (nama, harga, foto, **stok opsional**, status tersedia/habis) di dashboard sendiri. Stok `null` = tidak dibatasi; kalau diisi angka, berkurang saat Pesanan `dibayar` & Item hilang dari katalog Pembeli begitu stok 0.
 - [ ] Pembeli scan **QR Lapak** → lihat katalog Item Lapak tsb (tanpa login).
 - [ ] Pembeli pilih Item + qty + catatan → Keranjang (di sisi browser) → Checkout.
-- [ ] Saat checkout, Pembeli **wajib isi Nama** (field lain tidak ada).
-- [ ] Sistem membuat Pesanan berstatus `menunggu_pembayaran` + menampilkan QRIS.
+- [ ] Saat checkout, Pembeli **wajib isi Nama** (field lain tidak ada). Checkout menampilkan rincian **Subtotal + Biaya Layanan = Total** yang harus dibayar.
+- [ ] Sistem membuat Pesanan berstatus `menunggu_pembayaran` + menampilkan QRIS sejumlah `subtotal + Biaya Layanan`.
   - **Dev/test: disimulasikan** (`MockPaymentProvider`, tombol "Simulasikan Pembayaran Berhasil"). **Staging/produksi (Fase 6): QRIS dinamis nyata via Midtrans** (Core API), dipilih lewat env `PAYMENT_PROVIDER`. Lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08, [BACKLOG.md](BACKLOG.md) Fase 6.
 - [ ] Begitu pembayaran terkonfirmasi (webhook Midtrans terverifikasi, atau tombol simulasi) → status jadi `dibayar` → **real-time** muncul di dashboard Pedagang.
 - [ ] Pedagang update status Pesanan: `diproses` → `siap_diambil` → `selesai`.
@@ -86,7 +86,7 @@ sequenceDiagram
     P->>App: Pilih Item, atur qty & catatan
     P->>App: Checkout + isi Nama
     App->>App: Buat Pesanan (status: menunggu_pembayaran)
-    App->>PG: Minta QRIS (mock/nyata) sejumlah total harga
+    App->>PG: Minta QRIS (mock/nyata) sejumlah subtotal + Biaya Layanan
     PG-->>App: QR pembayaran
     App-->>P: Tampilkan QR + halaman status Pesanan
     P->>PG: Bayar (atau klik simulasi di tahap MVP)
@@ -116,8 +116,8 @@ sequenceDiagram
 
 ## 7. Aturan Bisnis
 
-- **Biaya Layanan**: default **Rp1.000** per Pesanan berstatus `dibayar`. **Dapat dikonfigurasi** Admin (nominal, dan disiapkan agar bisa berkembang jadi persen di masa depan — lihat [DATA-MODEL.md](DATA-MODEL.md)). Nilai yang berlaku disimpan sebagai **snapshot** di tiap Pesanan agar histori laporan tidak berubah retroaktif saat konfigurasi diubah. Dipotong dari bagian Pedagang (`total_for_merchant = max(0, subtotal − Biaya Layanan)`).
-- **MDR QRIS** (biaya gateway ~0–0,7% yang ditagih Midtrans ke Aplikator): **ditanggung Aplikator**, mengurangi margin bersihnya. **Dilarang** dibebankan ke Pembeli ([PBI 23/6/PBI/2021 Ps. 52](https://peraturan.bpk.go.id/Details/207042/peraturan-bi-no-236pbi2021)) — Pembeli bayar persis harga Item.
+- **Biaya Layanan**: default **Rp1.000** per Pesanan berstatus `dibayar`. **Dapat dikonfigurasi** Admin (nominal, dan disiapkan agar bisa berkembang jadi persen di masa depan — lihat [DATA-MODEL.md](DATA-MODEL.md)). Nilai yang berlaku disimpan sebagai **snapshot** di tiap Pesanan agar histori laporan tidak berubah retroaktif saat konfigurasi diubah. **Dibebankan ke Pembeli** di atas harga Item (sejak [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09): Pembeli membayar `subtotal + Biaya Layanan` (Item Rp10.000 → bayar **Rp11.000**), Pedagang menerima `subtotal` **penuh** (`total_for_merchant = subtotal`). Dilabeli ke Pembeli sebagai **"Biaya Layanan"** (biaya memakai layanan pesan lewat MyGerai) — bukan "biaya QRIS".
+- **MDR QRIS** (biaya gateway ~0–0,7% yang ditagih Midtrans ke Aplikator): **ditanggung Aplikator**, mengurangi margin bersihnya. **Dilarang** di-surcharge ke Pembeli ([PBI 23/6/PBI/2021 Ps. 52](https://peraturan.bpk.go.id/Details/207042/peraturan-bi-no-236pbi2021)) — MDR **tidak pernah** ditambahkan ke tagihan Pembeli. (Beda dari **Biaya Layanan** platform di butir atas, yang boleh di-on-top — analog biaya layanan aplikasi pesan-antar. Framing ini **perlu dikonfirmasi User** ke konsultan/Midtrans sebelum go-live — lihat [BACKLOG.md](BACKLOG.md).)
 - **Model settlement**: **Agregator** — semua pembayaran QRIS masuk ke satu akun Midtrans milik Aplikator; Pedagang **tidak** perlu akun payment gateway sendiri. **Pencairan otomatis** (Fase 6): job harian mentransfer Saldo tiap Pedagang via Midtrans Iris; **biaya transfer per Pencairan ditanggung Pedagang** (dipotong dari nominal cair). Tanpa ambang minimum. Uang cair ke rekening Pedagang **H+1 hari kerja** (sifat siklus settlement QRIS, bukan pilihan MyGerai).
 - **Kedaluwarsa Pesanan**: default 15 menit sejak dibuat jika belum `dibayar`. Dapat dikonfigurasi Admin.
 - **Approval Pedagang**: wajib di-approve Admin sebelum QR Lapak bisa dipakai publik (kontrol kualitas dasar, cegah penyalahgunaan).
@@ -127,6 +127,7 @@ sequenceDiagram
 
 - **Regulasi**: Model Agregator berarti Aplikator (lewat Midtrans, PJP berlisensi) menampung dana sementara sebelum dicairkan ke Pedagang. Pencairan dilakukan lewat **Midtrans Iris** (rel disbursement berizin), bukan menahan/mentransfer dana sendiri di luar sistem berizin. Risiko relatif rendah untuk skala kecil — **tetap perlu ditinjau ulang jika skala transaksi membesar** (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)).
 - **Verifikasi status akun Midtrans**: sebelum go-live produksi, User wajib memastikan akun (perorangan) bisa mengaktifkan **Core API QRIS + Iris**. Model B **tidak** memakai fitur split/marketplace (yang berpotensi menuntut badan usaha), tapi syarat aktivasi Iris & limit transaksi tetap perlu dicek ke Midtrans.
-- **Ekonomi Biaya Layanan vs MDR**: di transaksi sangat kecil, MDR bisa mendekati/melebihi Biaya Layanan Rp1.000 → margin Aplikator tipis/negatif untuk transaksi itu. Diterima untuk skala kaki lima; mitigasi bila perlu: naikkan Biaya Layanan (configurable) atau minta MDR ditanggung Pedagang.
+- **Ekonomi Biaya Layanan vs MDR**: sejak ADR 2026-09-09 Biaya Layanan ditanggung **Pembeli**, jadi margin Aplikator = `Biaya Layanan − MDR(grand_total)` — tetap positif di hampir semua transaksi (MDR ~0,7% dari Rp11.000 ≈ Rp77 « Rp1.000). Pedagang menerima harga Item penuh.
+- **Risiko regulasi/persepsi Biaya Layanan ke Pembeli** (ADR 2026-09-09): larangan BI adalah soal **surcharge MDR**, bukan biaya layanan platform (GoFood/GrabFood menariknya). Tapi karena MyGerai hanya QRIS & fee-nya kecil-flat, pengawas bisa menilai sebagai MDR terselubung → **User wajib konfirmasi** framing ini (konsultan/Midtrans) sebelum produksi. Persepsi Pembeli: di lapak kaki lima, alternatifnya bayar tunai pas — Rp11.000 lewat QR bisa terasa mahal; dipantau setelah rilis.
 - **Pembeli tanpa identitas terverifikasi**: nama bisa diisi asal-asalan. Risiko diterima untuk MVP (dampaknya kecil — hanya salah panggil nama saat ambil pesanan, Kode Pesanan jadi identifier utama).
 - **Status badan usaha Aplikator saat ini: perorangan** — pengaruh ke aktivasi fitur payment gateway (lihat [TEKNOLOGI.md](TEKNOLOGI.md)) dan limit transaksi; perlu ditinjau ulang jika bisnis berkembang (naik jadi NIB/PT/CV).

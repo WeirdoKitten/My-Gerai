@@ -40,8 +40,8 @@ async function summaryInRange(
       revenue: sql<number>`coalesce(sum(${orders.subtotal}), 0)`.mapWith(
         Number,
       ),
-      merchantShare:
-        sql<number>`coalesce(sum(${orders.totalForMerchant}), 0)`.mapWith(
+      platformFeeTotal:
+        sql<number>`coalesce(sum(${orders.platformFeeSnapshot}), 0)`.mapWith(
           Number,
         ),
     })
@@ -57,10 +57,12 @@ async function summaryInRange(
 
   const orderCount = row?.orderCount ?? 0;
   const revenue = row?.revenue ?? 0;
+  const platformFeeTotal = row?.platformFeeTotal ?? 0;
   return {
     orderCount,
     revenue,
-    merchantShare: row?.merchantShare ?? 0,
+    platformFeeTotal,
+    buyerTotal: revenue + platformFeeTotal,
     avgOrderValue: orderCount > 0 ? Math.round(revenue / orderCount) : 0,
   };
 }

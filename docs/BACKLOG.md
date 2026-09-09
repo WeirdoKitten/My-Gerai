@@ -128,6 +128,19 @@
 - [x] `src/lib/db/seed-orders.ts` + `pnpm db:seed:orders` (dev, guard localhost, idempoten via penanda `buyerNote`) — ±150 Pesanan historis 30 hari dengan pola sengaja (Bakso Urat terlaris, Pangsit "mati", puncak makan siang, Rabu sepi, kombo Bakso Urat + Es Teh).
 - [x] Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (85, +28: `report-insights` + `report-period`) lulus; `pnpm test:e2e` (3) lulus — `order-flow` diperluas cek tab Laporan (Omzet + pesan asisten-menunggu-data). Cek visual browser (Playwright, mobile) dengan `db:seed:orders`: ke-3 periode benar, delta ▲/▼ warna benar, 4 kartu asisten sesuai pola seed (restock Mie Ayam, jam 12–13 42%, Rabu sepi, kombo Bakso Urat+Es Teh).
 
+## Biaya Layanan dibebankan ke Pembeli ✅
+
+> Keputusan User (AskUserQuestion 2026-09-09) — **hard switch**, bukan toggle. Biaya Layanan (Rp1.000) tidak lagi dipotong dari Pedagang; Pembeli bayar `subtotal + Biaya Layanan`, Pedagang terima harga Item penuh. Detail & alasan: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09. **Tanpa migrasi/kolom** — `grand_total` = turunan `subtotal + platform_fee_snapshot`.
+
+- [x] `src/lib/utils/order-calc.ts` — `calculateOrderTotals` kembalikan `totalForMerchant = subtotal` + `grandTotal = subtotal + fee`; helper `orderGrandTotal({subtotal, platformFeeSnapshot})`. Unit test `order-calc.test.ts` ditulis ulang (7 test; sabotase `+`→`-` → 5 gagal → revert).
+- [x] `src/server/orders.ts` — `createPayment({ grossAmount: grandTotal })` + `payments.grossAmount = grandTotal`; `getOrderStatus` + `BuyerOrderStatusView` tambah `grandTotal`. `midtrans-provider`/`mock-provider`/webhook **tidak berubah** (value-agnostic).
+- [x] Checkout Pembeli: `checkout/page.tsx` `async` + `getActivePlatformConfig()` → `CartSummary` (rincian Subtotal · Biaya Layanan · **Total**) + `CheckoutForm` (tombol "Buat Pesanan · Bayar RpX"). `OrderStatusView` — blok Subtotal / Biaya Layanan / **Total Dibayar**. Label netral "Biaya Layanan … layanan pesan lewat MyGerai" (bukan "QRIS").
+- [x] Pedagang: `MerchantOrderHistoryList` baris kecil "Pembeli bayar `{grandTotal}` · Biaya Layanan …". Laporan: `SalesSummary.merchantShare` → `platformFeeTotal` + `buyerTotal`; tile "Bagianmu" → **"Ditagih ke Pembeli"** (hint "termasuk Biaya Layanan RpX"). Admin `TransactionList` — angka utama = `grandTotal`.
+- [x] `src/lib/db/seed-orders.ts` — `totalForMerchant = subtotal`. Saldo Pedagang (`payouts.ts`) tak berubah (= Σ `total_for_merchant` = Σ `subtotal`).
+- [x] Diverifikasi: `tsc`/`lint`/`build`/`pnpm test` (86) / `pnpm test:e2e` (3, `order-flow` + asersi "Biaya Layanan"/"Total Dibayar") lulus. Alur nyata browser: Item Rp12.000 → checkout "Total Rp13.000" → bayar → `payments.gross_amount = 13000`, `total_for_merchant = 12000`. Laporan "Ditagih ke Pembeli" = Omzet + Σ fee.
+- [ ] **`/security-review`** alur pembayaran (menyentuh uang — [RULES §7](RULES.md)). _(dijalankan setelah commit — lihat CHANGELOG)_
+- [ ] **User: konfirmasi framing regulasi** — "Biaya Layanan platform" vs surcharge MDR — ke konsultan/Midtrans **sebelum go-live produksi**. Kalau ternyata tidak boleh: balik ke model lama (fee dari Pedagang) atau jadikan toggle.
+
 ## Fase 6 — Payment Nyata (Midtrans) + Pencairan Otomatis ("Model B")
 
 > Ground truth: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08 (4 baris) + §Alur Data Pencairan Otomatis, [TEKNOLOGI.md §Payment Provider & Disbursement Provider Abstraction](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [DATA-MODEL.md](DATA-MODEL.md). Branch: `feat/payment-midtrans-model-b`. Keputusan uang dikonfirmasi User (AskUserQuestion 2026-09-08): MDR ditanggung Aplikator (tak pernah ke Pembeli), biaya transfer Iris ditanggung Pedagang, Pencairan harian tanpa ambang, Pencairan manual dihapus (di 6b).

@@ -147,7 +147,7 @@ export const payments = pgTable("payments", {
     .references(() => orders.id),
   provider: paymentProviderEnum().notNull(),
   referenceId: text().notNull(),
-  /** Nominal yang dikirim ke gateway (= orders.subtotal). Nullable: baris `mock` lama. */
+  /** Nominal yang dikirim ke gateway = yang ditagih ke Pembeli (`orders.subtotal + orders.platform_fee_snapshot`). Nullable: baris `mock` lama. */
   grossAmount: integer(),
   /** Payload QRIS mentah (Midtrans `qr_string` / payload dummy mock). Dirender lokal jadi gambar. */
   qrString: text(),

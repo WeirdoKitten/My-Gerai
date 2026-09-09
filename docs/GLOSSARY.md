@@ -5,7 +5,7 @@
 | Istilah | Definisi |
 |---|---|
 | **MyGerai** | Nama kerja proyek ini (diambil dari nama folder). Bisa berubah — lihat [PRD.md](PRD.md#nama-produk). |
-| **Aplikator** | Pihak pengelola platform MyGerai (pemilik bisnis, dalam hal ini User). Aplikator memungut **Biaya Layanan** dari tiap pesanan sukses. |
+| **Aplikator** | Pihak pengelola platform MyGerai (pemilik bisnis, dalam hal ini User). Aplikator memungut **Biaya Layanan** (dibayar Pembeli) dari tiap pesanan sukses. |
 | **Admin** | Akun pengelola internal Aplikator. Bertugas approve Pedagang baru, atur konfigurasi (termasuk Biaya Layanan), dan memantau transaksi/pencairan. |
 | **Pedagang** | Pemilik usaha kecil (tukang bakso, batagor, cakue, penjual baju, dll) yang berjualan lewat MyGerai. Setara "merchant"/"seller". |
 | **Lapak** | Unit usaha milik satu Pedagang di dalam sistem — punya nama, kategori, dan satu QR unik sendiri. Asumsi MVP: **1 Pedagang = 1 Lapak**. |
@@ -20,7 +20,7 @@
 | **Payment Provider** | Lapisan abstraksi kode untuk pembayaran. `MockPaymentProvider` (dev/test) \| `MidtransPaymentProvider` (produksi). Dipilih lewat env `PAYMENT_PROVIDER`. |
 | **Disbursement Provider** | Lapisan abstraksi kode untuk **Pencairan** otomatis. `MockDisbursementProvider` (dev/test) \| `IrisDisbursementProvider` (Midtrans Iris, produksi). Env `DISBURSEMENT_PROVIDER`. |
 | **MDR** (Merchant Discount Rate) | Biaya jasa yang dikenakan penyelenggara pembayaran (Midtrans) ke Aplikator per transaksi QRIS (~0–0,7%). **Ditanggung Aplikator**; **dilarang** dibebankan ke Pembeli. |
-| **Biaya Layanan** | Potongan yang dipungut Aplikator dari tiap Pesanan sukses (dari bagian Pedagang). Default Rp1.000, **dapat dikonfigurasi** Admin (lihat [PRD.md](PRD.md#7-aturan-bisnis)). |
+| **Biaya Layanan** | Fee yang dipungut Aplikator per Pesanan sukses, **ditambahkan ke tagihan Pembeli** di atas harga Item (sejak [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09; sebelumnya dipotong dari bagian Pedagang). Pembeli bayar `subtotal + Biaya Layanan`; Pedagang terima `subtotal` penuh. Default Rp1.000, **dapat dikonfigurasi** Admin (lihat [PRD.md](PRD.md#7-aturan-bisnis)). Dilabeli ke Pembeli sebagai biaya **layanan pemesanan** MyGerai — bukan biaya QRIS/MDR. |
 | **Saldo Pedagang** | Nilai turunan: jumlah `total_for_merchant` dari Pesanan lunas milik satu Lapak yang **belum** masuk Pencairan mana pun (`orders.payout_id IS NULL`). Bukan kolom tersendiri. |
 | **Pencairan (Payout)** | Transfer **Saldo Pedagang** ke rekening/e-wallet Pedagang. Sejak Fase 6: **otomatis** (batch harian via Midtrans Iris), biaya transfer dipotong dari nominal cair (ditanggung Pedagang). Tidak ada pencatatan manual lagi. |
 | **Model Agregator** | Model settlement proyek ini: semua pembayaran QRIS masuk ke satu akun Midtrans milik Aplikator, lalu didistribusikan ke Pedagang lewat **Pencairan otomatis** ("Model B"). Alternatif yang **tidak** dipakai: Sub-merchant / Split-Marketplace. |

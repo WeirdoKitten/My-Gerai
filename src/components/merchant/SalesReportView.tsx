@@ -132,9 +132,9 @@ function SummaryGrid({
         value={formatRupiah(summary.avgOrderValue)}
       />
       <Stat
-        label="Bagianmu"
-        value={formatRupiah(summary.merchantShare)}
-        hint="setelah Biaya Layanan"
+        label="Ditagih ke Pembeli"
+        value={formatRupiah(summary.buyerTotal)}
+        hint={`termasuk Biaya Layanan ${formatRupiah(summary.platformFeeTotal)}`}
       />
     </div>
   );

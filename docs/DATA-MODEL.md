@@ -55,9 +55,9 @@ erDiagram
         string buyer_name "Nama Pembeli"
         text buyer_note
         string status "menunggu_pembayaran|dibayar|diproses|siap_diambil|selesai|dibatalkan|kedaluwarsa"
-        int subtotal "= yang dibayar Pembeli (harga Item, tanpa tambahan)"
-        int platform_fee_snapshot "snapshot Biaya Layanan saat itu"
-        int total_for_merchant "max(0, subtotal - platform_fee_snapshot)"
+        int subtotal "harga Item x qty (pendapatan Pedagang, diterima penuh)"
+        int platform_fee_snapshot "snapshot Biaya Layanan saat itu (dibebankan ke Pembeli)"
+        int total_for_merchant "= subtotal (Biaya Layanan tidak dipotong sejak ADR 2026-09-09)"
         timestamp created_at
         timestamp paid_at
         timestamp expires_at
@@ -79,7 +79,7 @@ erDiagram
         uuid order_id FK "UNIQUE — 1 pembayaran per Pesanan"
         string provider "mock|midtrans (enum lama: tripay, tidak dipakai)"
         string reference_id "transaction_id Midtrans"
-        int gross_amount "nominal dikirim ke gateway (= orders.subtotal)"
+        int gross_amount "nominal dikirim ke gateway = yang dibayar Pembeli (subtotal + platform_fee_snapshot)"
         string qr_string "payload QRIS mentah dari Midtrans, dirender lokal jadi gambar, nullable"
         string status "pending|success|failed|expired"
         text raw_payload "payload mentah webhook/simulasi untuk audit"
@@ -156,7 +156,8 @@ erDiagram
 - `order_code`: pendek & mudah disebutkan lisan (huruf+angka, mis. 4 karakter), **unik per hari per Lapak** (boleh berulang lintas hari/lintas Lapak) — cukup untuk kebutuhan verbal saat pengambilan, tidak perlu unik global.
 - `platform_fee_snapshot`: **wajib** diisi dari nilai `platform_config` yang berlaku **saat Pesanan dibuat**, bukan dihitung ulang saat laporan ditarik — ini yang membuat histori tidak berubah kalau Admin ubah Biaya Layanan di kemudian hari (lihat [RULES.md](RULES.md#6-uang--konfigurasi-bisnis)).
 - `expires_at` dihitung saat Pesanan dibuat = `created_at + order_expiry_minutes` (dari `platform_config`). Sebuah job/cron (atau pengecekan lazy saat halaman dibuka) mengubah status jadi `kedaluwarsa` jika lewat waktu & masih `menunggu_pembayaran`.
-- `subtotal` = **persis yang dibayar Pembeli** (jumlah harga Item × qty). MDR QRIS **tidak** ditambahkan ke sini (dilarang dibebankan ke Pembeli — [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08); MDR ditanggung Aplikator di luar pembukuan per-Pesanan.
+- `subtotal` = jumlah `harga Item × qty` = **pendapatan Pedagang** (diterima penuh; `total_for_merchant = subtotal`).
+- **`grand_total` = `subtotal + platform_fee_snapshot`** = **yang dibayar Pembeli** (sejak [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09 — Biaya Layanan dibebankan ke Pembeli). **Bukan kolom** — turunan dari dua kolom snapshot yang sudah immutable, jadi tak perlu disimpan/migrasi. Nilai inilah yang dikirim ke payment gateway & disalin ke `payments.gross_amount`. MDR QRIS **tidak** ditambahkan ke sini (dilarang di-surcharge ke Pembeli — PBI 23/6/PBI/2021 Ps. 52); MDR ditanggung Aplikator di luar pembukuan per-Pesanan.
 - `payout_id` (nullable, Fase 6): NULL selama dana Pesanan belum masuk Pencairan. Diisi oleh job Pencairan otomatis saat baris `payouts` dibuat. Order dengan `payout_id` terisi **tidak** ikut dihitung lagi di Saldo Pedagang. Kalau Pencairan gagal → di-*unlink* kembali ke NULL.
 
 ### `order_items`
@@ -164,7 +165,7 @@ erDiagram
 
 ### `payments`
 - `provider = mock` untuk transaksi dev/test, `provider = midtrans` untuk staging/produksi (lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction)). **Wajib** difilter/dipisah per `provider` di semua laporan keuangan, supaya uang "palsu" (mock) tidak tercampur perhitungan real. Enum lama `tripay` dibiarkan di definisi enum (tidak pernah dipakai) — tidak perlu migrasi menghapusnya.
-- `gross_amount` = nominal yang dikirim ke gateway = `orders.subtotal`. Nilai `gross_amount` di payload webhook sudah terikat ke `signature_key` (SHA512), jadi verifikasi signature otomatis menolak payload yang nominalnya diutak-atik. Nullable: baris `mock` lama.
+- `gross_amount` = nominal yang dikirim ke gateway = yang dibayar Pembeli = `orders.subtotal + orders.platform_fee_snapshot` (ADR 2026-09-09). Nilai `gross_amount` di payload webhook sudah terikat ke `signature_key` (SHA512), jadi verifikasi signature otomatis menolak payload yang nominalnya diutak-atik. Nullable: baris `mock` lama.
 - `qr_string` = payload QRIS mentah (Midtrans `qr_string` / payload teks dummy dari mock). Dirender jadi gambar **di server MyGerai** pakai lib `qrcode` di `getOrderStatus` — tidak mengambil gambar dari host Midtrans (tidak perlu `remotePatterns`) dan tidak charge ulang tiap polling. Nullable (baris lama).
 - `expires_at` = kedaluwarsa QRIS dari gateway (Midtrans: `custom_expiry` sesuai `order_expiry_minutes`; mock: `null`). Informasional — kedaluwarsa otoritatif tetap `orders.expires_at`.
 - `raw_payload` menyimpan payload mentah webhook (nyata) atau payload simulasi (mock) untuk audit/debug.

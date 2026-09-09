@@ -24,6 +24,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
 import {
   calculateOrderTotals,
   type OrderCalcItem,
+  orderGrandTotal,
 } from "@/lib/utils/order-calc";
 import { generateOrderCode } from "@/lib/utils/order-code";
 import {
@@ -177,7 +178,7 @@ export async function createOrder(
 
   const { platformFeeAmount, orderExpiryMinutes } =
     await getActivePlatformConfig();
-  const { subtotal, platformFeeSnapshot, totalForMerchant } =
+  const { subtotal, platformFeeSnapshot, totalForMerchant, grandTotal } =
     calculateOrderTotals(calcItems, platformFeeAmount);
   const expiresAt = new Date(Date.now() + orderExpiryMinutes * 60_000);
   const orderCode = await generateUniqueOrderCode(merchant.id);
@@ -196,7 +197,8 @@ export async function createOrder(
   try {
     payment = await provider.createPayment({
       orderId,
-      grossAmount: subtotal,
+      // Pembeli membayar harga Item + Biaya Layanan (ADR 2026-09-09).
+      grossAmount: grandTotal,
       expiryMinutes: orderExpiryMinutes,
     });
   } catch (error) {
@@ -228,7 +230,7 @@ export async function createOrder(
       orderId,
       provider: provider.name,
       referenceId: payment.referenceId,
-      grossAmount: subtotal,
+      grossAmount: grandTotal,
       qrString: payment.qrString,
       status: "pending",
       expiresAt: payment.expiresAt,
@@ -303,6 +305,7 @@ export async function getOrderStatus(
     subtotal: current.subtotal,
     platformFeeSnapshot: current.platformFeeSnapshot,
     totalForMerchant: current.totalForMerchant,
+    grandTotal: orderGrandTotal(current),
     createdAt: current.createdAt,
     expiresAt: current.expiresAt,
     paidAt: current.paidAt,
