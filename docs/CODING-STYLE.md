@@ -24,6 +24,8 @@
 | Saldo Pedagang | `merchantBalance` (nilai turunan, bukan kolom, lihat [DATA-MODEL.md](DATA-MODEL.md#payouts-pencairan)) |
 | Pencairan | `Payout` |
 | Aplikator | `Platform` (konteks umum, jarang jadi nama entitas eksplisit) |
+| QRIS Pribadi | `paymentMode: "qris_pribadi"` (lawan: `"gateway"`) |
+| Tagihan Biaya Layanan | `ServiceFeeInvoice` (tabel `service_fee_invoices`, Fase 7) |
 
 ## Konvensi Penamaan
 

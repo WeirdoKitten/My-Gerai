@@ -1,11 +1,12 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, or } from "drizzle-orm";
 import QRCode from "qrcode";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
+import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { db } from "@/lib/db/client";
 import {
   merchants,
@@ -128,6 +129,20 @@ export async function createOrder(
     return { ok: false, message: "Lapak tidak ditemukan atau belum aktif." };
   }
 
+  const { platformFeeAmount, orderExpiryMinutes, serviceFeeGracePeriodDays } =
+    await getActivePlatformConfig();
+
+  // Defense-in-depth: `getStallCatalog` (halaman menu) sudah menolak Lapak
+  // yang terkunci, tapi cek ulang di sini supaya menu yang ke-cache stale
+  // tidak bisa lolos submit Pesanan (lihat isMerchantOrderingLocked).
+  if (await isMerchantOrderingLocked(merchant.id, serviceFeeGracePeriodDays)) {
+    return {
+      ok: false,
+      message:
+        "Lapak sedang tidak menerima pesanan baru (tagihan Biaya Layanan belum lunas).",
+    };
+  }
+
   const productIds = items.map((item) => item.productId);
   const availableProducts = await db.query.products.findMany({
     where: and(
@@ -176,8 +191,6 @@ export async function createOrder(
     });
   }
 
-  const { platformFeeAmount, orderExpiryMinutes } =
-    await getActivePlatformConfig();
   const { subtotal, platformFeeSnapshot, totalForMerchant, grandTotal } =
     calculateOrderTotals(calcItems, platformFeeAmount);
   const expiresAt = new Date(Date.now() + orderExpiryMinutes * 60_000);
@@ -187,26 +200,49 @@ export async function createOrder(
   // SEBELUM ada baris DB apa pun — kalau gateway gagal, tidak ada Pesanan
   // "yatim" yang tertinggal.
   const orderId = randomUUID();
-  const provider = getPaymentProvider();
 
-  let payment: {
+  let paymentRow: {
+    provider: "mock" | "midtrans" | "qris_pribadi";
     referenceId: string;
-    qrString: string;
+    grossAmount: number;
+    qrString: string | null;
     expiresAt: Date | null;
   };
-  try {
-    payment = await provider.createPayment({
-      orderId,
-      // Pembeli membayar harga Item + Biaya Layanan (ADR 2026-09-09).
-      grossAmount: grandTotal,
-      expiryMinutes: orderExpiryMinutes,
-    });
-  } catch (error) {
-    console.error("createPayment gagal:", error);
-    return {
-      ok: false,
-      message: "Gagal menyiapkan pembayaran. Silakan coba lagi.",
+
+  if (merchant.paymentMode === "qris_pribadi") {
+    // Tidak ada panggilan gateway sama sekali — Pembeli bayar LANGSUNG ke
+    // QRIS statis milik Pedagang, cuma sebesar `subtotal` (Biaya Layanan
+    // ditagih belakangan lewat tagihan mingguan, lihat src/lib/billing/).
+    paymentRow = {
+      provider: "qris_pribadi",
+      referenceId: orderId, // tidak ada referensi eksternal gateway
+      grossAmount: subtotal,
+      qrString: null, // dirender dari merchant.qrisPhotoUrl saat baca (getOrderStatus)
+      expiresAt,
     };
+  } else {
+    const provider = getPaymentProvider();
+    try {
+      const payment = await provider.createPayment({
+        orderId,
+        // Pembeli membayar harga Item + Biaya Layanan (ADR 2026-09-09).
+        grossAmount: grandTotal,
+        expiryMinutes: orderExpiryMinutes,
+      });
+      paymentRow = {
+        provider: provider.name,
+        referenceId: payment.referenceId,
+        grossAmount: grandTotal,
+        qrString: payment.qrString,
+        expiresAt: payment.expiresAt,
+      };
+    } catch (error) {
+      console.error("createPayment gagal:", error);
+      return {
+        ok: false,
+        message: "Gagal menyiapkan pembayaran. Silakan coba lagi.",
+      };
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -228,12 +264,12 @@ export async function createOrder(
 
     await tx.insert(payments).values({
       orderId,
-      provider: provider.name,
-      referenceId: payment.referenceId,
-      grossAmount: grandTotal,
-      qrString: payment.qrString,
+      provider: paymentRow.provider,
+      referenceId: paymentRow.referenceId,
+      grossAmount: paymentRow.grossAmount,
+      qrString: paymentRow.qrString,
       status: "pending",
-      expiresAt: payment.expiresAt,
+      expiresAt: paymentRow.expiresAt,
     });
   });
 
@@ -252,11 +288,18 @@ export async function getOrderStatus(
 
   let current = await expireOrderIfNeeded(order);
 
+  const payment = await db.query.payments.findFirst({
+    where: eq(payments.orderId, current.id),
+  });
+  const isQrisPribadi = payment?.provider === "qris_pribadi";
+
   // Backstop: kalau webhook Midtrans telat/hilang, tanyakan status langsung ke
   // gateway setelah Pesanan berumur >10 dtk (webhook biasanya sudah datang
-  // sebelum itu). Mock tidak punya `getTransactionStatus` → dilewati.
+  // sebelum itu). Mock tidak punya `getTransactionStatus` → dilewati. QRIS
+  // pribadi tidak punya transaksi gateway sama sekali → dilewati juga.
   if (
     current.status === "menunggu_pembayaran" &&
+    !isQrisPribadi &&
     Date.now() - current.createdAt.getTime() > 10_000
   ) {
     const provider = getPaymentProvider();
@@ -271,26 +314,30 @@ export async function getOrderStatus(
     }
   }
 
-  const [merchant, items, payment] = await Promise.all([
+  const [merchant, items] = await Promise.all([
     db.query.merchants.findFirst({
       where: eq(merchants.id, current.merchantId),
     }),
     db.query.orderItems.findMany({ where: eq(orderItems.orderId, current.id) }),
-    db.query.payments.findFirst({ where: eq(payments.orderId, current.id) }),
   ]);
 
   // `qrString` bisa payload EMV (dirender lokal jadi data URI) ATAU URL gambar
-  // dari Midtrans (dipakai apa adanya). Mock selalu payload.
+  // dari Midtrans (dipakai apa adanya). Mock selalu payload. QRIS pribadi
+  // dirender dari foto yang diunggah Pedagang, bukan `payments.qrString`.
   let qrImageUrl: string | null = null;
-  if (current.status === "menunggu_pembayaran" && payment?.qrString) {
-    qrImageUrl = payment.qrString.startsWith("http")
-      ? payment.qrString
-      : await QRCode.toDataURL(payment.qrString);
+  if (current.status === "menunggu_pembayaran") {
+    if (isQrisPribadi) {
+      qrImageUrl = merchant?.qrisPhotoUrl ?? null;
+    } else if (payment?.qrString) {
+      qrImageUrl = payment.qrString.startsWith("http")
+        ? payment.qrString
+        : await QRCode.toDataURL(payment.qrString);
+    }
   }
 
   const sandboxQrUrl =
     current.status === "menunggu_pembayaran" &&
-    getPaymentProviderName() === "midtrans" &&
+    payment?.provider === "midtrans" &&
     midtransIsSandbox() &&
     payment?.referenceId
       ? midtransQrImageUrl(payment.referenceId)
@@ -306,6 +353,8 @@ export async function getOrderStatus(
     platformFeeSnapshot: current.platformFeeSnapshot,
     totalForMerchant: current.totalForMerchant,
     grandTotal: orderGrandTotal(current),
+    amountToPay: isQrisPribadi ? current.subtotal : orderGrandTotal(current),
+    isQrisPribadi,
     createdAt: current.createdAt,
     expiresAt: current.expiresAt,
     paidAt: current.paidAt,
@@ -319,6 +368,7 @@ export async function getOrderStatus(
     qrImageUrl,
     canSimulate:
       getPaymentProviderName() === "mock" &&
+      payment?.provider === "mock" &&
       current.status === "menunggu_pembayaran",
     sandboxQrUrl,
   };
@@ -362,6 +412,9 @@ export async function simulatePaymentSuccess(
   if (!payment) {
     return { ok: false, message: "Data pembayaran tidak ditemukan." };
   }
+  if (payment.provider !== "mock") {
+    return { ok: false, message: "Pesanan ini tidak memakai simulasi mock." };
+  }
 
   const callbackResult = await getPaymentProvider().handleCallback({
     referenceId: payment.referenceId,
@@ -374,20 +427,94 @@ export async function simulatePaymentSuccess(
   return { ok: true };
 }
 
+/**
+ * Tandai Pesanan QRIS pribadi lunas — dipanggil Pedagang dari dashboard
+ * setelah dia melihat uang masuk ke rekening/e-wallet pribadinya sendiri
+ * (tidak ada webhook gateway untuk mode ini). Beda dari
+ * `simulatePaymentSuccess` (dev-only, tidak cek kepemilikan): di sini WAJIB
+ * sesi Pedagang + Pesanan itu benar milik Lapak-nya, dan hanya berlaku untuk
+ * Pesanan `qris_pribadi` — langsung panggil `settleOrderPayment`, TANPA
+ * lewat `PaymentProvider.handleCallback` (tidak ada apa pun untuk diverifikasi).
+ */
+export async function markQrisPribadiOrderPaid(
+  orderId: string,
+): Promise<UpdateOrderStatusResult> {
+  if (!z.uuid().safeParse(orderId).success) {
+    return { ok: false, message: "Pesanan tidak ditemukan." };
+  }
+  const session = await getMerchantSession();
+  if (!session) {
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+  }
+
+  const order = await db.query.orders.findFirst({
+    where: and(
+      eq(orders.id, orderId),
+      eq(orders.merchantId, session.merchantId),
+    ),
+  });
+  if (!order) {
+    return { ok: false, message: "Pesanan tidak ditemukan." };
+  }
+
+  const current = await expireOrderIfNeeded(order);
+  if (current.status !== "menunggu_pembayaran") {
+    return {
+      ok: false,
+      message: `Pesanan ini sudah tidak bisa dikonfirmasi (status: ${ORDER_STATUS_LABEL_ID[current.status]}).`,
+    };
+  }
+
+  const payment = await db.query.payments.findFirst({
+    where: eq(payments.orderId, current.id),
+  });
+  if (payment?.provider !== "qris_pribadi") {
+    return { ok: false, message: "Pesanan ini tidak memakai QRIS pribadi." };
+  }
+
+  await settleOrderPayment(current.id);
+  return { ok: true };
+}
+
 /** Pesanan aktif (butuh aksi Pedagang) milik Lapak sendiri — identitas dari sesi login. */
 export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
   const session = await getMerchantSession();
   if (!session) return [];
 
-  const activeOrders = await db.query.orders.findMany({
-    where: and(
-      eq(orders.merchantId, session.merchantId),
-      inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
-    ),
+  // JOIN eksplisit (bukan db.query relational API — tidak ada relations()
+  // dikonfigurasi di schema.ts) supaya bisa filter dari `payments.provider`
+  // MILIK Pesanan itu sendiri (bukan `merchant.paymentMode` saat ini), supaya
+  // Pesanan gateway lama tidak salah tampil tombol "Tandai Lunas" kalau Admin
+  // sudah pindahkan mode Lapak.
+  const activeOrders = await db
+    .select({
+      id: orders.id,
+      orderCode: orders.orderCode,
+      status: orders.status,
+      buyerName: orders.buyerName,
+      buyerNote: orders.buyerNote,
+      createdAt: orders.createdAt,
+      paymentProvider: payments.provider,
+    })
+    .from(orders)
+    .innerJoin(payments, eq(payments.orderId, orders.id))
+    .where(
+      and(
+        eq(orders.merchantId, session.merchantId),
+        or(
+          inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
+          // Pesanan QRIS pribadi yang masih menunggu Pedagang menekan
+          // "Tandai Lunas".
+          and(
+            eq(orders.status, "menunggu_pembayaran"),
+            eq(payments.provider, "qris_pribadi"),
+          ),
+        ),
+      ),
+    )
     // Antrean FIFO: Pesanan terlama (paling lama menunggu) di atas supaya
     // Pedagang mengerjakan sesuai urutan masuk; Pesanan baru menempel di bawah.
-    orderBy: (row, { asc }) => [asc(row.createdAt)],
-  });
+    .orderBy(asc(orders.createdAt));
   if (activeOrders.length === 0) return [];
 
   const orderIds = activeOrders.map((order) => order.id);
@@ -415,6 +542,9 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
       qty: item.qty,
       note: item.note,
     })),
+    awaitingManualConfirmation:
+      order.status === "menunggu_pembayaran" &&
+      order.paymentProvider === "qris_pribadi",
   }));
 }
 

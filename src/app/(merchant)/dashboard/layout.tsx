@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
-import { QrIcon, UserIcon } from "@/components/ui/icons";
+import { QrIcon, UserIcon, WalletIcon } from "@/components/ui/icons";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
@@ -50,6 +50,13 @@ export default async function DashboardLayout({
               className={HEADER_ICON_CLASS}
             >
               <UserIcon className="size-4" />
+            </Link>
+            <Link
+              href="/dashboard/pembayaran"
+              aria-label="Metode Pembayaran"
+              className={HEADER_ICON_CLASS}
+            >
+              <WalletIcon className="size-4" />
             </Link>
           </>
         }

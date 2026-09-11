@@ -22,6 +22,12 @@ export function PlatformConfigForm({
   const [orderExpiryMinutes, setOrderExpiryMinutes] = useState(
     String(current.orderExpiryMinutes),
   );
+  const [serviceFeeBillingCycleDays, setServiceFeeBillingCycleDays] = useState(
+    String(current.serviceFeeBillingCycleDays),
+  );
+  const [serviceFeeGracePeriodDays, setServiceFeeGracePeriodDays] = useState(
+    String(current.serviceFeeGracePeriodDays),
+  );
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -35,6 +41,8 @@ export function PlatformConfigForm({
     const result = await updatePlatformConfig({
       platformFeeAmount: Number(platformFeeAmount),
       orderExpiryMinutes: Number(orderExpiryMinutes),
+      serviceFeeBillingCycleDays: Number(serviceFeeBillingCycleDays),
+      serviceFeeGracePeriodDays: Number(serviceFeeGracePeriodDays),
     });
 
     if (!result.ok) {
@@ -67,6 +75,26 @@ export function PlatformConfigForm({
           onChange={(e) => setOrderExpiryMinutes(e.target.value)}
           required
           min={1}
+        />
+      </Field>
+      <Field label="Siklus Tagihan Biaya Layanan QRIS Pribadi (hari)">
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={serviceFeeBillingCycleDays}
+          onChange={(e) => setServiceFeeBillingCycleDays(e.target.value)}
+          required
+          min={1}
+        />
+      </Field>
+      <Field label="Masa Tenggang Sebelum Lapak Dikunci (hari)">
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={serviceFeeGracePeriodDays}
+          onChange={(e) => setServiceFeeGracePeriodDays(e.target.value)}
+          required
+          min={0}
         />
       </Field>
       {error ? <Alert tone="error">{error}</Alert> : null}

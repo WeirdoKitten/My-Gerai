@@ -66,6 +66,8 @@ interface DisbursementProvider {
 - **`MidtransPaymentProvider`** (env `PAYMENT_PROVIDER=midtrans`, Fase 6a): `createPayment` → Midtrans Core API `POST /v2/charge` (`payment_type: "qris"`, `custom_expiry` = durasi kedaluwarsa Pesanan); `qr_string` disimpan di `payments` & dirender jadi gambar **di server** pakai lib `qrcode` (`getOrderStatus`, tidak charge ulang tiap poll). `handleCallback` dipanggil dari `POST /api/webhooks/payment` yang **wajib** verifikasi `signature_key` = `SHA512(order_id + status_code + gross_amount + ServerKey)` (`timingSafeEqual`) sebelum memproses (lihat [RULES.md §7](RULES.md#7-keamanan)). Logika transisi status bersama ada di `src/lib/payment/settle.ts` (modul biasa, bukan Server Action).
 - **`MockDisbursementProvider`** / **`IrisDisbursementProvider`** (env `DISBURSEMENT_PROVIDER=mock|iris`): Iris `/api/v1/payouts` untuk transfer nyata; callback status masuk `POST /api/webhooks/payout`.
 - Field `provider` disimpan di tabel `payments` **dan** `payouts` supaya jelas mana `mock` vs `midtrans`/`iris` — **penting agar data simulasi tidak pernah tercampur dengan transaksi nyata setelah go-live** (lihat [DATA-MODEL.md](DATA-MODEL.md)).
+- **QRIS Pribadi (Fase 7) SENGAJA BUKAN implementasi `PaymentProvider` baru** — mode ini tidak punya `createPayment` (tidak ada panggilan gateway sama sekali) atau `handleCallback` (tidak ada webhook, konfirmasi manual Pedagang) sungguhan, jadi memaksakannya ke interface ini cuma menambah kompleksitas tanpa manfaat. `createOrder` (`src/server/orders.ts`) cabang langsung berdasar `merchants.payment_mode`, skip pemanggilan `getPaymentProvider()` untuk Lapak `qris_pribadi`. `payments.provider = "qris_pribadi"` tetap dipakai (baris `payments` tetap diisi demi keseragaman dengan `settleOrderPayment`), tapi bukan lewat abstraksi ini. Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md#alur-data-qris-pribadi--tagihan-biaya-layanan-mingguan-fase-7).
+- **Tagihan Biaya Layanan** (Pedagang `qris_pribadi` → Aplikator, arah kebalikan dari `payments`) juga bukan lewat `PaymentProvider` — charge-nya dibuat fungsi kecil `createServiceFeeInvoiceCharge()` di `src/lib/payment/midtrans-provider.ts` (reuse helper privat `baseUrl()`/`authHeader()`), dipanggil dari job `src/lib/billing/service-fee.ts`, bukan per-Pesanan Pembeli.
 
 ### Environment variables (Fase 6)
 
@@ -80,7 +82,7 @@ DISBURSEMENT_ENABLED=false       # "true" untuk mengaktifkan job Pencairan haria
 IRIS_API_KEY=                    # Iris "Creator" API key (sandbox: dashboard Iris)
 IRIS_IS_PRODUCTION=false
 
-CRON_SECRET=                     # bearer token untuk POST /api/cron/disburse (di-set di Scheduled Job Dokploy)
+CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse, bill-service-fee, dst — di-set di tiap Scheduled Job Dokploy)
 ```
 
 `MIDTRANS_CLIENT_KEY` boleh terekspos ke klien (dipakai Snap.js kalau nanti perlu); **Server Key & Iris API Key TIDAK PERNAH** ke klien — hanya dipakai di Server Action/Route Handler.

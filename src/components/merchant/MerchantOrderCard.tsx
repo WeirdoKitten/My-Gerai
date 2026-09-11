@@ -12,7 +12,7 @@ import {
   nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
 } from "@/lib/utils/order-status";
-import { updateOrderStatus } from "@/server/orders";
+import { markQrisPribadiOrderPaid, updateOrderStatus } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
 
 export function MerchantOrderCard({
@@ -46,6 +46,22 @@ export function MerchantOrderCard({
     onUpdated();
   }
 
+  // Pesanan QRIS pribadi tanpa webhook gateway — Pedagang konfirmasi manual
+  // setelah melihat uang masuk ke rekening/e-wallet pribadinya sendiri.
+  async function handleMarkPaid() {
+    setSubmitting(true);
+    setError(null);
+    const result = await markQrisPribadiOrderPaid(order.id);
+    if (!result.ok) {
+      setError(result.message ?? "Gagal menandai lunas.");
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(false);
+    showToast(`Pesanan ${order.orderCode} ditandai lunas`);
+    onUpdated();
+  }
+
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -71,7 +87,22 @@ export function MerchantOrderCard({
         ))}
       </ul>
       {error ? <Alert tone="error">{error}</Alert> : null}
-      {actionLabel ? (
+      {order.awaitingManualConfirmation ? (
+        <>
+          <p className="text-xs text-ink-muted">
+            Pesanan QRIS pribadi — tandai lunas setelah kamu menerima
+            pembayarannya.
+          </p>
+          <Button
+            type="button"
+            fullWidth
+            loading={submitting}
+            onClick={handleMarkPaid}
+          >
+            {submitting ? "Memproses..." : "Tandai Lunas"}
+          </Button>
+        </>
+      ) : actionLabel ? (
         <Button
           type="button"
           fullWidth

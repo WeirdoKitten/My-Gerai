@@ -11,7 +11,10 @@ export type AdminMerchantView = {
   status: "pending" | "approved" | "rejected" | "suspended";
   rejectionReason: string | null;
   createdAt: Date;
+  paymentMode: "gateway" | "qris_pribadi";
+  qrisPhotoUrl: string | null;
 };
 
 export type ApproveMerchantResult = { ok: boolean; message?: string };
 export type RejectMerchantResult = { ok: boolean; message?: string };
+export type SetMerchantPaymentModeResult = { ok: boolean; message?: string };

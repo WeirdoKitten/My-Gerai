@@ -204,8 +204,35 @@
 - [ ] Uji transaksi **produksi** nominal kecil. Pastikan tidak ada data `provider=mock` tercampur laporan produksi ([DATA-MODEL.md](DATA-MODEL.md#payments)).
 - [ ] `SEED_DEMO` dimatikan di produksi.
 
+## Fase 7 — QRIS Pribadi + Tagihan Biaya Layanan Mingguan ✅
+
+> Client ingin Pedagang bisa pilih QRIS pribadi (cair instan, tanpa H+1 Midtrans) selain gateway. Masalah: platform tidak pegang uangnya, jadi Biaya Layanan tidak bisa dipotong otomatis. Keputusan bisnis dikonfirmasi User (AskUserQuestion, beberapa putaran, 2026-09-11): konfirmasi bayar manual ("Tandai Lunas" Pedagang, tanpa integrasi notifikasi otomatis), QRIS statis bebas milik Pedagang, tagihan pascabayar **mingguan**, grace period **3 hari** sebelum Lapak dikunci, dan **hanya Admin** yang boleh ganti mode pembayaran (bukan self-service Pedagang). Detail lengkap & alasan tiap keputusan: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-11.
+
+**Skema DB (migrasi `0005_condemned_fenris.sql`)**
+- [x] Enum baru `merchant_payment_mode` (`gateway`/`qris_pribadi`), `service_fee_invoice_status` (`belum_lunas`/`lunas`/`dibatalkan`). Extend `payment_provider` + value `qris_pribadi`.
+- [x] `merchants`: kolom `payment_mode` (default `gateway`) + `qris_photo_url`.
+- [x] Tabel baru `service_fee_invoices` (periode, amount, dueAt, status, provider/referenceId/qrString charge tagihan, paidAt, voidReason) + `UNIQUE(merchant_id, period_start)` (idempotensi cron).
+- [x] `platform_config`: 2 key baru `service_fee_billing_cycle_days` (default 7) & `service_fee_grace_period_days` (default 3), configurable dari `/admin/config`.
+
+**Kode**
+- [x] `createOrder`: cabang `qris_pribadi` skip panggilan gateway sama sekali — Pembeli bayar persis `subtotal` (Biaya Layanan jadi piutang, bukan dipungut instan). `getOrderStatus`: render foto QRIS Pedagang sebagai QR, field baru `amountToPay`/`isQrisPribadi`. **Bug laten diperbaiki**: `canSimulate`/`sandboxQrUrl` dulu cuma cek provider global env, sekarang juga cek provider per-Pesanan (`payments.provider`) — mencegah Pesanan `qris_pribadi` salah tampil tombol simulasi di deployment mock.
+- [x] `markQrisPribadiOrderPaid` (`src/server/orders.ts`) — aksi "Tandai Lunas" Pedagang, scoped sesi + kepemilikan Pesanan, cuma utk Pesanan `qris_pribadi`, panggil `settleOrderPayment` langsung (tanpa `PaymentProvider.handleCallback`). `listMerchantOrders` diperluas (JOIN `payments`) supaya Pesanan ini muncul di dashboard.
+- [x] `setMerchantPaymentMode` (`src/server/merchants.ts`) — HANYA Admin, tolak switch ke `qris_pribadi` kalau `qrisPhotoUrl` masih kosong. Pedagang cuma unggah/kelola foto QRIS sendiri (`uploadQrisPhoto`) di halaman baru `/dashboard/pembayaran`.
+- [x] `src/lib/billing/` (`period.ts` resolusi periode epoch-relative, `service-fee.ts` — `isMerchantOrderingLocked` lazy-computed dari tagihan `belum_lunas` yang lewat jatuh tempo+grace, `runWeeklyServiceFeeBilling` job akrual+charge). `POST /api/cron/bill-service-fee` (guard `CRON_SECRET`, pola sama seperti rencana `/api/cron/disburse` Fase 6b).
+- [x] Webhook tagihan **berbagi 1 route** dengan webhook Pesanan (`/api/webhooks/payment`) — dibedakan lewat prefix `order_id` (`svcfee-`), karena akun Midtrans cuma dukung 1 Notification URL global (keputusan User).
+- [x] Kunci Lapak: **tidak ada kolom "locked" tersendiri** — dihitung lazy di 2 titik (`getStallCatalog`, `createOrder`), mengikuti filosofi kedaluwarsa Pesanan. Sesi/dashboard Pedagang TIDAK ikut terkunci (`getMerchantSession` tidak diubah) — Pedagang tetap bisa bayar tagihan meski Lapak-nya terkunci dari Pesanan baru.
+- [x] Halaman Admin baru `/admin/invoices` (akrual per Lapak `qris_pribadi` + riwayat tagihan + override manual "Tandai Lunas"/"Batalkan"). Kontrol ganti mode pembayaran ditambahkan ke `/admin/merchants` (lihat foto QRIS dulu sebelum switch).
+
+**Verifikasi**
+- [x] Unit test baru `tests/unit/billing-period.test.ts` (5 test, dibuktikan menangkap bug: `floor`→`ceil` disabotase → 3 gagal → revert). `pnpm test` (91 total) lulus.
+- [x] E2E baru `tests/e2e/qris-pribadi.spec.ts` (4 test, Lapak kedua "Warung Cak Slamet" biar tidak bentrok dgn `order-flow.spec.ts`): Pedagang unggah foto QRIS → Admin switch mode (lihat preview foto dulu) → Pembeli checkout (**tanpa** baris Biaya Layanan, bayar persis subtotal, QR yang tampil = foto QRIS Pedagang, tombol simulasi TIDAK muncul) → Pedagang "Tandai Lunas" → Pesanan lanjut alur normal. `pnpm test:e2e` (7 total) lulus.
+- [x] Verifikasi manual cron nyata (bukan cuma baca kode): `POST /api/cron/bill-service-fee` dgn Pesanan `qris_pribadi` lunas di periode yang sudah tertutup → tagihan ter-generate (`amount`/`dueAt`/`qrString` benar) → dipanggil ulang → idempoten (0 baris baru) → 401 kalau secret salah/kosong. Tagihan telat (mundur manual) → storefront terkunci dgn pesan yang benar → ditandai lunas → storefront otomatis terbuka lagi TANPA langkah "unlock" terpisah (membuktikan desain lazy-unlock).
+- [x] `tsc --noEmit` / `pnpm lint` / `pnpm build` lulus di setiap tahap.
+- [ ] **`/security-review`** — jalankan setelah commit (menyentuh uang, upload, webhook — Rule 8).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
+- [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.
 - [ ] OTP untuk login Pedagang/Admin (hardening keamanan).
 - [ ] Model settlement Split/Marketplace (uang langsung ter-split ke Pedagang) — kalau Aplikator naik jadi badan usaha.
 - [ ] Refund/pembatalan Pesanan setelah `dibayar` (Midtrans refund API + penyesuaian Saldo/Pencairan).

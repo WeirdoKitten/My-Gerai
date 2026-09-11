@@ -99,6 +99,78 @@ function safeEqualHex(a: string, b: string): boolean {
   return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
 }
 
+/**
+ * Verifikasi + parse notifikasi Midtrans (dipakai bersama oleh webhook
+ * Pesanan Pembeli dan webhook tagihan Biaya Layanan — lihat
+ * src/app/api/webhooks/payment/route.ts). `rawOrderId` BELUM tentu UUID
+ * Pesanan — bisa juga `svcfee-<uuid tagihan>`, pemanggil yang menentukan
+ * artinya lewat prefix.
+ */
+export function verifyMidtransNotification(payload: unknown): {
+  referenceId: string;
+  rawOrderId: string;
+  status: PaymentSettlementStatus;
+} | null {
+  const parsed = notificationSchema.safeParse(payload);
+  if (!parsed.success) return null;
+
+  const { order_id, status_code, gross_amount, signature_key } = parsed.data;
+  const expected = createHash("sha512")
+    .update(`${order_id}${status_code}${gross_amount}${serverKey()}`)
+    .digest("hex");
+
+  if (!safeEqualHex(expected, signature_key.toLowerCase())) return null;
+
+  return {
+    referenceId: parsed.data.transaction_id,
+    rawOrderId: order_id,
+    status: mapStatus(parsed.data.transaction_status, parsed.data.fraud_status),
+  };
+}
+
+/**
+ * Charge QRIS untuk tagihan Biaya Layanan mingguan (Pedagang → Aplikator) —
+ * bukan Pesanan Pembeli, jadi dipisah dari `PaymentProvider.createPayment`.
+ * `order_id` dikirim dengan prefix `svcfee-` supaya webhook bisa membedakan
+ * dari Pesanan biasa (lihat verifyMidtransNotification). Return `null` kalau
+ * gagal (dicatat & dicoba lagi di run cron berikutnya, bukan melempar error
+ * yang menghentikan seluruh batch).
+ */
+export async function createServiceFeeInvoiceCharge(
+  invoiceId: string,
+  amount: number,
+): Promise<{ referenceId: string; qrString: string } | null> {
+  const response = await fetch(`${baseUrl()}/v2/charge`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: authHeader(),
+    },
+    body: JSON.stringify({
+      payment_type: "qris",
+      transaction_details: {
+        order_id: `svcfee-${invoiceId}`,
+        gross_amount: amount,
+      },
+      qris: { acquirer: "gopay" },
+    }),
+    signal: AbortSignal.timeout(CHARGE_TIMEOUT_MS),
+  });
+
+  const json: unknown = await response.json().catch(() => null);
+  const parsed = chargeResponseSchema.safeParse(json);
+  const qrSource =
+    (parsed.success ? parsed.data.qr_string : undefined) ??
+    (parsed.success
+      ? parsed.data.actions?.find((a) => a.name === "generate-qr-code")?.url
+      : undefined);
+
+  if (!response.ok || !parsed.success || !qrSource) return null;
+
+  return { referenceId: parsed.data.transaction_id, qrString: qrSource };
+}
+
 export const midtransPaymentProvider: PaymentProvider = {
   name: "midtrans",
 
@@ -152,23 +224,12 @@ export const midtransPaymentProvider: PaymentProvider = {
   },
 
   async handleCallback(payload) {
-    const parsed = notificationSchema.safeParse(payload);
-    if (!parsed.success) return null;
-
-    const { order_id, status_code, gross_amount, signature_key } = parsed.data;
-    const expected = createHash("sha512")
-      .update(`${order_id}${status_code}${gross_amount}${serverKey()}`)
-      .digest("hex");
-
-    if (!safeEqualHex(expected, signature_key.toLowerCase())) return null;
-
+    const result = verifyMidtransNotification(payload);
+    if (!result) return null;
     return {
-      referenceId: parsed.data.transaction_id,
-      orderId: order_id,
-      status: mapStatus(
-        parsed.data.transaction_status,
-        parsed.data.fraud_status,
-      ),
+      referenceId: result.referenceId,
+      orderId: result.rawOrderId,
+      status: result.status,
     };
   },
 

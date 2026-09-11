@@ -36,6 +36,13 @@
       "when": 1788854513851,
       "tag": "0004_fixed_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789101548559,
+      "tag": "0005_condemned_fenris",
+      "breakpoints": true
     }
   ]
 }

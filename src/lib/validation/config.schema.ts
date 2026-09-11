@@ -11,6 +11,16 @@ export const updatePlatformConfigSchema = z.object({
     .int()
     .min(1, "Durasi kedaluwarsa minimal 1 menit.")
     .max(1440, "Durasi kedaluwarsa maksimal 1440 menit (24 jam)."),
+  serviceFeeBillingCycleDays: z
+    .number()
+    .int()
+    .min(1, "Siklus tagihan minimal 1 hari.")
+    .max(90, "Siklus tagihan maksimal 90 hari."),
+  serviceFeeGracePeriodDays: z
+    .number()
+    .int()
+    .min(0, "Masa tenggang tidak boleh negatif.")
+    .max(30, "Masa tenggang maksimal 30 hari."),
 });
 
 export type UpdatePlatformConfigInput = z.infer<

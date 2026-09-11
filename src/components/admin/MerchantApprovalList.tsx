@@ -7,6 +7,7 @@ import { StoreIcon } from "@/components/ui/icons";
 import { listMerchantsForAdmin } from "@/server/merchants";
 import type { AdminMerchantView } from "@/types/admin";
 import { MerchantApprovalRow } from "./MerchantApprovalRow";
+import { MerchantPaymentModeControl } from "./MerchantPaymentModeControl";
 import { MerchantStatusBadge } from "./MerchantStatusBadge";
 
 export function MerchantApprovalList({
@@ -56,23 +57,28 @@ export function MerchantApprovalList({
         ) : (
           <div className="flex flex-col gap-2">
             {others.map((merchant) => (
-              <Card
-                key={merchant.id}
-                pad="sm"
-                className="flex items-center justify-between gap-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-ink">
-                    {merchant.stallName}
-                  </p>
-                  <p className="text-sm text-ink-muted">
-                    {merchant.phone}
-                    {merchant.status === "rejected" && merchant.rejectionReason
-                      ? ` — ${merchant.rejectionReason}`
-                      : ""}
-                  </p>
+              <Card key={merchant.id} pad="sm" className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-ink">
+                      {merchant.stallName}
+                    </p>
+                    <p className="text-sm text-ink-muted">
+                      {merchant.phone}
+                      {merchant.status === "rejected" &&
+                      merchant.rejectionReason
+                        ? ` — ${merchant.rejectionReason}`
+                        : ""}
+                    </p>
+                  </div>
+                  <MerchantStatusBadge status={merchant.status} />
                 </div>
-                <MerchantStatusBadge status={merchant.status} />
+                {merchant.status === "approved" ? (
+                  <MerchantPaymentModeControl
+                    merchant={merchant}
+                    onChanged={refresh}
+                  />
+                ) : null}
               </Card>
             ))}
           </div>

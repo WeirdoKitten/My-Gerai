@@ -2,16 +2,26 @@ import { notFound } from "next/navigation";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
 import { ProductCard } from "@/components/buyer/ProductCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ImageOffIcon, StoreIcon } from "@/components/ui/icons";
+import { HistoryIcon, ImageOffIcon, StoreIcon } from "@/components/ui/icons";
 import { getStallCatalog } from "@/server/products";
 
 export default async function StallMenuPage(
   props: PageProps<"/menu/[stallSlug]">,
 ) {
   const { stallSlug } = await props.params;
-  const catalog = await getStallCatalog(stallSlug);
+  const result = await getStallCatalog(stallSlug);
 
-  if (!catalog) notFound();
+  if (!result.ok && result.reason === "not_found") notFound();
+  if (!result.ok) {
+    return (
+      <EmptyState
+        icon={<HistoryIcon className="size-10" />}
+        title="Lapak sedang tidak menerima pesanan"
+        description="Tagihan Biaya Layanan Lapak ini belum lunas. Coba lagi nanti."
+      />
+    );
+  }
+  const { catalog } = result;
 
   return (
     <div className="flex flex-col gap-4 pb-28">

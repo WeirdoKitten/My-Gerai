@@ -22,3 +22,19 @@ export type MerchantProfileView = {
 };
 
 export type UpdateMerchantProfileResult = { ok: boolean; message?: string };
+
+/**
+ * Pengaturan pembayaran Lapak sendiri (`/dashboard/pembayaran`). `paymentMode`
+ * read-only di sisi Pedagang — cuma Admin yang boleh mengubahnya (lihat
+ * setMerchantPaymentMode). `storefrontLocked` dihitung lazy dari tagihan
+ * Biaya Layanan yang menunggak (lihat isMerchantOrderingLocked).
+ */
+export type MerchantPaymentSettingsView = {
+  paymentMode: "gateway" | "qris_pribadi";
+  qrisPhotoUrl: string | null;
+  storefrontLocked: boolean;
+};
+
+export type UploadQrisPhotoResult =
+  | { ok: true; url: string }
+  | { ok: false; message: string };

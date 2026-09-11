@@ -12,6 +12,7 @@ export const UPLOADS_DIR =
   process.env.UPLOADS_DIR ?? path.join(process.cwd(), ".uploads");
 
 const PRODUCT_PHOTO_DIR = path.join(UPLOADS_DIR, "products");
+const QRIS_PHOTO_DIR = path.join(UPLOADS_DIR, "qris");
 
 export type ImageExt = "jpg" | "png" | "webp";
 
@@ -51,4 +52,15 @@ export async function saveProductPhoto(
   await mkdir(PRODUCT_PHOTO_DIR, { recursive: true });
   await writeFile(path.join(PRODUCT_PHOTO_DIR, name), bytes);
   return `/uploads/products/${name}`;
+}
+
+/** Tulis foto QRIS pribadi Pedagang ke storage, kembalikan `qris_photo_url` relatif. */
+export async function saveQrisPhoto(
+  bytes: Buffer,
+  ext: ImageExt,
+): Promise<string> {
+  const name = `${randomUUID()}.${ext}`;
+  await mkdir(QRIS_PHOTO_DIR, { recursive: true });
+  await writeFile(path.join(QRIS_PHOTO_DIR, name), bytes);
+  return `/uploads/qris/${name}`;
 }

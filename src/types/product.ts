@@ -20,6 +20,21 @@ export type StallCatalogView = {
   products: BuyerProductView[];
 };
 
+/**
+ * `reason: "locked"` = Lapak ada, `approved`, tapi sedang tidak menerima
+ * Pesanan baru karena tagihan Biaya Layanan `qris_pribadi` menunggak lewat
+ * masa tenggang (lihat isMerchantOrderingLocked). Dibedakan dari "not_found"
+ * supaya halaman Pembeli bisa tampilkan pesan yang sesuai, bukan 404 generik.
+ */
+export type StallCatalogResult =
+  | { ok: true; catalog: StallCatalogView }
+  | { ok: false; reason: "not_found" | "locked" };
+
+/** Metode pembayaran Lapak, dilihat Pembeli (tanpa sesi) untuk copy checkout. */
+export type MerchantPaymentModeView = {
+  paymentMode: "gateway" | "qris_pribadi";
+} | null;
+
 /** Item milik Lapak sendiri, ditampilkan di dashboard Pedagang (kelola Item). */
 export type MerchantProductView = {
   id: string;
