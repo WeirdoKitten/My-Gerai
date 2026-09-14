@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { StoreIcon } from "@/components/ui/icons";
 import { Toggle } from "@/components/ui/Toggle";
 import { cn } from "@/lib/utils/cn";
 import { toggleMerchantOpen } from "@/server/merchants";
@@ -39,12 +38,10 @@ export function OpenToggle({ initialIsOpen }: { initialIsOpen: boolean }) {
       <div className="flex items-center gap-3">
         <span
           className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-full",
-            isOpen ? "bg-success text-white" : "bg-danger text-white",
+            "size-3 shrink-0 rounded-full",
+            isOpen ? "bg-success" : "bg-danger",
           )}
-        >
-          <StoreIcon className="size-5" />
-        </span>
+        />
         <div>
           <p className="text-sm font-semibold text-ink">
             Status Lapak:{" "}
@@ -55,7 +52,7 @@ export function OpenToggle({ initialIsOpen }: { initialIsOpen: boolean }) {
           <p className="text-xs text-ink-muted">
             {isOpen
               ? "Siap menerima pesanan baru"
-              : "Tidak dapat menerima pesanan baru"}
+              : "Tidak bisa menerima pesanan baru"}
           </p>
         </div>
       </div>
