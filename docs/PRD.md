@@ -38,29 +38,34 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 
 ## 4. Lingkup MVP (In Scope)
 
-- [ ] Pedagang daftar mandiri (nama Lapak, kategori, kontak, foto) → status `pending` → Admin approve → Lapak dapat **QR Lapak** unik.
+- [ ] Pedagang daftar mandiri (nama Lapak, kategori, kontak, foto) → status `pending` → Admin approve → Lapak dapat **QR Menu** unik.
 - [ ] Pedagang kelola daftar Item (nama, harga, foto, **stok opsional**, status tersedia/habis) di dashboard sendiri. Stok `null` = tidak dibatasi; kalau diisi angka, berkurang saat Pesanan `dibayar` & Item hilang dari katalog Pembeli begitu stok 0.
-- [ ] Pembeli scan **QR Lapak** → lihat katalog Item Lapak tsb (tanpa login).
+- [ ] Pembeli scan **QR Menu** → lihat katalog Item Lapak tsb (tanpa login).
 - [ ] Pembeli pilih Item + qty + catatan → Keranjang (di sisi browser) → Checkout.
-- [ ] Saat checkout, Pembeli **wajib isi Nama** (field lain tidak ada).
-- [ ] Sistem membuat Pesanan berstatus `menunggu_pembayaran` + menampilkan QRIS.
-  - **Tahap MVP awal: QRIS ini disimulasikan** (`MockPaymentProvider`) — ada tombol "Simulasikan Pembayaran Berhasil" untuk keperluan uji alur, belum integrasi nyata ke payment gateway. Lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider-abstraction) dan [BACKLOG.md](BACKLOG.md) untuk kapan integrasi nyata (Tripay) menyusul.
-- [ ] Begitu pembayaran terkonfirmasi → status jadi `dibayar` → **real-time** muncul di dashboard Pedagang.
+- [ ] Saat checkout, Pembeli **wajib isi Nama** (field lain tidak ada). Checkout menampilkan rincian **Subtotal + Biaya Layanan = Total** yang harus dibayar.
+- [ ] Sistem membuat Pesanan berstatus `menunggu_pembayaran` + menampilkan QRIS sejumlah `subtotal + Biaya Layanan`.
+  - **Dev/test: disimulasikan** (`MockPaymentProvider`, tombol "Simulasikan Pembayaran Berhasil"). **Staging/produksi (Fase 6): QRIS dinamis nyata via Midtrans** (Core API), dipilih lewat env `PAYMENT_PROVIDER`. Lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction), [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08, [BACKLOG.md](BACKLOG.md) Fase 6.
+- [ ] Begitu pembayaran terkonfirmasi (webhook Midtrans terverifikasi, atau tombol simulasi) → status jadi `dibayar` → **real-time** muncul di dashboard Pedagang.
 - [ ] Pedagang update status Pesanan: `diproses` → `siap_diambil` → `selesai`.
+- [ ] Pedagang melihat **Riwayat Pesanan** (Pesanan yang sudah `selesai`/`kedaluwarsa`/`dibatalkan`) di tab terpisah dashboard — read-only, terbaru dulu. Riwayat Pesanan **Pembeli** tetap di luar lingkup (§5).
+- [ ] Pedagang melihat **Laporan Penjualan** (tab dashboard): ringkasan omzet/jumlah Pesanan/rata-rata/bagian Pedagang per periode (hari ini / 7 hari / 30 hari) + delta vs periode sebelumnya, penjualan per hari, Item terlaris, plus **kartu "Rekomendasi Asisten"** — saran berbasis aturan (stok, jam ramai/hari sepi, fokus menu, harga/paket). Asisten **bukan AI/LLM**, murni heuristik atas data sendiri (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09). Laporan analitik yang lebih dalam & sisi Admin tetap di luar lingkup (§5).
 - [ ] Pembeli melihat status Pesanannya + **Kode Pesanan** di halaman setelah checkout (di-refresh otomatis/real-time), untuk ditunjukkan ke Pedagang saat mengambil.
 - [ ] Pesanan yang tidak dibayar dalam waktu tertentu → `kedaluwarsa` otomatis (nilai waktu dapat dikonfigurasi Admin, default 15 menit).
-- [ ] Admin: approve/reject Pedagang baru, atur nominal **Biaya Layanan** (default Rp1.000/pesanan sukses), lihat daftar transaksi & **Saldo Pedagang**, catat **Pencairan** manual per Pedagang.
+- [ ] Admin: approve/reject Pedagang baru, atur nominal **Biaya Layanan** (default Rp1.000/pesanan sukses), lihat daftar transaksi & **Saldo Pedagang**. **Pencairan berjalan otomatis** (batch harian via Midtrans Iris, Fase 6) — Admin hanya memantau riwayat, tidak mencatat manual.
+- [ ] Pedagang mengisi **info rekening/e-wallet pencairan** (tervalidasi) di profil — syarat agar Pencairan otomatis bisa jalan.
 
 ## 5. Di Luar Lingkup MVP (Out of Scope — dicatat sebagai ide masa depan di [BACKLOG.md](BACKLOG.md))
 
-- Integrasi payment gateway **sungguhan** (Tripay) — menyusul setelah alur inti stabil.
+- **Model settlement Split/Marketplace** (uang Pembeli langsung ter-split ke rekening Pedagang tanpa lewat akun Aplikator) — ditunda: kemungkinan butuh badan usaha + onboarding sub-merchant per Lapak. Dipilih **Model B** (Agregator + Pencairan otomatis) — lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08.
 - Metode bayar selain QRIS (tunai, transfer manual, dompet digital langsung).
-- Pencairan otomatis via API disbursement.
+- **Refund/pembatalan Pesanan setelah `dibayar`** — belum ditangani di Fase 6.
+- Accelerated/instant settlement (H+0) — pakai default H+1.
 - Varian Item (ukuran baju S/M/L, level pedas, dsb).
 - Multi-Lapak per satu Pedagang.
 - Riwayat Pesanan Pembeli lintas sesi (karena tanpa akun).
 - Notifikasi WhatsApp/SMS ke Pembeli atau Pedagang.
-- Laporan analitik penjualan mendalam.
+- Laporan analitik penjualan **mendalam** (grafik interaktif, ekspor CSV/PDF, segmentasi Pembeli) & laporan agregat lintas-Lapak untuk Admin. _(Laporan Penjualan **ringan** untuk Pedagang + asisten rekomendasi berbasis aturan **sudah masuk lingkup**, lihat §4.)_
+- Asisten/analitik berbasis **LLM** (tanya-jawab bahasa natural atas data penjualan) — asisten yang ada murni mesin aturan, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09.
 - Aplikasi mobile native (MVP = web saja, mobile-first).
 - Multi-bahasa (MVP: Bahasa Indonesia saja).
 - Pengelompokan Lapak per lokasi/pasar fisik.
@@ -76,12 +81,12 @@ sequenceDiagram
     participant PG as Payment Provider
     participant Ped as Dashboard Pedagang
 
-    P->>App: Scan QR Lapak
+    P->>App: Scan QR Menu
     App-->>P: Tampilkan katalog Item Lapak
     P->>App: Pilih Item, atur qty & catatan
     P->>App: Checkout + isi Nama
     App->>App: Buat Pesanan (status: menunggu_pembayaran)
-    App->>PG: Minta QRIS (mock/nyata) sejumlah total harga
+    App->>PG: Minta QRIS (mock/nyata) sejumlah subtotal + Biaya Layanan
     PG-->>App: QR pembayaran
     App-->>P: Tampilkan QR + halaman status Pesanan
     P->>PG: Bayar (atau klik simulasi di tahap MVP)
@@ -99,7 +104,7 @@ sequenceDiagram
 1. Buka halaman daftar Pedagang → isi nama Lapak, kategori, nama pemilik, kontak (nomor HP), foto/banner.
 2. Buat akun (nomor HP + password — lihat [TEKNOLOGI.md](TEKNOLOGI.md#autentikasi) untuk alasan tanpa OTP di MVP).
 3. Status Lapak `pending` → menunggu Admin approve.
-4. Setelah `approved` → Pedagang bisa login ke dashboard, tambah Item, dan **QR Lapak** aktif (bisa didownload/dicetak).
+4. Setelah `approved` → Pedagang bisa login ke dashboard, tambah Item, dan **QR Menu** aktif (bisa didownload/dicetak).
 5. Pesanan yang masuk sebelum approve tidak mungkin terjadi (QR belum aktif/tidak bisa diakses publik).
 
 ### 6.3. Alur Admin
@@ -107,19 +112,22 @@ sequenceDiagram
 1. Login ke panel Admin.
 2. Lihat daftar Pedagang `pending` → approve atau reject (dengan alasan).
 3. Atur konfigurasi: nominal Biaya Layanan, durasi kedaluwarsa Pesanan.
-4. Lihat daftar transaksi & akumulasi Saldo Pedagang per Lapak.
-5. Catat Pencairan manual (tandai "sudah dicairkan Rp X ke Lapak Y tanggal Z") — MVP belum ada transfer otomatis.
+4. Lihat daftar transaksi, akumulasi Saldo Pedagang per Lapak, & **riwayat Pencairan otomatis** (read-only — sejak Fase 6 tidak ada input manual).
 
 ## 7. Aturan Bisnis
 
-- **Biaya Layanan**: default **Rp1.000** per Pesanan berstatus `dibayar`. **Dapat dikonfigurasi** Admin (nominal, dan disiapkan agar bisa berkembang jadi persen di masa depan — lihat [DATA-MODEL.md](DATA-MODEL.md)). Nilai yang berlaku disimpan sebagai **snapshot** di tiap Pesanan agar histori laporan tidak berubah retroaktif saat konfigurasi diubah.
-- **Model settlement**: **Agregator** — semua pembayaran (nantinya, saat integrasi nyata) masuk ke satu akun milik Aplikator; Pedagang tidak perlu akun payment gateway sendiri. Pencairan ke Pedagang dilakukan Aplikator secara berkala, dikurangi Biaya Layanan.
+- **Biaya Layanan**: default **Rp1.000** per Pesanan berstatus `dibayar`. **Dapat dikonfigurasi** Admin (nominal, dan disiapkan agar bisa berkembang jadi persen di masa depan — lihat [DATA-MODEL.md](DATA-MODEL.md)). Nilai yang berlaku disimpan sebagai **snapshot** di tiap Pesanan agar histori laporan tidak berubah retroaktif saat konfigurasi diubah. **Dibebankan ke Pembeli** di atas harga Item (sejak [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09): Pembeli membayar `subtotal + Biaya Layanan` (Item Rp10.000 → bayar **Rp11.000**), Pedagang menerima `subtotal` **penuh** (`total_for_merchant = subtotal`). Dilabeli ke Pembeli sebagai **"Biaya Layanan"** (biaya memakai layanan pesan lewat MyGerai) — bukan "biaya QRIS".
+- **MDR QRIS** (biaya gateway ~0–0,7% yang ditagih Midtrans ke Aplikator): **ditanggung Aplikator**, mengurangi margin bersihnya. **Dilarang** di-surcharge ke Pembeli ([PBI 23/6/PBI/2021 Ps. 52](https://peraturan.bpk.go.id/Details/207042/peraturan-bi-no-236pbi2021)) — MDR **tidak pernah** ditambahkan ke tagihan Pembeli. (Beda dari **Biaya Layanan** platform di butir atas, yang boleh di-on-top — analog biaya layanan aplikasi pesan-antar. Framing ini **perlu dikonfirmasi User** ke konsultan/Midtrans sebelum go-live — lihat [BACKLOG.md](BACKLOG.md).)
+- **Model settlement**: **Agregator** — semua pembayaran QRIS masuk ke satu akun Midtrans milik Aplikator; Pedagang **tidak** perlu akun payment gateway sendiri. **Pencairan otomatis** (Fase 6): job harian mentransfer Saldo tiap Pedagang via Midtrans Iris; **biaya transfer per Pencairan ditanggung Pedagang** (dipotong dari nominal cair). Tanpa ambang minimum. Uang cair ke rekening Pedagang **H+1 hari kerja** (sifat siklus settlement QRIS, bukan pilihan MyGerai).
 - **Kedaluwarsa Pesanan**: default 15 menit sejak dibuat jika belum `dibayar`. Dapat dikonfigurasi Admin.
-- **Approval Pedagang**: wajib di-approve Admin sebelum QR Lapak bisa dipakai publik (kontrol kualitas dasar, cegah penyalahgunaan).
+- **Approval Pedagang**: wajib di-approve Admin sebelum QR Menu bisa dipakai publik (kontrol kualitas dasar, cegah penyalahgunaan).
 - **Pembeli tanpa akun**: hanya field **Nama** (bebas isi, tidak diverifikasi) — tidak ada validasi identitas.
 
 ## 8. Risiko & Catatan
 
-- **Regulasi**: Model Agregator berarti Aplikator (secara teknis, lewat Payment Provider berlisensi seperti Tripay) menampung dana sementara sebelum dicairkan ke Pedagang. Selama pencairan dilakukan lewat penyedia payment gateway berizin (bukan menahan dana sendiri di luar sistem tsb) dan bukan disbursement massal otomatis tanpa izin, risiko relatif rendah untuk skala kecil — **tetap perlu ditinjau ulang jika skala transaksi membesar** (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)).
+- **Regulasi**: Model Agregator berarti Aplikator (lewat Midtrans, PJP berlisensi) menampung dana sementara sebelum dicairkan ke Pedagang. Pencairan dilakukan lewat **Midtrans Iris** (rel disbursement berizin), bukan menahan/mentransfer dana sendiri di luar sistem berizin. Risiko relatif rendah untuk skala kecil — **tetap perlu ditinjau ulang jika skala transaksi membesar** (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)).
+- **Verifikasi status akun Midtrans**: sebelum go-live produksi, User wajib memastikan akun (perorangan) bisa mengaktifkan **Core API QRIS + Iris**. Model B **tidak** memakai fitur split/marketplace (yang berpotensi menuntut badan usaha), tapi syarat aktivasi Iris & limit transaksi tetap perlu dicek ke Midtrans.
+- **Ekonomi Biaya Layanan vs MDR**: sejak ADR 2026-09-09 Biaya Layanan ditanggung **Pembeli**, jadi margin Aplikator = `Biaya Layanan − MDR(grand_total)` — tetap positif di hampir semua transaksi (MDR ~0,7% dari Rp11.000 ≈ Rp77 « Rp1.000). Pedagang menerima harga Item penuh.
+- **Risiko regulasi/persepsi Biaya Layanan ke Pembeli** (ADR 2026-09-09): larangan BI adalah soal **surcharge MDR**, bukan biaya layanan platform (GoFood/GrabFood menariknya). Tapi karena MyGerai hanya QRIS & fee-nya kecil-flat, pengawas bisa menilai sebagai MDR terselubung → **User wajib konfirmasi** framing ini (konsultan/Midtrans) sebelum produksi. Persepsi Pembeli: di lapak kaki lima, alternatifnya bayar tunai pas — Rp11.000 lewat QR bisa terasa mahal; dipantau setelah rilis.
 - **Pembeli tanpa identitas terverifikasi**: nama bisa diisi asal-asalan. Risiko diterima untuk MVP (dampaknya kecil — hanya salah panggil nama saat ambil pesanan, Kode Pesanan jadi identifier utama).
-- **Status badan usaha Aplikator saat ini: perorangan** — pengaruh ke pemilihan payment gateway (lihat [TEKNOLOGI.md](TEKNOLOGI.md)) dan limit transaksi; perlu ditinjau ulang jika bisnis berkembang (naik jadi NIB/PT/CV).
+- **Status badan usaha Aplikator saat ini: perorangan** — pengaruh ke aktivasi fitur payment gateway (lihat [TEKNOLOGI.md](TEKNOLOGI.md)) dan limit transaksi; perlu ditinjau ulang jika bisnis berkembang (naik jadi NIB/PT/CV).

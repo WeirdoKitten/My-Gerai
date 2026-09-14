@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { calculateOrderTotals } from "@/lib/utils/order-calc";
+import { calculateOrderTotals, orderGrandTotal } from "@/lib/utils/order-calc";
 
 describe("calculateOrderTotals", () => {
-  it("menghitung subtotal & total Pedagang untuk beberapa Item", () => {
+  it("Pedagang terima subtotal penuh, Pembeli bayar subtotal + Biaya Layanan", () => {
     const result = calculateOrderTotals(
       [
         { price: 15000, qty: 2 },
@@ -13,45 +13,59 @@ describe("calculateOrderTotals", () => {
     expect(result).toEqual({
       subtotal: 35000,
       platformFeeSnapshot: 1000,
-      totalForMerchant: 34000,
+      totalForMerchant: 35000,
+      grandTotal: 36000,
     });
   });
 
-  it("totalForMerchant sama dengan subtotal kalau Biaya Layanan nol", () => {
-    const result = calculateOrderTotals([{ price: 10000, qty: 1 }], 0);
-    expect(result.totalForMerchant).toBe(result.subtotal);
-  });
-
-  it("menghitung 1 Item qty 1 (kasus minimal)", () => {
-    const result = calculateOrderTotals([{ price: 12000, qty: 1 }], 1000);
+  it("1 Item Rp10.000 → Pembeli bayar Rp11.000, Pedagang terima Rp10.000", () => {
+    const result = calculateOrderTotals([{ price: 10000, qty: 1 }], 1000);
     expect(result).toEqual({
-      subtotal: 12000,
+      subtotal: 10000,
       platformFeeSnapshot: 1000,
-      totalForMerchant: 11000,
+      totalForMerchant: 10000,
+      grandTotal: 11000,
     });
   });
 
-  it("menghitung qty besar dalam batas skema (50)", () => {
+  it("Biaya Layanan nol → grandTotal = subtotal", () => {
+    const result = calculateOrderTotals([{ price: 12000, qty: 1 }], 0);
+    expect(result.grandTotal).toBe(result.subtotal);
+    expect(result.totalForMerchant).toBe(12000);
+  });
+
+  it("qty besar dalam batas skema (50)", () => {
     const result = calculateOrderTotals([{ price: 1000, qty: 50 }], 1000);
     expect(result.subtotal).toBe(50000);
-    expect(result.totalForMerchant).toBe(49000);
+    expect(result.totalForMerchant).toBe(50000);
+    expect(result.grandTotal).toBe(51000);
   });
 
-  it("meng-clamp totalForMerchant ke 0 kalau Item gratis & Biaya Layanan > subtotal", () => {
+  it("Item gratis → Pedagang terima 0, Pembeli tetap bayar Biaya Layanan", () => {
     const result = calculateOrderTotals([{ price: 0, qty: 1 }], 1000);
     expect(result).toEqual({
       subtotal: 0,
       platformFeeSnapshot: 1000,
       totalForMerchant: 0,
+      grandTotal: 1000,
     });
   });
 
-  it("array Item kosong menghasilkan subtotal 0 & totalForMerchant ter-clamp 0", () => {
+  it("array Item kosong → subtotal 0, grandTotal = Biaya Layanan", () => {
     const result = calculateOrderTotals([], 1000);
     expect(result).toEqual({
       subtotal: 0,
       platformFeeSnapshot: 1000,
       totalForMerchant: 0,
+      grandTotal: 1000,
     });
+  });
+});
+
+describe("orderGrandTotal", () => {
+  it("menjumlahkan subtotal + platformFeeSnapshot dari Pesanan tersimpan", () => {
+    expect(
+      orderGrandTotal({ subtotal: 27000, platformFeeSnapshot: 1000 }),
+    ).toBe(28000);
   });
 });

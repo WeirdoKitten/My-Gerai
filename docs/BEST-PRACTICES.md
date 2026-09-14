@@ -9,6 +9,7 @@ Halaman **Pembeli** adalah prioritas performa tertinggi — diakses lewat scan Q
 - Hindari library JS berat di halaman Pembeli (cek ukuran bundle sebelum menambah dependency baru).
 - Target: halaman katalog & checkout tetap terasa instan di simulasi jaringan "Slow 3G/4G" (cek manual di DevTools sebelum menandai fitur selesai).
 - Dashboard Pedagang/Admin boleh lebih "berat" secara wajar (dipakai di tempat lebih stabil, sesi lebih lama) — tapi tetap hindari pemborosan yang tidak perlu.
+- **Page Server Component yang query DB tapi tidak pakai `cookies()`/`params` dinamis** (mis. `/checkout` yang baca `platform_config`) **wajib** `export const dynamic = "force-dynamic"` — kalau tidak, `next build` mencoba prerender-nya & gagal di image Docker (DB belum konek). Build lokal bisa menyamarkan ini kalau ada Postgres di `localhost:5432`. Verifikasi build sungguhan: `DATABASE_URL=postgresql://x:x@localhost:5433/x pnpm build` (port mati).
 
 ## Keamanan
 

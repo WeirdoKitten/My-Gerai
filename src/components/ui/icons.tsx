@@ -154,3 +154,40 @@ export function ReceiptIcon({ className }: IconProps) {
     </Icon>
   );
 }
+
+export function HistoryIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l3.5 2" />
+    </Icon>
+  );
+}
+
+export function CopyIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </Icon>
+  );
+}
+
+export function ChartIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M3 3v18h18" />
+      <path d="M7 15v3M12 10v8M17 6v12" />
+    </Icon>
+  );
+}
+
+export function LightbulbIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M9 18h6M10 22h4" />
+      <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z" />
+    </Icon>
+  );
+}

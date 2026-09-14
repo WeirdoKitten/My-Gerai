@@ -1,6 +1,8 @@
 "use server";
 
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, gte, inArray } from "drizzle-orm";
+import QRCode from "qrcode";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
@@ -12,14 +14,21 @@ import {
   payments,
   products,
 } from "@/lib/db/schema";
-import { mockPaymentProvider } from "@/lib/payment/mock-provider";
+import { getPaymentProvider, getPaymentProviderName } from "@/lib/payment";
+import {
+  midtransIsSandbox,
+  midtransQrImageUrl,
+} from "@/lib/payment/midtrans-provider";
+import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
 import {
   calculateOrderTotals,
   type OrderCalcItem,
+  orderGrandTotal,
 } from "@/lib/utils/order-calc";
 import { generateOrderCode } from "@/lib/utils/order-code";
 import {
+  FINAL_ORDER_STATUSES,
   isOrderExpired,
   nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
@@ -34,11 +43,15 @@ import type {
   AdminOrderListItem,
   BuyerOrderStatusView,
   CreateOrderResult,
+  MerchantOrderHistoryItem,
   MerchantOrderListItem,
   Order,
   SimulatePaymentResult,
   UpdateOrderStatusResult,
 } from "@/types/order";
+
+/** Jumlah maksimum Pesanan yang ditampilkan di Riwayat (skala kaki lima — KISS). */
+const MERCHANT_HISTORY_LIMIT = 50;
 
 /** Kode Pesanan unik per Lapak per hari (lokal), retry maks 5x kalau tabrakan. */
 async function generateUniqueOrderCode(merchantId: string): Promise<string> {
@@ -165,46 +178,66 @@ export async function createOrder(
 
   const { platformFeeAmount, orderExpiryMinutes } =
     await getActivePlatformConfig();
-  const { subtotal, platformFeeSnapshot, totalForMerchant } =
+  const { subtotal, platformFeeSnapshot, totalForMerchant, grandTotal } =
     calculateOrderTotals(calcItems, platformFeeAmount);
   const expiresAt = new Date(Date.now() + orderExpiryMinutes * 60_000);
   const orderCode = await generateUniqueOrderCode(merchant.id);
 
-  const createdOrder = await db.transaction(async (tx) => {
-    const [order] = await tx
-      .insert(orders)
-      .values({
-        merchantId: merchant.id,
-        orderCode,
-        buyerName,
-        status: "menunggu_pembayaran",
-        subtotal,
-        platformFeeSnapshot,
-        totalForMerchant,
-        expiresAt,
-      })
-      .returning();
+  // ID Pesanan dibuat lebih dulu supaya pembayaran di gateway bisa dibuat
+  // SEBELUM ada baris DB apa pun — kalau gateway gagal, tidak ada Pesanan
+  // "yatim" yang tertinggal.
+  const orderId = randomUUID();
+  const provider = getPaymentProvider();
+
+  let payment: {
+    referenceId: string;
+    qrString: string;
+    expiresAt: Date | null;
+  };
+  try {
+    payment = await provider.createPayment({
+      orderId,
+      // Pembeli membayar harga Item + Biaya Layanan (ADR 2026-09-09).
+      grossAmount: grandTotal,
+      expiryMinutes: orderExpiryMinutes,
+    });
+  } catch (error) {
+    console.error("createPayment gagal:", error);
+    return {
+      ok: false,
+      message: "Gagal menyiapkan pembayaran. Silakan coba lagi.",
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.insert(orders).values({
+      id: orderId,
+      merchantId: merchant.id,
+      orderCode,
+      buyerName,
+      status: "menunggu_pembayaran",
+      subtotal,
+      platformFeeSnapshot,
+      totalForMerchant,
+      expiresAt,
+    });
 
     await tx
       .insert(orderItems)
-      .values(orderItemRows.map((row) => ({ ...row, orderId: order.id })));
+      .values(orderItemRows.map((row) => ({ ...row, orderId })));
 
-    return order;
+    await tx.insert(payments).values({
+      orderId,
+      provider: provider.name,
+      referenceId: payment.referenceId,
+      grossAmount: grandTotal,
+      qrString: payment.qrString,
+      status: "pending",
+      expiresAt: payment.expiresAt,
+    });
   });
 
-  const { referenceId } = await mockPaymentProvider.createPayment(createdOrder);
-  await db.insert(payments).values({
-    orderId: createdOrder.id,
-    provider: "mock",
-    referenceId,
-    status: "pending",
-  });
-
-  return {
-    ok: true,
-    orderId: createdOrder.id,
-    orderCode: createdOrder.orderCode,
-  };
+  return { ok: true, orderId, orderCode };
 }
 
 export async function getOrderStatus(
@@ -217,19 +250,51 @@ export async function getOrderStatus(
   });
   if (!order) return null;
 
-  const current = await expireOrderIfNeeded(order);
+  let current = await expireOrderIfNeeded(order);
 
-  const [merchant, items] = await Promise.all([
+  // Backstop: kalau webhook Midtrans telat/hilang, tanyakan status langsung ke
+  // gateway setelah Pesanan berumur >10 dtk (webhook biasanya sudah datang
+  // sebelum itu). Mock tidak punya `getTransactionStatus` → dilewati.
+  if (
+    current.status === "menunggu_pembayaran" &&
+    Date.now() - current.createdAt.getTime() > 10_000
+  ) {
+    const provider = getPaymentProvider();
+    const remote = await provider
+      .getTransactionStatus?.(orderId)
+      .catch(() => null);
+    if (remote?.status === "success") {
+      await settleOrderPayment(orderId);
+      current =
+        (await db.query.orders.findFirst({ where: eq(orders.id, orderId) })) ??
+        current;
+    }
+  }
+
+  const [merchant, items, payment] = await Promise.all([
     db.query.merchants.findFirst({
       where: eq(merchants.id, current.merchantId),
     }),
     db.query.orderItems.findMany({ where: eq(orderItems.orderId, current.id) }),
+    db.query.payments.findFirst({ where: eq(payments.orderId, current.id) }),
   ]);
 
+  // `qrString` bisa payload EMV (dirender lokal jadi data URI) ATAU URL gambar
+  // dari Midtrans (dipakai apa adanya). Mock selalu payload.
   let qrImageUrl: string | null = null;
-  if (current.status === "menunggu_pembayaran") {
-    qrImageUrl = (await mockPaymentProvider.createPayment(current)).qrImageUrl;
+  if (current.status === "menunggu_pembayaran" && payment?.qrString) {
+    qrImageUrl = payment.qrString.startsWith("http")
+      ? payment.qrString
+      : await QRCode.toDataURL(payment.qrString);
   }
+
+  const sandboxQrUrl =
+    current.status === "menunggu_pembayaran" &&
+    getPaymentProviderName() === "midtrans" &&
+    midtransIsSandbox() &&
+    payment?.referenceId
+      ? midtransQrImageUrl(payment.referenceId)
+      : null;
 
   return {
     id: current.id,
@@ -240,6 +305,7 @@ export async function getOrderStatus(
     subtotal: current.subtotal,
     platformFeeSnapshot: current.platformFeeSnapshot,
     totalForMerchant: current.totalForMerchant,
+    grandTotal: orderGrandTotal(current),
     createdAt: current.createdAt,
     expiresAt: current.expiresAt,
     paidAt: current.paidAt,
@@ -251,12 +317,22 @@ export async function getOrderStatus(
       note: item.note,
     })),
     qrImageUrl,
+    canSimulate:
+      getPaymentProviderName() === "mock" &&
+      current.status === "menunggu_pembayaran",
+    sandboxQrUrl,
   };
 }
 
 export async function simulatePaymentSuccess(
   orderId: string,
 ): Promise<SimulatePaymentResult> {
+  if (getPaymentProviderName() !== "mock") {
+    return {
+      ok: false,
+      message: "Simulasi pembayaran hanya tersedia di mode pengujian.",
+    };
+  }
   if (!z.uuid().safeParse(orderId).success) {
     return { ok: false, message: "Pesanan tidak ditemukan." };
   }
@@ -287,54 +363,14 @@ export async function simulatePaymentSuccess(
     return { ok: false, message: "Data pembayaran tidak ditemukan." };
   }
 
-  const callbackResult = await mockPaymentProvider.handleCallback({
+  const callbackResult = await getPaymentProvider().handleCallback({
     referenceId: payment.referenceId,
   });
-  if (callbackResult.status !== "success") {
+  if (callbackResult?.status !== "success") {
     return { ok: false, message: "Simulasi pembayaran gagal." };
   }
 
-  const paidAt = new Date();
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payments)
-      .set({ status: "success", paidAt })
-      .where(eq(payments.id, payment.id));
-
-    const [paidOrder] = await tx
-      .update(orders)
-      .set({ status: "dibayar", paidAt })
-      .where(
-        and(
-          eq(orders.id, current.id),
-          eq(orders.status, "menunggu_pembayaran"),
-        ),
-      )
-      .returning({ id: orders.id });
-
-    // Kurangi stok hanya kalau transisi menunggu -> dibayar benar terjadi
-    // (guard di WHERE di atas mencegah pengurangan ganda).
-    if (paidOrder) {
-      const lines = await tx.query.orderItems.findMany({
-        where: eq(orderItems.orderId, current.id),
-        columns: { productId: true, qty: true },
-      });
-      for (const line of lines) {
-        await tx
-          .update(products)
-          .set({ stock: sql`GREATEST(${products.stock} - ${line.qty}, 0)` })
-          .where(
-            and(
-              eq(products.id, line.productId),
-              eq(products.merchantId, current.merchantId),
-              // Hanya Item yang stoknya dibatasi.
-              sql`${products.stock} IS NOT NULL`,
-            ),
-          );
-      }
-    }
-  });
-
+  await settleOrderPayment(current.id);
   return { ok: true };
 }
 
@@ -348,7 +384,9 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
       eq(orders.merchantId, session.merchantId),
       inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
     ),
-    orderBy: (row, { desc }) => [desc(row.createdAt)],
+    // Antrean FIFO: Pesanan terlama (paling lama menunggu) di atas supaya
+    // Pedagang mengerjakan sesuai urutan masuk; Pesanan baru menempel di bawah.
+    orderBy: (row, { asc }) => [asc(row.createdAt)],
   });
   if (activeOrders.length === 0) return [];
 
@@ -370,6 +408,59 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
     buyerName: order.buyerName,
     buyerNote: order.buyerNote,
     createdAt: order.createdAt,
+    items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
+      id: item.id,
+      productNameSnapshot: item.productNameSnapshot,
+      priceSnapshot: item.priceSnapshot,
+      qty: item.qty,
+      note: item.note,
+    })),
+  }));
+}
+
+/**
+ * Riwayat Pesanan milik Lapak sendiri — hanya Pesanan berstatus akhir
+ * (`selesai`/`kedaluwarsa`/`dibatalkan`), read-only, terbaru dulu, dibatasi
+ * {@link MERCHANT_HISTORY_LIMIT}. Identitas Lapak dari sesi login.
+ */
+export async function listMerchantOrderHistory(): Promise<
+  MerchantOrderHistoryItem[]
+> {
+  const session = await getMerchantSession();
+  if (!session) return [];
+
+  const pastOrders = await db.query.orders.findMany({
+    where: and(
+      eq(orders.merchantId, session.merchantId),
+      inArray(orders.status, [...FINAL_ORDER_STATUSES]),
+    ),
+    orderBy: (row, { desc }) => [desc(row.createdAt)],
+    limit: MERCHANT_HISTORY_LIMIT,
+  });
+  if (pastOrders.length === 0) return [];
+
+  const orderIds = pastOrders.map((order) => order.id);
+  const items = await db.query.orderItems.findMany({
+    where: inArray(orderItems.orderId, orderIds),
+  });
+  const itemsByOrderId = new Map<string, typeof items>();
+  for (const item of items) {
+    const list = itemsByOrderId.get(item.orderId) ?? [];
+    list.push(item);
+    itemsByOrderId.set(item.orderId, list);
+  }
+
+  return pastOrders.map((order) => ({
+    id: order.id,
+    orderCode: order.orderCode,
+    status: order.status,
+    buyerName: order.buyerName,
+    subtotal: order.subtotal,
+    platformFeeSnapshot: order.platformFeeSnapshot,
+    totalForMerchant: order.totalForMerchant,
+    createdAt: order.createdAt,
+    paidAt: order.paidAt,
+    completedAt: order.completedAt,
     items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
       id: item.id,
       productNameSnapshot: item.productNameSnapshot,

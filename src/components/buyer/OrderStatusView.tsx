@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatRupiah } from "@/lib/utils/money";
 import { FINAL_ORDER_STATUSES } from "@/lib/utils/order-status";
@@ -57,8 +58,10 @@ export function OrderStatusView({
 
       {order.qrImageUrl ? (
         <Card pad="lg" className="flex flex-col items-center gap-3">
-          <p className="text-sm text-ink-muted">
-            Pindai untuk bayar (simulasi)
+          <p className="text-center text-sm text-ink-muted">
+            {order.canSimulate
+              ? "Pindai untuk bayar (simulasi)"
+              : "Pindai dengan aplikasi apa pun yang mendukung QRIS"}
           </p>
           {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
           <img
@@ -66,15 +69,36 @@ export function OrderStatusView({
             alt="QR pembayaran"
             className="size-48 rounded-control"
           />
-          <Button
-            type="button"
-            fullWidth
-            loading={simulating}
-            onClick={handleSimulate}
-          >
-            {simulating ? "Memproses..." : "Simulasikan Pembayaran Berhasil"}
-          </Button>
-          {simulateError ? <Alert tone="error">{simulateError}</Alert> : null}
+          {order.canSimulate ? (
+            <>
+              <Button
+                type="button"
+                fullWidth
+                loading={simulating}
+                onClick={handleSimulate}
+              >
+                {simulating
+                  ? "Memproses..."
+                  : "Simulasikan Pembayaran Berhasil"}
+              </Button>
+              {simulateError ? (
+                <Alert tone="error">{simulateError}</Alert>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-center text-xs text-ink-muted">
+              Halaman ini otomatis diperbarui setelah pembayaran diterima.
+            </p>
+          )}
+        </Card>
+      ) : null}
+
+      {order.sandboxQrUrl ? (
+        <Card className="flex items-center gap-2">
+          <code className="min-w-0 flex-1 break-all rounded-control bg-bg p-2 text-xs text-ink">
+            {order.sandboxQrUrl}
+          </code>
+          <CopyButton value={order.sandboxQrUrl} label="link QRIS sandbox" />
         </Card>
       ) : null}
 
@@ -95,9 +119,23 @@ export function OrderStatusView({
             </li>
           ))}
         </ul>
-        <div className="flex justify-between border-t border-line pt-3 font-bold text-ink">
-          <span>Total Dibayar</span>
-          <span className="tabular-nums">{formatRupiah(order.subtotal)}</span>
+        <div className="flex flex-col gap-1 border-t border-line pt-3">
+          <div className="flex justify-between text-sm text-ink-muted">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{formatRupiah(order.subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-ink-muted">
+            <span>Biaya Layanan</span>
+            <span className="tabular-nums">
+              {formatRupiah(order.platformFeeSnapshot)}
+            </span>
+          </div>
+          <div className="mt-1 flex justify-between border-t border-line pt-2 font-bold text-ink">
+            <span>Total Dibayar</span>
+            <span className="tabular-nums">
+              {formatRupiah(order.grandTotal)}
+            </span>
+          </div>
         </div>
       </Card>
     </div>

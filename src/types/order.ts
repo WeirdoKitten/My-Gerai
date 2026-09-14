@@ -26,12 +26,18 @@ export type BuyerOrderStatusView = {
   subtotal: number;
   platformFeeSnapshot: number;
   totalForMerchant: number;
+  /** Yang dibayar Pembeli = `subtotal + platformFeeSnapshot`. */
+  grandTotal: number;
   createdAt: Date;
   expiresAt: Date;
   paidAt: Date | null;
   items: BuyerOrderItemView[];
   /** Hanya terisi kalau status masih `menunggu_pembayaran`. */
   qrImageUrl: string | null;
+  /** `true` hanya di mode pengujian (`PAYMENT_PROVIDER=mock`) & masih menunggu pembayaran. */
+  canSimulate: boolean;
+  /** URL gambar QR di Midtrans, HANYA di sandbox — untuk ditempel ke simulator QRIS. `null` di produksi/mock. */
+  sandboxQrUrl: string | null;
 };
 
 export type CreateOrderResult =
@@ -65,6 +71,25 @@ export type MerchantOrderListItem = {
 };
 
 export type UpdateOrderStatusResult = { ok: boolean; message?: string };
+
+/**
+ * Bentuk hasil daftar Riwayat Pesanan untuk dashboard Pedagang — Pesanan milik
+ * Lapak sendiri yang sudah berstatus akhir (`selesai`/`kedaluwarsa`/`dibatalkan`),
+ * read-only, tanpa field internal seperti `merchantId`.
+ */
+export type MerchantOrderHistoryItem = {
+  id: string;
+  orderCode: string;
+  status: Order["status"];
+  buyerName: string;
+  subtotal: number;
+  platformFeeSnapshot: number;
+  totalForMerchant: number;
+  createdAt: Date;
+  paidAt: Date | null;
+  completedAt: Date | null;
+  items: MerchantOrderItemView[];
+};
 
 /** Bentuk hasil daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi). */
 export type AdminOrderListItem = {

@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatRupiah } from "@/lib/utils/money";
+import { orderGrandTotal } from "@/lib/utils/order-calc";
 import type { AdminOrderListItem } from "@/types/order";
 
 export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
@@ -28,10 +29,11 @@ export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
           </div>
           <div className="shrink-0 text-right">
             <p className="font-semibold tabular-nums text-ink">
-              {formatRupiah(order.subtotal)}
+              {formatRupiah(orderGrandTotal(order))}
             </p>
             <p className="text-xs tabular-nums text-ink-muted">
-              Fee {formatRupiah(order.platformFeeSnapshot)}
+              Item {formatRupiah(order.subtotal)} · Fee{" "}
+              {formatRupiah(order.platformFeeSnapshot)}
             </p>
           </div>
         </Card>

@@ -144,7 +144,7 @@ Peta status → tone (pakai label dari `ORDER_STATUS_LABEL_ID` yang sudah ada):
 ```
 
 ### `Toast.tsx`
-Notifikasi ringan sekali-lewat (`ToastProvider` + `useToast()`). Pil `bg-ink text-white` di `fixed top-4` tengah, `pointer-events-none`, slide-in dari atas + fade-out (`@keyframes toast-in`/`toast-out` di globals.css, `motion-safe:`), auto-hilang ~2,1 dtk. Satu toast aktif. Dipakai untuk "Item ditambahkan" (tombol "Tambah" **tidak** berubah label). `ToastProvider` dimount di `(buyer)/layout.tsx`.
+Notifikasi ringan sekali-lewat (`ToastProvider` + `useToast()`). Pil `bg-ink text-white` di `fixed top-4` tengah, `pointer-events-none`, slide-in dari atas + fade-out (`@keyframes toast-in`/`toast-out` di globals.css, `motion-safe:`), auto-hilang ~2,1 dtk. Satu toast aktif. Dipakai untuk "Item ditambahkan" di sisi Pembeli (tombol "Tambah" **tidak** berubah label) dan konfirmasi ubah status Pesanan di dashboard Pedagang ("Pesanan XXXX ditandai Diproses"). `ToastProvider` dimount di `(buyer)/layout.tsx` dan `(merchant)/dashboard/layout.tsx`.
 
 ### `Modal.tsx`
 Dialog berbasis `<dialog>` bawaan (Esc + focus-trap + backdrop gratis). Panel `max-w-lg`, header (judul + tombol ✕), body `max-h-[75vh] overflow-y-auto`. Klik backdrop menutup. Dipakai untuk form Tambah/Ubah Item (bukan inline lagi).
@@ -168,8 +168,8 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 | Panel Admin (`DashboardShell` width `max-w-3xl`) | `max-w-3xl` |
 
 - **Root:** `<body>` = `min-h-dvh bg-bg text-ink font-sans`. Kartu (`bg-surface`) yang memberi kontras.
-- **Dashboard = pola aplikasi HP** (komponen `DashboardShell`): **top bar** sticky (`bg-bg/85 backdrop-blur`) berisi slot `brand` di kiri (Pedagang = **nama Lapak** via `<Wordmark label={stallName}>` + baris kecil opsional; Admin = `<Wordmark>` "MyGerai" + `Admin · <nama>`) + `headerAction` + tombol **Keluar** (`dangerOutline`). **Bottom nav** `fixed` (`DashboardNav`): ikon + label per tab, `max-w-md` di tengah, aktif = `text-brand-strong`, tab "index" (`/dashboard`) aktif hanya saat cocok **persis**. Konten `<main>` pakai `pb-24` supaya tidak tertutup bottom nav. `NavItem.icon` = **string** (bukan komponen) supaya bisa dilempar dari Server Component.
-- **Tombol Profil Pedagang** = ikon (`UserIcon`) di `headerAction`, `<Link>` ber-`aria-label`, kotak `size-9 border border-line rounded-control`.
+- **Dashboard = pola aplikasi HP** (komponen `DashboardShell`): **top bar** sticky (`bg-bg/85 backdrop-blur`) berisi slot `brand` di kiri (Pedagang = **nama Lapak** via `<Wordmark label={stallName}>` + baris kecil opsional; Admin = `<Wordmark>` "MyGerai" + `Admin · <nama>`) + `headerAction` + tombol **Keluar** (`dangerOutline`, buka konfirmasi `Modal` dulu — lihat §6). **Bottom nav** `fixed` (`DashboardNav`): ikon + label per tab, `max-w-md` di tengah, aktif = `text-brand-strong`, tab "index" (`/dashboard`) aktif hanya saat cocok **persis**. Konten `<main>` pakai `pb-24` supaya tidak tertutup bottom nav. `NavItem.icon` = **string** (bukan komponen) supaya bisa dilempar dari Server Component.
+- **Ikon header Pedagang** = **QR Menu** (`QrIcon`) + **Profil** (`UserIcon`) di `headerAction` — dua `<Link>` ber-`aria-label`, kotak `size-9 border border-line rounded-control` (kelas dibagi lewat konstanta `HEADER_ICON_CLASS` di layout). Ini tujuan **sesekali** (cetak QR sekali, atur profil jarang) → tidak makan slot bottom nav.
 - **Jarak antar-blok** dalam satu halaman: `gap-4` (padat) atau `gap-6` (longgar, antar-seksi). Konsisten pakai `flex flex-col gap-*`, bukan `space-y` campur `mb-*`.
 - **Grid Item (menu Pembeli):** tetap **satu kolom** untuk MVP (fokus & sederhana). Multi-kolom di desktop dicatat sebagai peningkatan opsional, bukan sekarang.
 
@@ -180,12 +180,19 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 - **Floating cart bar:** pill mengambang `fixed inset-x-4 bottom-4 mx-auto max-w-md h-14 rounded-full bg-brand-strong text-white shadow-card px-5`, kiri "N item", kanan harga `tabular-nums` + ikon panah. Muncul hanya kalau keranjang berisi.
 - **Halaman status Pesanan:** Kode Pesanan jadi "hero" (lihat tipografi), badge status di bawahnya. QR pembayaran dalam `Card`. Tombol simulasi = `Button variant="primary" fullWidth`.
 - **Dashboard Pedagang — kartu Pesanan:** Kode Pesanan `text-lg font-bold tabular-nums`, `OrderStatusBadge` di kanan, daftar item ringkas, satu tombol aksi lebar untuk maju status.
+- **Dashboard Pedagang — kartu Riwayat (`MerchantOrderHistoryList`):** susunan sama seperti kartu Pesanan tapi **read-only** (tanpa tombol aksi). Baris identitas "Atas nama X · `<tanggal>`" (tanggal+jam via `formatDateTime`, `src/lib/utils/datetime.ts`, dipatok WIB). Footer `border-t`: kiri label, kanan nominal `font-bold tabular-nums` — "Bagianmu" + `total_for_merchant` untuk Pesanan `selesai`, "Nilai Pesanan" + `subtotal` untuk lainnya.
+- **Laporan Penjualan (`SalesReportView`):** semua Server Component, `flex flex-col gap-5` antar-seksi. (1) **Segmented control periode** — `<Link>` pill dalam wadah `rounded-full border bg-surface p-1`, aktif = `bg-brand-tint text-brand-strong`. (2) **Kartu "Rekomendasi Asisten"** — `<h3>` ber-`LightbulbIcon`, lalu daftar `Card` `flex gap-3`: ikon lampu dalam lingkaran `size-8 bg-brand-tint`, judul `text-sm font-semibold`, isi `text-sm text-ink-muted`. Kalau data belum cukup / belum ada saran → satu `Card` teks abu. (3) **Grid angka 2 kolom** (`Stat`) — label `text-xs text-ink-muted`, nilai `text-lg font-bold tabular-nums`, delta `text-[11px] font-semibold` warna `text-success` (▲) / `text-danger` (▼). (4) **Bar penjualan per hari & bar % Item** — CSS murni (bukan library chart): isian `bg-brand`, tumbuh dari baseline kiri, ujung data `rounded-r-[3px]`; nilai sebagai label teks di ujung (bukan tooltip — halaman Server Component, semua angka sudah terlihat). Label & angka pakai token ink, tidak pernah warna bar (lihat skill `dataviz`).
 - **Foto:** selalu `next/image`, `object-cover`, rasio tetap (`aspect-square` untuk Item). Jangan render `<img>` mentah kecuali data URI (QR).
 - **Angka uang:** selalu lewat `formatRupiah` + kelas `tabular-nums`.
 
 ## 6. Ikon
 
-Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — perkiraan yang dibutuhkan: `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
+Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `chart` (tab Laporan), `lightbulb` (kartu asisten), `copy` (tombol salin), `settings`, `wallet`, `user`. `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
+
+- **`CopyButton` (`src/components/ui/CopyButton.tsx`)** — tombol ikon `size-9` (border kotak seperti ikon header) untuk menyalin sebuah string ke clipboard; umpan balik inline (ikon → centang ±2 dtk), **tidak** butuh `ToastProvider`. Dipakai di samping link (QR Menu, URL QRIS sandbox).
+- **Konfirmasi "Keluar" (`src/components/LogoutButton.tsx`)** — tombol Keluar di `DashboardShell` (Pedagang & Admin) membuka `Modal` "Keluar dari dashboard?" dengan tombol **Batal** (`secondary`) + **Ya, keluar** (`danger`), bukan langsung submit form logout.
+
+**Bottom nav Pedagang = 4 tab** dengan urutan **Pesanan · Item · Riwayat · Laporan** — dua kiri = kerja harian (tangani Pesanan, kelola Item), dua kanan = tinjauan (riwayat, analitik). **QR Menu** & **Profil** pindah ke ikon header (lihat §5). Kalau nanti perlu tab ke-5, pertimbangkan pindahkan lagi ke ikon header, jangan langsung tambah tab.
 
 ## 7. Yang dihindari
 

@@ -19,7 +19,7 @@
 | Pesanan | `Order` |
 | Kode Pesanan | `orderCode` |
 | Status Pesanan | `OrderStatus` (enum: lihat [DATA-MODEL.md](DATA-MODEL.md#orders-pesanan)) |
-| QR Lapak | `StallQrCode` |
+| QR Menu | `StallQrCode` |
 | Biaya Layanan | `platformFee` |
 | Saldo Pedagang | `merchantBalance` (nilai turunan, bukan kolom, lihat [DATA-MODEL.md](DATA-MODEL.md#payouts-pencairan)) |
 | Pencairan | `Payout` |
