@@ -32,8 +32,8 @@ export function OpenToggle({ initialIsOpen }: { initialIsOpen: boolean }) {
       className={cn(
         "flex items-center justify-between gap-3 rounded-card border-2 p-3 transition-colors",
         isOpen
-          ? "border-success/10 bg-success/15"
-          : "border-danger/10 bg-danger/15",
+          ? "border-success/2 bg-success/30"
+          : "border-danger/2 bg-danger/30",
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
