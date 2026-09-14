@@ -54,8 +54,8 @@ export function OpenToggle({ initialIsOpen }: { initialIsOpen: boolean }) {
           </p>
           <p className="text-xs text-ink-muted">
             {isOpen
-              ? "Lapak sudah dibuka, bisa menerima pesanan baru."
-              : "Lapak sedang ditutup, tidak bisa menerima pesanan baru."}
+              ? "sudah bisa menerima pesanan baru."
+              : "belum bisa menerima pesanan baru."}
           </p>
         </div>
       </div>
