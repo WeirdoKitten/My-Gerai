@@ -3,12 +3,11 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
-import { OpenToggle } from "@/components/merchant/OpenToggle";
-import { QrIcon, UserIcon, WalletIcon } from "@/components/ui/icons";
+import { QrIcon, UserIcon } from "@/components/ui/icons";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
-import { getMerchantOpenStatus, logoutMerchant } from "@/server/merchants";
+import { logoutMerchant } from "@/server/merchants";
 
 // QR Menu & Profil = tujuan sesekali (cetak QR sekali, atur profil jarang) →
 // ikon di header, bukan tab bawah. Bottom nav disisakan untuk 4 layar harian.
@@ -30,8 +29,6 @@ export default async function DashboardLayout({
   const session = await getMerchantSession();
   if (!session) redirect("/login");
 
-  const openStatus = await getMerchantOpenStatus();
-
   return (
     <ToastProvider>
       <DashboardShell
@@ -40,7 +37,6 @@ export default async function DashboardLayout({
         logoutAction={logoutMerchant}
         headerAction={
           <>
-            <OpenToggle initialIsOpen={openStatus?.isOpen ?? true} />
             <Link
               href="/dashboard/qr"
               aria-label="QR Menu"
@@ -54,13 +50,6 @@ export default async function DashboardLayout({
               className={HEADER_ICON_CLASS}
             >
               <UserIcon className="size-4" />
-            </Link>
-            <Link
-              href="/dashboard/pembayaran"
-              aria-label="Metode Pembayaran"
-              className={HEADER_ICON_CLASS}
-            >
-              <WalletIcon className="size-4" />
             </Link>
           </>
         }

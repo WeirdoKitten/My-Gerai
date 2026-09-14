@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-14 — Rapikan header dashboard: toggle Buka/Tutup & Metode Pembayaran pindah dari header
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (update bullet penempatan UI). Kode ubah: `src/app/(merchant)/dashboard/{layout,page,profil/page}.tsx`, `src/components/merchant/OpenToggle.tsx`.
+**Alasan:** Permintaan User — toggle buka/tutup di header (dari fitur Jadwal Operasional hari yang sama) bikin header padat. Sekalian pindahkan ikon "Metode Pembayaran" ke Profil, konsep sama seperti "Jadwal Operasional".
+**Ringkasan:**
+- **`OpenToggle`** dirombak dari ikon header tunggal jadi kartu "Status Lapak" (label + switch penuh) di atas daftar Pesanan Masuk (`/dashboard`) — kontrol harian utama, lebih terlihat & deskriptif daripada ikon warna di header.
+- **"Metode Pembayaran"** pindah dari ikon header ke kartu link di `/dashboard/profil` (komponen `SettingsLinkRow` baru, dipakai bareng "Jadwal Operasional" — dua baris konsisten).
+- Header dashboard Pedagang sekarang cuma QR Menu + Profil + Keluar.
+- **Diverifikasi**: `tsc`/`lint`/`pnpm test` (105)/`build` lulus, alur nyata browser (toggle di halaman Pesanan Masuk berfungsi, kedua link di Profil berfungsi, header tidak lagi padat).
+
 ## 2026-09-14 — Toggle Buka/Tutup Lapak + Jadwal Operasional
 
 **Dampak:** [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`merchants.manual_override`/`manual_override_set_at`, tabel baru `merchant_operating_hours`), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/GLOSSARY.md](docs/GLOSSARY.md) (Jam Operasional, Status Buka/Tutup, Override Manual), [docs/CODING-STYLE.md](docs/CODING-STYLE.md). Kode baru: `src/lib/schedule/{evaluate,is-merchant-open}.ts`, `src/lib/validation/merchant-hours.schema.ts`, `src/components/merchant/{OpenToggle,OperatingHoursForm,ClearOverrideButton}.tsx`, `src/components/ui/Toggle.tsx`, `src/app/(merchant)/dashboard/jadwal/page.tsx`, `tests/unit/schedule-evaluate.test.ts`. Kode ubah: `src/lib/db/schema.ts` (migrasi `0007_lethal_shocker.sql`), `src/lib/report/period.ts` (`addDayKey` di-export), `src/server/{merchants,products,orders}.ts`, `src/types/{merchant,product}.ts`, `src/lib/cart/cart-context.tsx`, `src/components/buyer/CheckoutGate.tsx`, `src/components/ui/icons.tsx` (`ClockIcon` baru), `src/app/(merchant)/dashboard/{layout,profil/page}.tsx`, `src/app/(buyer)/menu/[stallSlug]/page.tsx`.
