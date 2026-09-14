@@ -12,7 +12,7 @@ export default async function MerchantSchedulePage() {
     <div className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold text-ink">Jadwal Operasional</h2>
       <p className="text-sm text-ink-muted">
-        Kalau jadwal sudah diatur, status buka/tutup di halaman pesanan mengikutinya otomatis, tidak perlu pencet toggle manual tiap hari.
+        Kalau jadwal sudah diatur, status buka/tutup di halaman pesanan mengikutinya otomatis, tidak perlu ubah status manual tiap hari.
       </p>
 
       <Alert
