@@ -201,6 +201,7 @@ async function main(): Promise<void> {
           productId: line.product.id,
           productNameSnapshot: line.product.name,
           priceSnapshot: line.product.price,
+          costPriceSnapshot: line.product.costPrice,
           qty: line.qty,
           note: null,
         });

@@ -123,6 +123,16 @@ function SummaryGrid({
         deltaPct={delta.revenuePct}
       />
       <Stat
+        label="Keuntungan"
+        value={formatRupiah(summary.profit)}
+        deltaPct={delta.profitPct}
+        hint={
+          summary.profitIncomplete
+            ? "Sebagian Item belum ada Harga Modal, keuntungan belum lengkap"
+            : undefined
+        }
+      />
+      <Stat
         label="Pesanan"
         value={String(summary.orderCount)}
         deltaPct={delta.orderCountPct}
@@ -135,6 +145,7 @@ function SummaryGrid({
         label="Ditagih ke Pembeli"
         value={formatRupiah(summary.buyerTotal)}
         hint={`termasuk Biaya Layanan ${formatRupiah(summary.platformFeeTotal)}`}
+        className="col-span-2"
       />
     </div>
   );
@@ -145,14 +156,16 @@ function Stat({
   value,
   deltaPct,
   hint,
+  className,
 }: {
   label: string;
   value: string;
   deltaPct?: number | null;
   hint?: string;
+  className?: string;
 }) {
   return (
-    <Card pad="sm" className="flex flex-col gap-1">
+    <Card pad="sm" className={cn("flex flex-col gap-1", className)}>
       <p className="text-xs text-ink-muted">{label}</p>
       <p className="text-lg font-bold tabular-nums text-ink">{value}</p>
       {deltaPct != null ? <DeltaChip pct={deltaPct} /> : null}

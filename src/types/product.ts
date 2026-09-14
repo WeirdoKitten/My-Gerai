@@ -16,9 +16,28 @@ export type StallCatalogView = {
     stallName: string;
     category: string;
     photoUrl: string | null;
+    /** `false` = Lapak sedang tutup (manual atau jadwal) — katalog tetap tampil, checkout dikunci. */
+    isOpen: boolean;
+    /** Kapan Lapak buka lagi (ISO string), cuma terisi kalau `isOpen` false & ada jadwal. */
+    reopensAt: string | null;
   };
   products: BuyerProductView[];
 };
+
+/**
+ * `reason: "locked"` = Lapak ada, `approved`, tapi sedang tidak menerima
+ * Pesanan baru karena tagihan Biaya Layanan `qris_pribadi` menunggak lewat
+ * masa tenggang (lihat isMerchantOrderingLocked). Dibedakan dari "not_found"
+ * supaya halaman Pembeli bisa tampilkan pesan yang sesuai, bukan 404 generik.
+ */
+export type StallCatalogResult =
+  | { ok: true; catalog: StallCatalogView }
+  | { ok: false; reason: "not_found" | "locked" };
+
+/** Metode pembayaran Lapak, dilihat Pembeli (tanpa sesi) untuk copy checkout. */
+export type MerchantPaymentModeView = {
+  paymentMode: "gateway" | "qris_pribadi";
+} | null;
 
 /** Item milik Lapak sendiri, ditampilkan di dashboard Pedagang (kelola Item). */
 export type MerchantProductView = {
@@ -26,6 +45,8 @@ export type MerchantProductView = {
   name: string;
   description: string | null;
   price: number;
+  /** Harga modal (HPP), dipakai untuk hitung laba di Laporan Penjualan. `null` = belum diisi. */
+  costPrice: number | null;
   /** `null` = stok tidak dibatasi. */
   stock: number | null;
   photoUrl: string | null;

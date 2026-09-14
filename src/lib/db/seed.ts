@@ -14,6 +14,7 @@ import {
   products,
   sessions,
 } from "./schema";
+import { seedProductPhoto } from "./seed-photo";
 
 const SEED_PASSWORD = "password";
 
@@ -101,7 +102,7 @@ async function main() {
     name: "Nasi Goreng",
     price: 13000,
     status: "available",
-    photoUrl: "/img/menu/nasi-goreng.jpg",
+    photoUrl: await seedProductPhoto("nasi-goreng.jpg"),
   });
 
   await db.insert(products).values([
@@ -110,7 +111,7 @@ async function main() {
       name: "Bakso Urat",
       price: 15000,
       status: "available",
-      photoUrl: "/img/menu/bakso.jpg",
+      photoUrl: await seedProductPhoto("bakso.jpg"),
     },
     {
       merchantId: merchant.id,
@@ -125,21 +126,21 @@ async function main() {
       price: 17000,
       status: "available",
       stock: 6,
-      photoUrl: "/img/menu/mie-ayam.jpg",
+      photoUrl: await seedProductPhoto("mie-ayam.jpg"),
     },
     {
       merchantId: merchant.id,
       name: "Es Teh Manis",
       price: 5000,
       status: "available",
-      photoUrl: "/img/menu/es-teh.jpg",
+      photoUrl: await seedProductPhoto("es-teh.jpg"),
     },
     {
       merchantId: merchant.id,
       name: "Pangsit Goreng",
       price: 8000,
       status: "sold_out",
-      photoUrl: "/img/menu/pangsit.jpg",
+      photoUrl: await seedProductPhoto("pangsit.jpg"),
     },
   ]);
 

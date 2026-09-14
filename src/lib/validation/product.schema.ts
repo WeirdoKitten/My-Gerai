@@ -8,6 +8,13 @@ export const createProductSchema = z.object({
   name: z.string().trim().min(1, "Nama Item wajib diisi.").max(100),
   description: z.string().trim().max(500).optional(),
   price: z.number().int().min(0, "Harga tidak boleh negatif.").max(100_000_000),
+  // `null` / undefined = harga modal belum diisi.
+  costPrice: z
+    .number()
+    .int()
+    .min(0, "Harga modal tidak boleh negatif.")
+    .max(100_000_000)
+    .nullish(),
   // `null` / undefined = stok tidak dibatasi.
   stock: z
     .number()

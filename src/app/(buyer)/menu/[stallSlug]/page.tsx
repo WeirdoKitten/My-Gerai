@@ -1,17 +1,29 @@
 import { notFound } from "next/navigation";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
 import { ProductCard } from "@/components/buyer/ProductCard";
+import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ImageOffIcon, StoreIcon } from "@/components/ui/icons";
+import { HistoryIcon, ImageOffIcon, StoreIcon } from "@/components/ui/icons";
+import { formatDateTime } from "@/lib/utils/datetime";
 import { getStallCatalog } from "@/server/products";
 
 export default async function StallMenuPage(
   props: PageProps<"/menu/[stallSlug]">,
 ) {
   const { stallSlug } = await props.params;
-  const catalog = await getStallCatalog(stallSlug);
+  const result = await getStallCatalog(stallSlug);
 
-  if (!catalog) notFound();
+  if (!result.ok && result.reason === "not_found") notFound();
+  if (!result.ok) {
+    return (
+      <EmptyState
+        icon={<HistoryIcon className="size-10" />}
+        title="Lapak sedang tidak menerima pesanan"
+        description="Tagihan Biaya Layanan Lapak ini belum lunas. Coba lagi nanti."
+      />
+    );
+  }
+  const { catalog } = result;
 
   return (
     <div className="flex flex-col gap-4 pb-28">
@@ -26,6 +38,16 @@ export default async function StallMenuPage(
           <p className="text-sm text-ink-muted">{catalog.merchant.category}</p>
         </div>
       </div>
+
+      {!catalog.merchant.isOpen ? (
+        <Alert tone="warning">
+          Lapak sedang tutup
+          {catalog.merchant.reopensAt
+            ? ` — buka lagi ${formatDateTime(new Date(catalog.merchant.reopensAt))}`
+            : ""}
+          . Kamu masih bisa lihat menu, tapi belum bisa checkout sekarang.
+        </Alert>
+      ) : null}
 
       {catalog.products.length === 0 ? (
         <EmptyState

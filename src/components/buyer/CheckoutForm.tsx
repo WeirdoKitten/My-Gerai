@@ -67,7 +67,11 @@ export function CheckoutForm({
       <Button type="submit" fullWidth loading={submitting}>
         {submitting
           ? "Membuat Pesanan..."
-          : `Buat Pesanan · Bayar ${formatRupiah(cart.subtotalDisplay + platformFeeAmount)}`}
+          : `Buat Pesanan · Bayar ${formatRupiah(
+              cart.paymentMode === "qris_pribadi"
+                ? cart.subtotalDisplay
+                : cart.subtotalDisplay + platformFeeAmount,
+            )}`}
       </Button>
     </form>
   );

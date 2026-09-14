@@ -3,7 +3,9 @@ import {
   pgEnum,
   pgTable,
   text,
+  time,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -46,6 +48,7 @@ export const paymentProviderEnum = pgEnum("payment_provider", [
   "mock",
   "tripay",
   "midtrans",
+  "qris_pribadi",
 ]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
@@ -56,6 +59,23 @@ export const paymentStatusEnum = pgEnum("payment_status", [
 ]);
 
 export const payoutStatusEnum = pgEnum("payout_status", ["pending", "selesai"]);
+
+/** Metode pembayaran Lapak — hanya Admin yang boleh mengubah (lihat setMerchantPaymentMode). */
+export const merchantPaymentModeEnum = pgEnum("merchant_payment_mode", [
+  "gateway",
+  "qris_pribadi",
+]);
+
+/** Override manual status buka/tutup Lapak oleh Pedagang — lihat src/lib/schedule/. */
+export const merchantManualOverrideEnum = pgEnum("merchant_manual_override", [
+  "open",
+  "closed",
+]);
+
+export const serviceFeeInvoiceStatusEnum = pgEnum(
+  "service_fee_invoice_status",
+  ["belum_lunas", "lunas", "dibatalkan"],
+);
 
 /** Akun internal Aplikator. Dibuat manual, bukan self-service. */
 export const admins = pgTable("admins", {
@@ -80,8 +100,45 @@ export const merchants = pgTable("merchants", {
   payoutAccountInfo: text(),
   /** Wajib diisi Admin saat reject — ditampilkan ke Pedagang saat mereka coba login. */
   rejectionReason: text(),
+  /** Hanya Admin yang boleh ubah (lihat setMerchantPaymentMode) — Pedagang cuma unggah qrisPhotoUrl. */
+  paymentMode: merchantPaymentModeEnum().notNull().default("gateway"),
+  /** Foto QRIS statis milik Pedagang sendiri, dipakai saat paymentMode = "qris_pribadi". */
+  qrisPhotoUrl: text(),
+  /**
+   * Override manual status buka/tutup. `null` = tidak ada override, ikuti
+   * `merchantOperatingHours` (kalau ada) atau default buka (kalau belum ada
+   * jadwal). Aktif hanya sampai batas jadwal berikutnya berlalu — lihat
+   * getMerchantOpenState di src/lib/schedule/is-merchant-open.ts.
+   */
+  manualOverride: merchantManualOverrideEnum(),
+  manualOverrideSetAt: timestamp({ withTimezone: true }),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Jam operasional mingguan Lapak (opsional). Tidak ada baris untuk suatu
+ * `dayOfWeek` = Lapak dianggap tutup hari itu. `dayOfWeek` pakai konvensi
+ * Postgres `EXTRACT(dow)` (0=Minggu..6=Sabtu), sama seperti `weekdayStats`
+ * di src/server/reports.ts.
+ */
+export const merchantOperatingHours = pgTable(
+  "merchant_operating_hours",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    dayOfWeek: integer().notNull(),
+    openTime: time().notNull(),
+    closeTime: time().notNull(),
+  },
+  (table) => [
+    uniqueIndex("merchant_operating_hours_merchant_day_idx").on(
+      table.merchantId,
+      table.dayOfWeek,
+    ),
+  ],
+);
 
 /** Item — produk/menu milik sebuah Lapak. */
 export const products = pgTable("products", {
@@ -92,6 +149,8 @@ export const products = pgTable("products", {
   name: text().notNull(),
   description: text(),
   price: integer().notNull(),
+  /** Harga modal (HPP) per unit, dipakai untuk hitung laba di Laporan Penjualan. `null` = belum diisi. */
+  costPrice: integer(),
   /** Sisa stok. `null` = tidak dibatasi. Berkurang saat Pesanan `dibayar`. */
   stock: integer(),
   photoUrl: text(),
@@ -134,6 +193,8 @@ export const orderItems = pgTable("order_items", {
     .references(() => products.id),
   productNameSnapshot: text().notNull(),
   priceSnapshot: integer().notNull(),
+  /** Harga modal Item saat Pesanan dibuat (snapshot, konsisten dengan priceSnapshot). `null` = Item belum punya harga modal saat itu. */
+  costPriceSnapshot: integer(),
   qty: integer().notNull(),
   note: text(),
 });
@@ -170,6 +231,45 @@ export const payouts = pgTable("payouts", {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   settledAt: timestamp({ withTimezone: true }),
 });
+
+/**
+ * Tagihan Biaya Layanan mingguan untuk Lapak `qris_pribadi` (uang Pesanan
+ * langsung ke Pedagang, jadi Biaya Layanan tidak bisa dipotong otomatis —
+ * ditagih belakangan lewat sini). `UNIQUE(merchantId, periodStart)` mencegah
+ * cron generate dobel untuk periode yang sama (lihat src/lib/billing/).
+ */
+export const serviceFeeInvoices = pgTable(
+  "service_fee_invoices",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id),
+    periodStart: timestamp({ withTimezone: true }).notNull(),
+    periodEnd: timestamp({ withTimezone: true }).notNull(),
+    /** SUM(orders.platformFeeSnapshot) Pesanan qris_pribadi yang lunas dalam periode ini. */
+    amount: integer().notNull(),
+    /** = periodEnd (jatuh tempo langsung saat periode tutup, tanpa buffer tambahan). */
+    dueAt: timestamp({ withTimezone: true }).notNull(),
+    status: serviceFeeInvoiceStatusEnum().notNull().default("belum_lunas"),
+    /** Channel charge tagihan ini dibuat ("mock" saat dev/test, "midtrans" produksi). */
+    provider: paymentProviderEnum().notNull(),
+    /** Midtrans transaction_id untuk charge tagihan ini. Null sampai charge berhasil dibuat. */
+    referenceId: text(),
+    /** QR yang dipindai Pedagang untuk membayar tagihan ke Aplikator. Null sampai charge dibuat. */
+    qrString: text(),
+    paidAt: timestamp({ withTimezone: true }),
+    /** Catatan Admin saat override manual (tandai lunas) atau membatalkan tagihan. */
+    voidReason: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("service_fee_invoices_merchant_period_idx").on(
+      table.merchantId,
+      table.periodStart,
+    ),
+  ],
+);
 
 /** Konfigurasi Aplikator (Biaya Layanan, durasi kedaluwarsa, dst) — riwayat, bukan update-in-place. */
 export const platformConfig = pgTable("platform_config", {

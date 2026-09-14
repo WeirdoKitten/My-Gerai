@@ -36,6 +36,27 @@
       "when": 1788854513851,
       "tag": "0004_fixed_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789101548559,
+      "tag": "0005_condemned_fenris",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789369496503,
+      "tag": "0006_loving_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789372235845,
+      "tag": "0007_lethal_shocker",
+      "breakpoints": true
     }
   ]
 }

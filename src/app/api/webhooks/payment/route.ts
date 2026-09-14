@@ -1,9 +1,71 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
-import { payments } from "@/lib/db/schema";
+import { payments, serviceFeeInvoices } from "@/lib/db/schema";
 import { getPaymentProvider } from "@/lib/payment";
 import { markPaymentTerminal, settleOrderPayment } from "@/lib/payment/settle";
+import type { PaymentSettlementStatus } from "@/lib/payment/types";
+
+/** Prefix `order_id` tagihan Biaya Layanan — lihat createServiceFeeInvoiceCharge. */
+const SERVICE_FEE_INVOICE_PREFIX = "svcfee-";
+
+/**
+ * Notifikasi pembayaran TAGIHAN Biaya Layanan (Pedagang → Aplikator, bukan
+ * Pesanan Pembeli). Satu Notification URL Midtrans dipakai bersama (akun
+ * Midtrans cuma dukung 1 URL global) — dibedakan lewat prefix `order_id`,
+ * lihat POST di bawah.
+ */
+async function handleServiceFeeInvoiceNotification(
+  rawOrderId: string,
+  referenceId: string,
+  status: PaymentSettlementStatus,
+): Promise<Response> {
+  const invoiceId = rawOrderId.slice(SERVICE_FEE_INVOICE_PREFIX.length);
+  if (!z.uuid().safeParse(invoiceId).success) {
+    console.warn(
+      `[webhook/payment] order_id=${rawOrderId} bukan format tagihan yang valid — diabaikan`,
+    );
+    return new Response("ok", { status: 200 });
+  }
+
+  const invoice = await db.query.serviceFeeInvoices.findFirst({
+    where: eq(serviceFeeInvoices.id, invoiceId),
+  });
+  if (!invoice || invoice.referenceId !== referenceId) {
+    console.warn(
+      `[webhook/payment] tagihan id=${invoiceId} tidak ditemukan / referenceId tidak cocok — diabaikan`,
+    );
+    return new Response("ok", { status: 200 });
+  }
+
+  console.log(`[webhook/payment] tagihan id=${invoiceId} status=${status}`);
+
+  if (status === "success") {
+    await db
+      .update(serviceFeeInvoices)
+      .set({ status: "lunas", paidAt: new Date() })
+      .where(
+        and(
+          eq(serviceFeeInvoices.id, invoiceId),
+          eq(serviceFeeInvoices.status, "belum_lunas"),
+        ),
+      );
+  } else if (status === "expired" || status === "failed") {
+    // Charge gagal/kedaluwarsa — kosongkan supaya cron generate charge baru
+    // di run berikutnya (lihat runWeeklyServiceFeeBilling).
+    await db
+      .update(serviceFeeInvoices)
+      .set({ referenceId: null, qrString: null })
+      .where(
+        and(
+          eq(serviceFeeInvoices.id, invoiceId),
+          eq(serviceFeeInvoices.status, "belum_lunas"),
+        ),
+      );
+  }
+
+  return new Response("ok", { status: 200 });
+}
 
 /**
  * Notifikasi pembayaran dari gateway (Midtrans Payment Notification URL).
@@ -24,6 +86,14 @@ export async function POST(request: Request): Promise<Response> {
   if (!result) {
     console.warn("[webhook/payment] keaslian tidak terverifikasi — ditolak");
     return new Response("invalid signature", { status: 403 });
+  }
+
+  if (result.orderId.startsWith(SERVICE_FEE_INVOICE_PREFIX)) {
+    return handleServiceFeeInvoiceNotification(
+      result.orderId,
+      result.referenceId,
+      result.status,
+    );
   }
 
   // `order_id` MyGerai selalu UUID. Notifikasi uji dari dashboard Midtrans

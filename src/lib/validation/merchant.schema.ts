@@ -31,6 +31,16 @@ export type UpdateMerchantProfileInput = z.infer<
   typeof updateMerchantProfileSchema
 >;
 
+/** Hanya Admin yang boleh memanggil — lihat setMerchantPaymentMode di server/merchants.ts. */
+export const setMerchantPaymentModeSchema = z.object({
+  merchantId: z.uuid(),
+  paymentMode: z.enum(["gateway", "qris_pribadi"]),
+});
+
+export type SetMerchantPaymentModeInput = z.infer<
+  typeof setMerchantPaymentModeSchema
+>;
+
 export const approveMerchantSchema = z.object({
   merchantId: z.uuid(),
 });

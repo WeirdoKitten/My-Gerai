@@ -16,6 +16,24 @@ import type {
 
 const DEFAULT_PLATFORM_FEE_AMOUNT = 1000;
 const DEFAULT_ORDER_EXPIRY_MINUTES = 15;
+const DEFAULT_SERVICE_FEE_BILLING_CYCLE_DAYS = 7;
+const DEFAULT_SERVICE_FEE_GRACE_PERIOD_DAYS = 3;
+
+/** Baca nilai `platform_config` aktif untuk satu `key`, atau `defaultValue` kalau belum pernah di-seed. */
+async function readConfigValue(
+  key: string,
+  defaultValue: number,
+): Promise<number> {
+  const rows = await db.query.platformConfig.findMany({
+    where: and(
+      eq(platformConfig.key, key),
+      lte(platformConfig.effectiveFrom, new Date()),
+    ),
+    orderBy: (row, { desc }) => [desc(row.effectiveFrom)],
+    limit: 1,
+  });
+  return rows[0] ? Number(rows[0].value) : defaultValue;
+}
 
 /**
  * Nilai `platform_config` aktif saat ini. Kalau tabel belum di-seed sama
@@ -24,33 +42,29 @@ const DEFAULT_ORDER_EXPIRY_MINUTES = 15;
  * sumber kebenaran, tidak diduplikasi.
  */
 export async function getActivePlatformConfig(): Promise<PlatformConfigView> {
-  const now = new Date();
-
-  const feeRows = await db.query.platformConfig.findMany({
-    where: and(
-      eq(platformConfig.key, "platform_fee_amount"),
-      lte(platformConfig.effectiveFrom, now),
+  const [
+    platformFeeAmount,
+    orderExpiryMinutes,
+    serviceFeeBillingCycleDays,
+    serviceFeeGracePeriodDays,
+  ] = await Promise.all([
+    readConfigValue("platform_fee_amount", DEFAULT_PLATFORM_FEE_AMOUNT),
+    readConfigValue("order_expiry_minutes", DEFAULT_ORDER_EXPIRY_MINUTES),
+    readConfigValue(
+      "service_fee_billing_cycle_days",
+      DEFAULT_SERVICE_FEE_BILLING_CYCLE_DAYS,
     ),
-    orderBy: (row, { desc }) => [desc(row.effectiveFrom)],
-    limit: 1,
-  });
-
-  const expiryRows = await db.query.platformConfig.findMany({
-    where: and(
-      eq(platformConfig.key, "order_expiry_minutes"),
-      lte(platformConfig.effectiveFrom, now),
+    readConfigValue(
+      "service_fee_grace_period_days",
+      DEFAULT_SERVICE_FEE_GRACE_PERIOD_DAYS,
     ),
-    orderBy: (row, { desc }) => [desc(row.effectiveFrom)],
-    limit: 1,
-  });
+  ]);
 
   return {
-    platformFeeAmount: feeRows[0]
-      ? Number(feeRows[0].value)
-      : DEFAULT_PLATFORM_FEE_AMOUNT,
-    orderExpiryMinutes: expiryRows[0]
-      ? Number(expiryRows[0].value)
-      : DEFAULT_ORDER_EXPIRY_MINUTES,
+    platformFeeAmount,
+    orderExpiryMinutes,
+    serviceFeeBillingCycleDays,
+    serviceFeeGracePeriodDays,
   };
 }
 
@@ -105,6 +119,25 @@ export async function updatePlatformConfig(
     rows.push({
       key: "order_expiry_minutes",
       value: String(parsed.data.orderExpiryMinutes),
+      effectiveFrom: now,
+    });
+  }
+  if (
+    parsed.data.serviceFeeBillingCycleDays !==
+    current.serviceFeeBillingCycleDays
+  ) {
+    rows.push({
+      key: "service_fee_billing_cycle_days",
+      value: String(parsed.data.serviceFeeBillingCycleDays),
+      effectiveFrom: now,
+    });
+  }
+  if (
+    parsed.data.serviceFeeGracePeriodDays !== current.serviceFeeGracePeriodDays
+  ) {
+    rows.push({
+      key: "service_fee_grace_period_days",
+      value: String(parsed.data.serviceFeeGracePeriodDays),
       effectiveFrom: now,
     });
   }

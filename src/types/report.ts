@@ -11,12 +11,17 @@ export type SalesSummary = {
   buyerTotal: number;
   /** revenue / orderCount, 0 kalau belum ada Pesanan. */
   avgOrderValue: number;
+  /** SUM((priceSnapshot - costPriceSnapshot) * qty) — hanya baris Item yang sudah punya harga modal. */
+  profit: number;
+  /** `true` kalau ada Item terjual di periode ini yang belum punya harga modal — `profit` jadi kurang lengkap. */
+  profitIncomplete: boolean;
 };
 
 /** Perubahan persen vs periode sebelumnya yang sama panjang. `null` = periode lalu nol. */
 export type SalesDelta = {
   revenuePct: number | null;
   orderCountPct: number | null;
+  profitPct: number | null;
 };
 
 export type DailySales = {

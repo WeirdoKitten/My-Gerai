@@ -1,6 +1,7 @@
 import { hashPassword } from "../auth/password";
 import { client, db } from "./client";
 import { admins, merchants, platformConfig, products } from "./schema";
+import { seedProductPhoto } from "./seed-photo";
 
 /**
  * Seed data DEMO untuk server (staging / demo publik) — versi AMAN dari
@@ -96,13 +97,15 @@ async function main(): Promise<void> {
         merchantId: merchant.id,
         name: "Bakso Urat",
         price: 15000,
+        costPrice: 9000,
         status: "available",
-        photoUrl: "/img/menu/bakso.jpg",
+        photoUrl: await seedProductPhoto("bakso.jpg"),
       },
       {
         merchantId: merchant.id,
         name: "Bakso Halus",
         price: 12000,
+        costPrice: 7000,
         status: "available",
         stock: 10,
       },
@@ -110,23 +113,26 @@ async function main(): Promise<void> {
         merchantId: merchant.id,
         name: "Mie Ayam Bakso",
         price: 17000,
+        costPrice: 10000,
         status: "available",
         stock: 6,
-        photoUrl: "/img/menu/mie-ayam.jpg",
+        photoUrl: await seedProductPhoto("mie-ayam.jpg"),
       },
       {
         merchantId: merchant.id,
         name: "Es Teh Manis",
         price: 5000,
+        costPrice: 2000,
         status: "available",
-        photoUrl: "/img/menu/es-teh.jpg",
+        photoUrl: await seedProductPhoto("es-teh.jpg"),
       },
       {
         merchantId: merchant.id,
         name: "Pangsit Goreng",
         price: 8000,
+        // Sengaja tanpa harga modal — contoh kasus "belum lengkap" di Laporan Penjualan.
         status: "sold_out",
-        photoUrl: "/img/menu/pangsit.jpg",
+        photoUrl: await seedProductPhoto("pangsit.jpg"),
       },
     ]);
   }
@@ -135,8 +141,9 @@ async function main(): Promise<void> {
       merchantId: merchantTwo.id,
       name: "Nasi Goreng",
       price: 13000,
+      costPrice: 8000,
       status: "available",
-      photoUrl: "/img/menu/nasi-goreng.jpg",
+      photoUrl: await seedProductPhoto("nasi-goreng.jpg"),
     });
   }
 

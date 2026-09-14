@@ -10,6 +10,7 @@ const NAV: NavItem[] = [
   { href: "/admin/merchants", label: "Pedagang", icon: "store" },
   { href: "/admin/config", label: "Konfigurasi", icon: "settings" },
   { href: "/admin/payouts", label: "Pencairan", icon: "wallet" },
+  { href: "/admin/invoices", label: "Tagihan", icon: "receipt" },
 ];
 
 export default async function AdminDashboardLayout({

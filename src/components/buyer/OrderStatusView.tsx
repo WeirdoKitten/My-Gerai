@@ -59,11 +59,13 @@ export function OrderStatusView({
       {order.qrImageUrl ? (
         <Card pad="lg" className="flex flex-col items-center gap-3">
           <p className="text-center text-sm text-ink-muted">
-            {order.canSimulate
-              ? "Pindai untuk bayar (simulasi)"
-              : "Pindai dengan aplikasi apa pun yang mendukung QRIS"}
+            {order.isQrisPribadi
+              ? "Pindai QRIS Pedagang untuk membayar"
+              : order.canSimulate
+                ? "Pindai untuk bayar (simulasi)"
+                : "Pindai dengan aplikasi apa pun yang mendukung QRIS"}
           </p>
-          {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
+          {/* biome-ignore lint/performance/noImgElement: data URI/foto unggahan, next/image tidak berlaku */}
           <img
             src={order.qrImageUrl}
             alt="QR pembayaran"
@@ -87,7 +89,9 @@ export function OrderStatusView({
             </>
           ) : (
             <p className="text-center text-xs text-ink-muted">
-              Halaman ini otomatis diperbarui setelah pembayaran diterima.
+              {order.isQrisPribadi
+                ? "Pedagang akan menandai Pesanan ini lunas setelah menerima pembayaran."
+                : "Halaman ini otomatis diperbarui setelah pembayaran diterima."}
             </p>
           )}
         </Card>
@@ -124,16 +128,18 @@ export function OrderStatusView({
             <span>Subtotal</span>
             <span className="tabular-nums">{formatRupiah(order.subtotal)}</span>
           </div>
-          <div className="flex justify-between text-sm text-ink-muted">
-            <span>Biaya Layanan</span>
-            <span className="tabular-nums">
-              {formatRupiah(order.platformFeeSnapshot)}
-            </span>
-          </div>
+          {order.isQrisPribadi ? null : (
+            <div className="flex justify-between text-sm text-ink-muted">
+              <span>Biaya Layanan</span>
+              <span className="tabular-nums">
+                {formatRupiah(order.platformFeeSnapshot)}
+              </span>
+            </div>
+          )}
           <div className="mt-1 flex justify-between border-t border-line pt-2 font-bold text-ink">
             <span>Total Dibayar</span>
             <span className="tabular-nums">
-              {formatRupiah(order.grandTotal)}
+              {formatRupiah(order.amountToPay)}
             </span>
           </div>
         </div>

@@ -15,15 +15,22 @@
 | Pembeli | `Buyer` (tidak ada tabel akun, hanya field `buyer_name`) |
 | Item | `Product` |
 | Stok Item | `stock` (kolom `products.stock`, `null` = tak terbatas) |
+| Harga Modal | `costPrice` (kolom `products.cost_price`, opsional); snapshot per Pesanan: `costPriceSnapshot` (`order_items.cost_price_snapshot`) |
+| Keuntungan | `profit` (turunan, dihitung di Laporan Penjualan — bukan kolom) |
 | Keranjang | `Cart` |
 | Pesanan | `Order` |
 | Kode Pesanan | `orderCode` |
 | Status Pesanan | `OrderStatus` (enum: lihat [DATA-MODEL.md](DATA-MODEL.md#orders-pesanan)) |
 | QR Menu | `StallQrCode` |
+| Jam Operasional | `OperatingHours` (tabel `merchant_operating_hours`) |
+| Status Buka/Tutup | `isOpen` (turunan, dihitung `getMerchantOpenState` — bukan kolom) |
+| Override Manual | `manualOverride` (kolom `merchants.manual_override`, nilai `"open"`\|`"closed"`) |
 | Biaya Layanan | `platformFee` |
 | Saldo Pedagang | `merchantBalance` (nilai turunan, bukan kolom, lihat [DATA-MODEL.md](DATA-MODEL.md#payouts-pencairan)) |
 | Pencairan | `Payout` |
 | Aplikator | `Platform` (konteks umum, jarang jadi nama entitas eksplisit) |
+| QRIS Pribadi | `paymentMode: "qris_pribadi"` (lawan: `"gateway"`) |
+| Tagihan Biaya Layanan | `ServiceFeeInvoice` (tabel `service_fee_invoices`, Fase 7) |
 
 ## Konvensi Penamaan
 

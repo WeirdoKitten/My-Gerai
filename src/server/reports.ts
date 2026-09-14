@@ -33,7 +33,7 @@ async function summaryInRange(
   merchantId: string,
   start: Date,
   end: Date,
-): Promise<SalesSummary> {
+): Promise<Omit<SalesSummary, "profit" | "profitIncomplete">> {
   const [row] = await db
     .select({
       orderCount: sql<number>`count(*)`.mapWith(Number),
@@ -64,6 +64,39 @@ async function summaryInRange(
     platformFeeTotal,
     buyerTotal: revenue + platformFeeTotal,
     avgOrderValue: orderCount > 0 ? Math.round(revenue / orderCount) : 0,
+  };
+}
+
+async function profitInRange(
+  merchantId: string,
+  start: Date,
+  end: Date,
+): Promise<{ profit: number; profitIncomplete: boolean }> {
+  const [row] = await db
+    .select({
+      profit:
+        sql<number>`coalesce(sum(case when ${orderItems.costPriceSnapshot} is not null then (${orderItems.priceSnapshot} - ${orderItems.costPriceSnapshot}) * ${orderItems.qty} else 0 end), 0)`.mapWith(
+          Number,
+        ),
+      missingCostRows:
+        sql<number>`coalesce(sum(case when ${orderItems.costPriceSnapshot} is null then 1 else 0 end), 0)`.mapWith(
+          Number,
+        ),
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(
+      and(
+        eq(orders.merchantId, merchantId),
+        inArray(orders.status, PAID),
+        gte(orders.createdAt, start),
+        lt(orders.createdAt, end),
+      ),
+    );
+
+  return {
+    profit: row?.profit ?? 0,
+    profitIncomplete: (row?.missingCostRows ?? 0) > 0,
   };
 }
 
@@ -359,21 +392,31 @@ export async function getMerchantSalesReport(
   );
   const merchantId = session.merchantId;
 
-  const [summary, prevSummary, daily, topItems, insightInput] =
-    await Promise.all([
-      summaryInRange(merchantId, start, end),
-      summaryInRange(merchantId, prevStart, prevEnd),
-      dailyInRange(merchantId, start, end, dayKeys),
-      topItemsInRange(merchantId, start, end),
-      buildInsightInput(merchantId, now),
-    ]);
+  const [
+    summary,
+    prevSummary,
+    profit,
+    prevProfit,
+    daily,
+    topItems,
+    insightInput,
+  ] = await Promise.all([
+    summaryInRange(merchantId, start, end),
+    summaryInRange(merchantId, prevStart, prevEnd),
+    profitInRange(merchantId, start, end),
+    profitInRange(merchantId, prevStart, prevEnd),
+    dailyInRange(merchantId, start, end, dayKeys),
+    topItemsInRange(merchantId, start, end),
+    buildInsightInput(merchantId, now),
+  ]);
 
   return {
     period: resolved,
-    summary,
+    summary: { ...summary, ...profit },
     delta: {
       revenuePct: pctChange(summary.revenue, prevSummary.revenue),
       orderCountPct: pctChange(summary.orderCount, prevSummary.orderCount),
+      profitPct: pctChange(profit.profit, prevProfit.profit),
     },
     daily,
     topItems: topItems.map((item) => ({

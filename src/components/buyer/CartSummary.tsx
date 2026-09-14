@@ -10,8 +10,15 @@ export function CartSummary({
 }: {
   platformFeeAmount: number;
 }) {
-  const { items, subtotalDisplay, updateQty, removeItem } = useCart();
-  const total = subtotalDisplay + platformFeeAmount;
+  const { items, subtotalDisplay, paymentMode, updateQty, removeItem } =
+    useCart();
+  const isQrisPribadi = paymentMode === "qris_pribadi";
+  // QRIS pribadi: Pembeli bayar LANGSUNG ke Pedagang, cuma sebesar subtotal —
+  // Biaya Layanan tidak bisa di-on-top di QRIS statis, ditagih belakangan ke
+  // Pedagang lewat tagihan mingguan (lihat src/lib/billing/).
+  const total = isQrisPribadi
+    ? subtotalDisplay
+    : subtotalDisplay + platformFeeAmount;
 
   return (
     <Card pad="none">
@@ -61,12 +68,14 @@ export function CartSummary({
             {formatRupiah(subtotalDisplay)}
           </span>
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-ink-muted">Biaya Layanan</span>
-          <span className="tabular-nums text-ink">
-            {formatRupiah(platformFeeAmount)}
-          </span>
-        </div>
+        {isQrisPribadi ? null : (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-ink-muted">Biaya Layanan</span>
+            <span className="tabular-nums text-ink">
+              {formatRupiah(platformFeeAmount)}
+            </span>
+          </div>
+        )}
         <div className="mt-1 flex items-center justify-between border-t border-line pt-2">
           <span className="font-semibold text-ink">Total</span>
           <span className="font-bold tabular-nums text-ink">
@@ -75,8 +84,9 @@ export function CartSummary({
         </div>
       </div>
       <p className="px-4 pb-4 text-xs text-ink-muted">
-        Biaya Layanan untuk memakai layanan pesan lewat MyGerai. Total dihitung
-        ulang di server saat Pesanan dibuat.
+        {isQrisPribadi
+          ? "Kamu membayar langsung ke QRIS milik Pedagang. Total dihitung ulang di server saat Pesanan dibuat."
+          : "Biaya Layanan untuk memakai layanan pesan lewat MyGerai. Total dihitung ulang di server saat Pesanan dibuat."}
       </p>
     </Card>
   );

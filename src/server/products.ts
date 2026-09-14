@@ -3,9 +3,11 @@
 import { and, asc, eq, gt, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { getMerchantSession } from "@/lib/auth/session";
+import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { db } from "@/lib/db/client";
 import { merchants, products } from "@/lib/db/schema";
 import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit/limiter";
+import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveProductPhoto } from "@/lib/upload/storage";
 import {
   type CreateProductInput,
@@ -13,51 +15,105 @@ import {
   type UpdateProductInput,
   updateProductSchema,
 } from "@/lib/validation/product.schema";
+import { getActivePlatformConfig } from "@/server/config";
 import type {
   CreateProductResult,
+  MerchantPaymentModeView,
   MerchantProductView,
   SetProductStatusResult,
-  StallCatalogView,
+  StallCatalogResult,
   UpdateProductResult,
   UploadProductPhotoResult,
 } from "@/types/product";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
-/** Katalog publik sebuah Lapak — null kalau slug tidak ada atau belum `approved`. */
+/**
+ * Katalog publik sebuah Lapak. `{ok:false}` membedakan slug yang memang
+ * tidak ada/belum aktif ("not_found") dari Lapak yang ada tapi sedang
+ * dikunci karena tagihan Biaya Layanan menunggak ("locked") — supaya
+ * halaman Pembeli bisa tampilkan pesan yang sesuai, bukan 404 generik.
+ */
 export async function getStallCatalog(
   slug: string,
-): Promise<StallCatalogView | null> {
+): Promise<StallCatalogResult> {
   const merchant = await db.query.merchants.findFirst({
     where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
   });
+  if (!merchant) return { ok: false, reason: "not_found" };
 
-  if (!merchant) return null;
+  const { serviceFeeGracePeriodDays } = await getActivePlatformConfig();
+  if (await isMerchantOrderingLocked(merchant.id, serviceFeeGracePeriodDays)) {
+    return { ok: false, reason: "locked" };
+  }
 
-  const merchantProducts = await db.query.products.findMany({
-    where: and(
-      eq(products.merchantId, merchant.id),
-      eq(products.status, "available"),
-      or(isNull(products.stock), gt(products.stock, 0)),
-    ),
-    orderBy: [asc(products.name)],
-  });
+  const [merchantProducts, { isOpen, reopensAt }] = await Promise.all([
+    db.query.products.findMany({
+      where: and(
+        eq(products.merchantId, merchant.id),
+        eq(products.status, "available"),
+        or(isNull(products.stock), gt(products.stock, 0)),
+      ),
+      orderBy: [asc(products.name)],
+    }),
+    getMerchantOpenState(merchant.id),
+  ]);
 
   return {
-    merchant: {
-      slug: merchant.slug,
-      stallName: merchant.stallName,
-      category: merchant.category,
-      photoUrl: merchant.photoUrl,
+    ok: true,
+    catalog: {
+      merchant: {
+        slug: merchant.slug,
+        stallName: merchant.stallName,
+        category: merchant.category,
+        photoUrl: merchant.photoUrl,
+        isOpen,
+        reopensAt: reopensAt ? reopensAt.toISOString() : null,
+      },
+      products: merchantProducts.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        photoUrl: product.photoUrl,
+      })),
     },
-    products: merchantProducts.map((product) => ({
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      photoUrl: product.photoUrl,
-    })),
   };
+}
+
+/**
+ * Metode pembayaran sebuah Lapak, tanpa sesi (dibaca Pembeli lewat cart
+ * client-side untuk menentukan copy checkout — lihat CartProvider). `null`
+ * kalau Lapak tidak ada/belum aktif; pemanggil sebaiknya anggap "gateway"
+ * (default paling aman) sampai data ini termuat.
+ */
+export async function getMerchantPaymentMode(
+  slug: string,
+): Promise<MerchantPaymentModeView> {
+  const merchant = await db.query.merchants.findFirst({
+    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
+    columns: { paymentMode: true },
+  });
+  return merchant ? { paymentMode: merchant.paymentMode } : null;
+}
+
+/**
+ * Status buka/tutup sebuah Lapak, tanpa sesi (dibaca Pembeli lewat cart
+ * client-side untuk mengunci Checkout — lihat CartProvider/CheckoutGate).
+ * `null` kalau Lapak tidak ada/belum aktif; pemanggil sebaiknya anggap
+ * "buka" (paling tidak menghalangi) sampai data ini termuat.
+ */
+export async function getStallOpenState(
+  slug: string,
+): Promise<{ isOpen: boolean; reopensAt: string | null } | null> {
+  const merchant = await db.query.merchants.findFirst({
+    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
+    columns: { id: true },
+  });
+  if (!merchant) return null;
+
+  const { isOpen, reopensAt } = await getMerchantOpenState(merchant.id);
+  return { isOpen, reopensAt: reopensAt ? reopensAt.toISOString() : null };
 }
 
 /** Daftar Item milik Lapak sendiri (dashboard Pedagang) — identitas dari sesi login. */
@@ -75,6 +131,7 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     name: product.name,
     description: product.description,
     price: product.price,
+    costPrice: product.costPrice,
     stock: product.stock,
     photoUrl: product.photoUrl,
     status: product.status,
@@ -103,6 +160,7 @@ export async function createProduct(
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       price: parsed.data.price,
+      costPrice: parsed.data.costPrice ?? null,
       stock: parsed.data.stock ?? null,
       photoUrl: parsed.data.photoUrl ?? null,
     })
@@ -160,7 +218,8 @@ export async function updateProduct(
       message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
     };
   }
-  const { productId, name, description, price, stock, photoUrl } = parsed.data;
+  const { productId, name, description, price, costPrice, stock, photoUrl } =
+    parsed.data;
 
   const [updated] = await db
     .update(products)
@@ -168,6 +227,7 @@ export async function updateProduct(
       name,
       description: description ?? null,
       price,
+      costPrice: costPrice ?? null,
       stock: stock ?? null,
       photoUrl: photoUrl ?? null,
     })

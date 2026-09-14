@@ -26,8 +26,16 @@ export type BuyerOrderStatusView = {
   subtotal: number;
   platformFeeSnapshot: number;
   totalForMerchant: number;
-  /** Yang dibayar Pembeli = `subtotal + platformFeeSnapshot`. */
+  /** Nilai ekonomi penuh Pesanan (termasuk Biaya Layanan) = `subtotal + platformFeeSnapshot` — dipakai laporan/Admin, BUKAN selalu = yang dibayar Pembeli. */
   grandTotal: number;
+  /**
+   * Yang BENAR-BENAR dibayar Pembeli: `grandTotal` untuk mode gateway, atau
+   * cuma `subtotal` untuk `qris_pribadi` (Biaya Layanan ditagih belakangan
+   * ke Pedagang lewat tagihan mingguan, bukan dipungut dari Pembeli).
+   */
+  amountToPay: number;
+  /** `true` kalau Pesanan ini dibayar lewat QRIS pribadi Pedagang (bukan gateway). */
+  isQrisPribadi: boolean;
   createdAt: Date;
   expiresAt: Date;
   paidAt: Date | null;
@@ -68,6 +76,12 @@ export type MerchantOrderListItem = {
   buyerNote: string | null;
   createdAt: Date;
   items: MerchantOrderItemView[];
+  /**
+   * `true` = Pesanan QRIS pribadi yang masih `menunggu_pembayaran`, tampilkan
+   * tombol "Tandai Lunas" (markQrisPribadiOrderPaid) alih-alih tombol status
+   * normal (nextMerchantStatus hanya berlaku mulai status `dibayar`).
+   */
+  awaitingManualConfirmation: boolean;
 };
 
 export type UpdateOrderStatusResult = { ok: boolean; message?: string };
