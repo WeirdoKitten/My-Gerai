@@ -40,7 +40,7 @@ export default async function StallMenuPage(
       </div>
 
       {!catalog.merchant.isOpen ? (
-        <Alert tone="warning">
+        <Alert tone="warning" className="border border-warning/30">
           Lapak sedang tutup
           {catalog.merchant.reopensAt
             ? ` — buka lagi ${formatDateTime(new Date(catalog.merchant.reopensAt))}`
