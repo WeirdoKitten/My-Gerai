@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
+import { ClosedStallNotice } from "@/components/buyer/ClosedStallNotice";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
 import { ProductCard } from "@/components/buyer/ProductCard";
-import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HistoryIcon, ImageOffIcon, StoreIcon } from "@/components/ui/icons";
-import { formatDateTime } from "@/lib/utils/datetime";
 import { getStallCatalog } from "@/server/products";
 
 export default async function StallMenuPage(
@@ -40,13 +39,7 @@ export default async function StallMenuPage(
       </div>
 
       {!catalog.merchant.isOpen ? (
-        <Alert tone="warning" className="border border-warning/30">
-          Lapak sedang tutup
-          {catalog.merchant.reopensAt
-            ? ` — buka lagi ${formatDateTime(new Date(catalog.merchant.reopensAt))}`
-            : ""}
-          . Kamu masih bisa lihat menu, tapi belum bisa checkout sekarang.
-        </Alert>
+        <ClosedStallNotice reopensAt={catalog.merchant.reopensAt} />
       ) : null}
 
       {catalog.products.length === 0 ? (

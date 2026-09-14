@@ -103,6 +103,8 @@ type CartContextValue = {
    * Default `true` (paling tidak menghalangi) sebelum termuat/tidak ada Lapak aktif.
    */
   isOpen: boolean;
+  /** Jadwal Lapak aktif buka lagi (ISO string) — null kalau tidak diketahui. */
+  reopensAt: string | null;
   addItem: (stallSlug: string, item: CartItem) => void;
   updateQty: (productId: string, qty: number) => void;
   updateNote: (productId: string, note: string) => void;
@@ -118,6 +120,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [paymentMode, setPaymentMode] =
     useState<MerchantPaymentMode>("gateway");
   const [isOpen, setIsOpen] = useState(true);
+  const [reopensAt, setReopensAt] = useState<string | null>(null);
 
   // Baca localStorage setelah mount (bukan di initializer) supaya tidak
   // memicu hydration mismatch di Next.js App Router.
@@ -157,11 +160,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state.stallSlug) {
       setIsOpen(true);
+      setReopensAt(null);
       return;
     }
     let cancelled = false;
     getStallOpenState(state.stallSlug).then((result) => {
-      if (!cancelled) setIsOpen(result?.isOpen ?? true);
+      if (cancelled) return;
+      setIsOpen(result?.isOpen ?? true);
+      setReopensAt(result?.reopensAt ?? null);
     });
     return () => {
       cancelled = true;
@@ -181,6 +187,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       subtotalDisplay,
       paymentMode,
       isOpen,
+      reopensAt,
       addItem: (stallSlug, item) =>
         dispatch({ type: "ADD_ITEM", stallSlug, item }),
       updateQty: (productId, qty) =>
@@ -190,7 +197,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem: (productId) => dispatch({ type: "REMOVE_ITEM", productId }),
       clearCart: () => dispatch({ type: "CLEAR" }),
     };
-  }, [state, paymentMode, isOpen]);
+  }, [state, paymentMode, isOpen, reopensAt]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
