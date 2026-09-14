@@ -22,7 +22,7 @@ export default async function MerchantPaymentPage() {
       ) : null}
       <PaymentModeSection settings={settings} />
       <div className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold text-ink">
+        <h3 className="text-lg font-semibold text-ink">
           Tagihan Biaya Layanan
         </h3>
         <ServiceFeeInvoiceList initialInvoices={invoices} />
