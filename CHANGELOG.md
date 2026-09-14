@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-14 — Pop up "Lapak tutup" gantikan banner + cegat klik Checkout di menu
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (update bullet Pembeli di "Toggle Buka/Tutup Lapak + Jadwal Operasional"). Kode baru: `src/components/buyer/ClosedStallNotice.tsx`. Kode ubah: `src/app/(buyer)/menu/[stallSlug]/page.tsx`, `src/components/buyer/FloatingCartBar.tsx`, `src/lib/cart/cart-context.tsx`.
+**Alasan:** Permintaan User — banner statis "Lapak sedang tutup" di halaman menu dirasa terlalu selalu-tampil; maunya pop up yang muncul pas awal akses (tiap kunjungan/reload, bukan cuma sekali). Sekalian: klik tombol Keranjang mengambang saat Lapak tutup jangan langsung navigasi ke `/checkout` (baru diblok di halaman Checkout oleh `CheckoutGate`) — maunya dicegat dari menu dengan pop up, tetap di halaman menu.
+**Ringkasan:**
+- **`ClosedStallNotice`** (`Modal` UI existing) — dipasang di `/menu/[stallSlug]` menggantikan `<Alert>` statis; `useState(true)` tanpa persist jadi otomatis terbuka tiap kali komponen mount (page load/reload), bukan cuma sekali per sesi.
+- **`FloatingCartBar`**: `onClick` pada link `/checkout` di-`preventDefault()` kalau `!cart.isOpen`, lalu tampilkan `Modal` peringatan serupa — Pembeli tetap di halaman menu. `CheckoutGate`/`createOrder` (defense-in-depth) tidak berubah, tetap jaga akses langsung ke URL `/checkout`.
+- **`CartProvider`** nambah field `reopensAt` (sebelumnya di-fetch tapi dibuang) supaya kedua pop up bisa tampilkan jam buka lagi.
+- **Diverifikasi**: `tsc`/`biome check`/`build` lulus. Alur nyata browser (Playwright): toggle Lapak tutup → akses `/menu/bakso-pak-budi` → pop up muncul otomatis → "Mengerti" → reload → pop up muncul lagi (tidak di-suppress) → tambah Item ke Keranjang → klik tombol Keranjang mengambang → tetap di `/menu/bakso-pak-budi` (bukan `/checkout`) + pop up peringatan kedua muncul.
+
 ## 2026-09-14 — Rapikan header dashboard: toggle Buka/Tutup & Metode Pembayaran pindah dari header
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (update bullet penempatan UI). Kode ubah: `src/app/(merchant)/dashboard/{layout,page,profil/page}.tsx`, `src/components/merchant/OpenToggle.tsx`.
