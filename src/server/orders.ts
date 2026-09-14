@@ -158,6 +158,7 @@ export async function createOrder(
     productId: string;
     productNameSnapshot: string;
     priceSnapshot: number;
+    costPriceSnapshot: number | null;
     qty: number;
     note: string | null;
   }> = [];
@@ -186,6 +187,7 @@ export async function createOrder(
       productId: product.id,
       productNameSnapshot: product.name,
       priceSnapshot: product.price,
+      costPriceSnapshot: product.costPrice,
       qty: item.qty,
       note: item.note ?? null,
     });

@@ -26,6 +26,9 @@ export function ProductForm({
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(product ? String(product.price) : "");
+  const [costPrice, setCostPrice] = useState(
+    product?.costPrice != null ? String(product.costPrice) : "",
+  );
   const [stock, setStock] = useState(
     product?.stock != null ? String(product.stock) : "",
   );
@@ -68,6 +71,7 @@ export function ProductForm({
     setError(null);
 
     const priceNumber = Number(price);
+    const costPriceValue = costPrice.trim() === "" ? null : Number(costPrice);
     const stockValue = stock.trim() === "" ? null : Number(stock);
     const result = product
       ? await updateProduct({
@@ -75,6 +79,7 @@ export function ProductForm({
           name,
           description: description || undefined,
           price: priceNumber,
+          costPrice: costPriceValue,
           stock: stockValue,
           photoUrl,
         })
@@ -82,6 +87,7 @@ export function ProductForm({
           name,
           description: description || undefined,
           price: priceNumber,
+          costPrice: costPriceValue,
           stock: stockValue,
           photoUrl,
         });
@@ -121,6 +127,19 @@ export function ProductForm({
           onChange={(e) => setPrice(e.target.value)}
           required
           min={0}
+        />
+      </Field>
+      <Field
+        label="Harga Modal (Rp)"
+        hint="Opsional. Dipakai untuk hitung keuntungan di Laporan Penjualan."
+      >
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={costPrice}
+          onChange={(e) => setCostPrice(e.target.value)}
+          min={0}
+          placeholder="Belum diisi"
         />
       </Field>
       <Field label="Stok" hint="Kosongkan kalau tidak dibatasi.">

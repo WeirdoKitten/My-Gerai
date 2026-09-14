@@ -106,6 +106,7 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     name: product.name,
     description: product.description,
     price: product.price,
+    costPrice: product.costPrice,
     stock: product.stock,
     photoUrl: product.photoUrl,
     status: product.status,
@@ -134,6 +135,7 @@ export async function createProduct(
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       price: parsed.data.price,
+      costPrice: parsed.data.costPrice ?? null,
       stock: parsed.data.stock ?? null,
       photoUrl: parsed.data.photoUrl ?? null,
     })
@@ -191,7 +193,8 @@ export async function updateProduct(
       message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
     };
   }
-  const { productId, name, description, price, stock, photoUrl } = parsed.data;
+  const { productId, name, description, price, costPrice, stock, photoUrl } =
+    parsed.data;
 
   const [updated] = await db
     .update(products)
@@ -199,6 +202,7 @@ export async function updateProduct(
       name,
       description: description ?? null,
       price,
+      costPrice: costPrice ?? null,
       stock: stock ?? null,
       photoUrl: photoUrl ?? null,
     })

@@ -109,6 +109,8 @@ export const products = pgTable("products", {
   name: text().notNull(),
   description: text(),
   price: integer().notNull(),
+  /** Harga modal (HPP) per unit, dipakai untuk hitung laba di Laporan Penjualan. `null` = belum diisi. */
+  costPrice: integer(),
   /** Sisa stok. `null` = tidak dibatasi. Berkurang saat Pesanan `dibayar`. */
   stock: integer(),
   photoUrl: text(),
@@ -151,6 +153,8 @@ export const orderItems = pgTable("order_items", {
     .references(() => products.id),
   productNameSnapshot: text().notNull(),
   priceSnapshot: integer().notNull(),
+  /** Harga modal Item saat Pesanan dibuat (snapshot, konsisten dengan priceSnapshot). `null` = Item belum punya harga modal saat itu. */
+  costPriceSnapshot: integer(),
   qty: integer().notNull(),
   note: text(),
 });

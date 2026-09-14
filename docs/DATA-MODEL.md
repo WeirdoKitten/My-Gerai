@@ -44,6 +44,7 @@ erDiagram
         string name
         text description
         int price
+        int cost_price "nullable; harga modal (HPP) per unit, dipakai untuk hitung Keuntungan di Laporan Penjualan (2026-09-14)"
         int stock "nullable; null = tak terbatas. Berkurang GREATEST(stock-qty,0) saat Pesanan dibayar (2026-09-08)."
         string photo_url "nullable; path /uploads/products/<uuid>.<ext> hasil upload Pedagang (Fase Foto Item, 2026-09-08). Disimpan di volume Docker, bukan di DB."
         string status "available|sold_out"
@@ -73,6 +74,7 @@ erDiagram
         uuid product_id FK
         string product_name_snapshot
         int price_snapshot
+        int cost_price_snapshot "nullable; snapshot products.cost_price saat Pesanan dibuat (2026-09-14) — konsisten dengan price_snapshot, supaya Keuntungan Pesanan lama tidak berubah retroaktif kalau harga modal Item diedit"
         int qty
         text note
     }
@@ -172,6 +174,7 @@ erDiagram
 
 ### `products` (Item)
 - `status = sold_out` dipakai Pedagang untuk menyembunyikan Item yang habis tanpa menghapus datanya (histori pesanan lama tetap valid lewat snapshot di `order_items`).
+- `cost_price` (nullable, 2026-09-14): harga modal (HPP) per unit, diisi opsional oleh Pedagang di `ProductForm`. **Tidak pernah** dikirim ke Pembeli (`getStallCatalog`/`BuyerProductView` tidak menyertakannya). Dipakai `getMerchantSalesReport` untuk menghitung `summary.profit`; kalau ada Item terjual yang belum punya `cost_price`, `summary.profitIncomplete = true`.
 
 ### `orders` (Pesanan)
 - `order_code`: pendek & mudah disebutkan lisan (huruf+angka, mis. 4 karakter), **unik per hari per Lapak** (boleh berulang lintas hari/lintas Lapak) — cukup untuk kebutuhan verbal saat pengambilan, tidak perlu unik global.
@@ -183,6 +186,7 @@ erDiagram
 
 ### `order_items`
 - Menyimpan `product_name_snapshot` & `price_snapshot` supaya kalau Pedagang mengubah harga/nama Item di kemudian hari, histori Pesanan lama tidak ikut berubah.
+- `cost_price_snapshot` (nullable, 2026-09-14): sama prinsipnya dengan `price_snapshot` — diisi dari `products.cost_price` **saat Pesanan dibuat** (`createOrder`), bukan dihitung ulang belakangan, supaya Keuntungan Pesanan lama tidak berubah retroaktif kalau Pedagang mengedit harga modal Item. `NULL` kalau Item belum punya harga modal saat Pesanan itu dibuat.
 
 ### `payments`
 - `provider = mock` untuk transaksi dev/test, `provider = midtrans` untuk staging/produksi (lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction)), `provider = qris_pribadi` (Fase 7) untuk Pesanan Lapak yang bayar langsung ke QRIS Pedagang (tanpa gateway sama sekali). **Wajib** difilter/dipisah per `provider` di semua laporan keuangan, supaya uang "palsu" (mock) tidak tercampur perhitungan real. Enum lama `tripay` dibiarkan di definisi enum (tidak pernah dipakai) — tidak perlu migrasi menghapusnya.

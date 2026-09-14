@@ -41,6 +41,8 @@ export type MerchantProductView = {
   name: string;
   description: string | null;
   price: number;
+  /** Harga modal (HPP), dipakai untuk hitung laba di Laporan Penjualan. `null` = belum diisi. */
+  costPrice: number | null;
   /** `null` = stok tidak dibatasi. */
   stock: number | null;
   photoUrl: string | null;

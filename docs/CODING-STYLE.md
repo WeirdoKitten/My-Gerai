@@ -15,6 +15,8 @@
 | Pembeli | `Buyer` (tidak ada tabel akun, hanya field `buyer_name`) |
 | Item | `Product` |
 | Stok Item | `stock` (kolom `products.stock`, `null` = tak terbatas) |
+| Harga Modal | `costPrice` (kolom `products.cost_price`, opsional); snapshot per Pesanan: `costPriceSnapshot` (`order_items.cost_price_snapshot`) |
+| Keuntungan | `profit` (turunan, dihitung di Laporan Penjualan — bukan kolom) |
 | Keranjang | `Cart` |
 | Pesanan | `Order` |
 | Kode Pesanan | `orderCode` |

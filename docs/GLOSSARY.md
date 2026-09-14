@@ -11,6 +11,7 @@
 | **Lapak** | Unit usaha milik satu Pedagang di dalam sistem — punya nama, kategori, dan satu QR unik sendiri. Asumsi MVP: **1 Pedagang = 1 Lapak**. |
 | **Pembeli** | Orang yang memindai QR dan memesan. **Tidak punya akun/login** — hanya mengisi **Nama Pembeli** saat checkout. |
 | **Item** | Barang/menu yang dijual sebuah Lapak (istilah netral, mencakup makanan maupun non-makanan seperti baju). Setara "produk". |
+| **Harga Modal** | Biaya pokok (HPP) per unit Item, diisi **opsional** oleh Pedagang saat tambah/ubah Item. Dipakai untuk menghitung **Keuntungan** di **Laporan Penjualan**; tidak pernah ditampilkan ke Pembeli. Di-snapshot per Pesanan (sama seperti harga jual) supaya Keuntungan Pesanan lama tidak berubah kalau harga modal diedit belakangan. |
 | **Keranjang** | Kumpulan Item yang dipilih Pembeli sebelum checkout. Tersimpan sementara di sisi browser Pembeli (belum jadi Pesanan resmi). |
 | **Pesanan** | Transaksi resmi yang tercipta saat Pembeli checkout. Setara "order". Punya **Kode Pesanan** dan **Status Pesanan**. |
 | **Kode Pesanan** | Kode pendek unik (mis. `B231`) yang ditampilkan ke Pembeli untuk ditunjukkan/disebutkan ke Pedagang saat mengambil Pesanan. |
@@ -26,7 +27,7 @@
 | **Saldo Pedagang** | Nilai turunan: jumlah `total_for_merchant` dari Pesanan lunas milik satu Lapak yang **belum** masuk Pencairan mana pun (`orders.payout_id IS NULL`). Bukan kolom tersendiri. |
 | **Pencairan (Payout)** | Transfer **Saldo Pedagang** ke rekening/e-wallet Pedagang. Sejak Fase 6: **otomatis** (batch harian via Midtrans Iris), biaya transfer dipotong dari nominal cair (ditanggung Pedagang). Tidak ada pencatatan manual lagi. |
 | **Model Agregator** | Model settlement proyek ini: semua pembayaran QRIS masuk ke satu akun Midtrans milik Aplikator, lalu didistribusikan ke Pedagang lewat **Pencairan otomatis** ("Model B"). Alternatif yang **tidak** dipakai: Sub-merchant / Split-Marketplace. |
-| **Laporan Penjualan** | Halaman dashboard Pedagang (`/dashboard/laporan`) berisi ringkasan omzet/Pesanan/rata-rata/bagian Pedagang per periode (hari ini / 7 hari / 30 hari), penjualan per hari, Item terlaris, dan **Rekomendasi Asisten**. Hanya data Lapak sendiri. Laporan agregat lintas-Lapak untuk Admin: di luar lingkup. |
+| **Laporan Penjualan** | Halaman dashboard Pedagang (`/dashboard/laporan`) berisi ringkasan omzet/**Keuntungan**/Pesanan/rata-rata/bagian Pedagang per periode (hari ini / 7 hari / 30 hari), penjualan per hari, Item terlaris, dan **Rekomendasi Asisten**. Hanya data Lapak sendiri. Laporan agregat lintas-Lapak untuk Admin: di luar lingkup. |
 | **Asisten** / **Rekomendasi Asisten** | Kartu saran otomatis di **Laporan Penjualan**, dihasilkan **mesin aturan deterministik** (bukan AI/LLM) dari pola penjualan 30 hari — mis. saran tambah stok, jam ramai, hari sepi, fokus menu, harga. Diam total kalau data belum cukup (< 20 Pesanan dibayar / riwayat < 7 hari). Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09. |
 
 ## Aturan Penamaan Turunan (kode & database)
