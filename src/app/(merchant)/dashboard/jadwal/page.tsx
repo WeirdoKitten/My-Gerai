@@ -1,6 +1,7 @@
 import { ClearOverrideButton } from "@/components/merchant/ClearOverrideButton";
 import { OperatingHoursForm } from "@/components/merchant/OperatingHoursForm";
 import { Alert } from "@/components/ui/Alert";
+import { cn } from "@/lib/utils/cn";
 import { formatDateTime } from "@/lib/utils/datetime";
 import { getMerchantOpenStatus } from "@/server/merchants";
 
@@ -17,7 +18,13 @@ export default async function MerchantSchedulePage() {
         manual tiap hari.
       </p>
 
-      <Alert tone={status.isOpen ? "success" : "warning"}>
+      <Alert
+        tone={status.isOpen ? "success" : "warning"}
+        className={cn(
+          "border",
+          status.isOpen ? "border-success/30" : "border-warning/40",
+        )}
+      >
         Status saat ini: <strong>{status.isOpen ? "Buka" : "Tutup"}</strong>
         {!status.isOpen && status.reopensAt
           ? ` — buka lagi ${formatDateTime(new Date(status.reopensAt))}`
