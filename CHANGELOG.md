@@ -10,7 +10,8 @@
 - **`OpenToggle`** dirombak dari ikon header tunggal jadi kartu "Status Lapak" (label + switch penuh) di atas daftar Pesanan Masuk (`/dashboard`) — kontrol harian utama, lebih terlihat & deskriptif daripada ikon warna di header.
 - **"Metode Pembayaran"** pindah dari ikon header ke kartu link di `/dashboard/profil` (komponen `SettingsLinkRow` baru, dipakai bareng "Jadwal Operasional" — dua baris konsisten).
 - Header dashboard Pedagang sekarang cuma QR Menu + Profil + Keluar.
-- **Diverifikasi**: `tsc`/`lint`/`pnpm test` (105)/`build` lulus, alur nyata browser (toggle di halaman Pesanan Masuk berfungsi, kedua link di Profil berfungsi, header tidak lagi padat).
+- **Susulan (permintaan User lanjutan)**: kartu "Status Lapak" dipindah ke **paling atas** halaman (di atas judul "Pesanan Masuk"), dan diberi warna latar hijau/merah lembut sesuai status (`bg-success/15`/`bg-danger/15` + ikon badge solid) — sebelumnya putih polos. Ditemukan saat itu: `<Card>` (`src/components/ui/Card.tsx`) hard-code `bg-surface`, dan `cn()` proyek ini cuma gabung string (bukan `tailwind-merge`) — override warna lewat `className` pada `<Card>` tidak reliable. `OpenToggle` dipindah pakai `<div>` sendiri (pola sama `Alert.tsx`) supaya warnanya pasti kepakai.
+- **Diverifikasi**: `tsc`/`lint`/`pnpm test` (105)/`build` lulus, alur nyata browser (toggle di halaman Pesanan Masuk berfungsi, kedua link di Profil berfungsi, header tidak lagi padat, warna kartu status terkonfirmasi lewat `getComputedStyle`).
 
 ## 2026-09-14 — Toggle Buka/Tutup Lapak + Jadwal Operasional
 
