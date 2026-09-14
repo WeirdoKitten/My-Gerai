@@ -32,8 +32,8 @@ export function OpenToggle({ initialIsOpen }: { initialIsOpen: boolean }) {
       className={cn(
         "flex items-center justify-between gap-3 rounded-card border-2 p-3 transition-colors",
         isOpen
-          ? "border-success/2 bg-success/30"
-          : "border-danger/2 bg-danger/30",
+          ? "border-success/40 bg-success/15"
+          : "border-danger/40 bg-danger/15",
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
@@ -54,8 +54,8 @@ export function OpenToggle({ initialIsOpen }: { initialIsOpen: boolean }) {
           </p>
           <p className="text-xs text-ink-muted">
             {isOpen
-              ? "Lapak menerima Pesanan baru."
-              : "Pembeli tidak bisa checkout sampai Lapak dibuka lagi."}
+              ? "Lapak sudah dibuka, bisa menerima pesanan baru."
+              : "Lapak sedang ditutup, tidak bisa menerima pesanan baru."}
           </p>
         </div>
       </div>
