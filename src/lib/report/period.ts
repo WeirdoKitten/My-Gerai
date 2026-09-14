@@ -41,7 +41,7 @@ function wibMidnight(dayKey: string): Date {
 }
 
 /** Geser sebuah "YYYY-MM-DD" sebanyak `delta` hari (aritmetika di UTC, tanpa DST). */
-function addDayKey(dayKey: string, delta: number): string {
+export function addDayKey(dayKey: string, delta: number): string {
   const base = new Date(`${dayKey}T00:00:00Z`);
   return new Date(base.getTime() + delta * DAY_MS).toISOString().slice(0, 10);
 }

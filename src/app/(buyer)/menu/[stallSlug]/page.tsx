@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
 import { ProductCard } from "@/components/buyer/ProductCard";
+import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HistoryIcon, ImageOffIcon, StoreIcon } from "@/components/ui/icons";
+import { formatDateTime } from "@/lib/utils/datetime";
 import { getStallCatalog } from "@/server/products";
 
 export default async function StallMenuPage(
@@ -36,6 +38,16 @@ export default async function StallMenuPage(
           <p className="text-sm text-ink-muted">{catalog.merchant.category}</p>
         </div>
       </div>
+
+      {!catalog.merchant.isOpen ? (
+        <Alert tone="warning">
+          Lapak sedang tutup
+          {catalog.merchant.reopensAt
+            ? ` — buka lagi ${formatDateTime(new Date(catalog.merchant.reopensAt))}`
+            : ""}
+          . Kamu masih bisa lihat menu, tapi belum bisa checkout sekarang.
+        </Alert>
+      ) : null}
 
       {catalog.products.length === 0 ? (
         <EmptyState

@@ -9,7 +9,7 @@ import {
   useReducer,
   useState,
 } from "react";
-import { getMerchantPaymentMode } from "@/server/products";
+import { getMerchantPaymentMode, getStallOpenState } from "@/server/products";
 import { loadCart, saveCart } from "./storage";
 import { type CartItem, type CartState, EMPTY_CART_STATE } from "./types";
 
@@ -98,6 +98,11 @@ type CartContextValue = {
    * Default `"gateway"` sebelum termuat/tidak ada Lapak aktif (paling aman).
    */
   paymentMode: MerchantPaymentMode;
+  /**
+   * Status buka/tutup Lapak aktif — dipakai `CheckoutGate` mengunci Checkout.
+   * Default `true` (paling tidak menghalangi) sebelum termuat/tidak ada Lapak aktif.
+   */
+  isOpen: boolean;
   addItem: (stallSlug: string, item: CartItem) => void;
   updateQty: (productId: string, qty: number) => void;
   updateNote: (productId: string, note: string) => void;
@@ -112,6 +117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [paymentMode, setPaymentMode] =
     useState<MerchantPaymentMode>("gateway");
+  const [isOpen, setIsOpen] = useState(true);
 
   // Baca localStorage setelah mount (bukan di initializer) supaya tidak
   // memicu hydration mismatch di Next.js App Router.
@@ -145,6 +151,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, [state.stallSlug]);
 
+  // Lapak aktif berubah -> muat ulang status buka/tutupnya (dipakai
+  // CheckoutGate mengunci Checkout). Default buka (paling tidak menghalangi)
+  // sampai termuat atau kalau tidak ada Lapak aktif.
+  useEffect(() => {
+    if (!state.stallSlug) {
+      setIsOpen(true);
+      return;
+    }
+    let cancelled = false;
+    getStallOpenState(state.stallSlug).then((result) => {
+      if (!cancelled) setIsOpen(result?.isOpen ?? true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.stallSlug]);
+
   const value = useMemo<CartContextValue>(() => {
     const itemCount = state.items.reduce((sum, item) => sum + item.qty, 0);
     const subtotalDisplay = state.items.reduce(
@@ -157,6 +180,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       itemCount,
       subtotalDisplay,
       paymentMode,
+      isOpen,
       addItem: (stallSlug, item) =>
         dispatch({ type: "ADD_ITEM", stallSlug, item }),
       updateQty: (productId, qty) =>
@@ -166,7 +190,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem: (productId) => dispatch({ type: "REMOVE_ITEM", productId }),
       clearCart: () => dispatch({ type: "CLEAR" }),
     };
-  }, [state, paymentMode]);
+  }, [state, paymentMode, isOpen]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

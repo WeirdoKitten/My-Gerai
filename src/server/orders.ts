@@ -22,6 +22,7 @@ import {
 } from "@/lib/payment/midtrans-provider";
 import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
+import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import {
   calculateOrderTotals,
   type OrderCalcItem,
@@ -141,6 +142,14 @@ export async function createOrder(
       message:
         "Lapak sedang tidak menerima pesanan baru (tagihan Biaya Layanan belum lunas).",
     };
+  }
+
+  // Defense-in-depth sama seperti cek lock di atas: halaman menu yang
+  // ke-cache stale (atau CheckoutGate yang belum sempat termuat) tidak
+  // boleh lolos submit Pesanan saat Lapak sedang tutup.
+  const { isOpen } = await getMerchantOpenState(merchant.id);
+  if (!isOpen) {
+    return { ok: false, message: "Lapak sedang tutup, coba lagi nanti." };
   }
 
   const productIds = items.map((item) => item.productId);

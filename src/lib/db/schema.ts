@@ -3,6 +3,7 @@ import {
   pgEnum,
   pgTable,
   text,
+  time,
   timestamp,
   uniqueIndex,
   uuid,
@@ -65,6 +66,12 @@ export const merchantPaymentModeEnum = pgEnum("merchant_payment_mode", [
   "qris_pribadi",
 ]);
 
+/** Override manual status buka/tutup Lapak oleh Pedagang — lihat src/lib/schedule/. */
+export const merchantManualOverrideEnum = pgEnum("merchant_manual_override", [
+  "open",
+  "closed",
+]);
+
 export const serviceFeeInvoiceStatusEnum = pgEnum(
   "service_fee_invoice_status",
   ["belum_lunas", "lunas", "dibatalkan"],
@@ -97,8 +104,41 @@ export const merchants = pgTable("merchants", {
   paymentMode: merchantPaymentModeEnum().notNull().default("gateway"),
   /** Foto QRIS statis milik Pedagang sendiri, dipakai saat paymentMode = "qris_pribadi". */
   qrisPhotoUrl: text(),
+  /**
+   * Override manual status buka/tutup. `null` = tidak ada override, ikuti
+   * `merchantOperatingHours` (kalau ada) atau default buka (kalau belum ada
+   * jadwal). Aktif hanya sampai batas jadwal berikutnya berlalu — lihat
+   * getMerchantOpenState di src/lib/schedule/is-merchant-open.ts.
+   */
+  manualOverride: merchantManualOverrideEnum(),
+  manualOverrideSetAt: timestamp({ withTimezone: true }),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Jam operasional mingguan Lapak (opsional). Tidak ada baris untuk suatu
+ * `dayOfWeek` = Lapak dianggap tutup hari itu. `dayOfWeek` pakai konvensi
+ * Postgres `EXTRACT(dow)` (0=Minggu..6=Sabtu), sama seperti `weekdayStats`
+ * di src/server/reports.ts.
+ */
+export const merchantOperatingHours = pgTable(
+  "merchant_operating_hours",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    dayOfWeek: integer().notNull(),
+    openTime: time().notNull(),
+    closeTime: time().notNull(),
+  },
+  (table) => [
+    uniqueIndex("merchant_operating_hours_merchant_day_idx").on(
+      table.merchantId,
+      table.dayOfWeek,
+    ),
+  ],
+);
 
 /** Item — produk/menu milik sebuah Lapak. */
 export const products = pgTable("products", {

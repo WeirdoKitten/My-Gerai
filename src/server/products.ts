@@ -7,6 +7,7 @@ import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { db } from "@/lib/db/client";
 import { merchants, products } from "@/lib/db/schema";
 import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit/limiter";
+import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveProductPhoto } from "@/lib/upload/storage";
 import {
   type CreateProductInput,
@@ -46,14 +47,17 @@ export async function getStallCatalog(
     return { ok: false, reason: "locked" };
   }
 
-  const merchantProducts = await db.query.products.findMany({
-    where: and(
-      eq(products.merchantId, merchant.id),
-      eq(products.status, "available"),
-      or(isNull(products.stock), gt(products.stock, 0)),
-    ),
-    orderBy: [asc(products.name)],
-  });
+  const [merchantProducts, { isOpen, reopensAt }] = await Promise.all([
+    db.query.products.findMany({
+      where: and(
+        eq(products.merchantId, merchant.id),
+        eq(products.status, "available"),
+        or(isNull(products.stock), gt(products.stock, 0)),
+      ),
+      orderBy: [asc(products.name)],
+    }),
+    getMerchantOpenState(merchant.id),
+  ]);
 
   return {
     ok: true,
@@ -63,6 +67,8 @@ export async function getStallCatalog(
         stallName: merchant.stallName,
         category: merchant.category,
         photoUrl: merchant.photoUrl,
+        isOpen,
+        reopensAt: reopensAt ? reopensAt.toISOString() : null,
       },
       products: merchantProducts.map((product) => ({
         id: product.id,
@@ -89,6 +95,25 @@ export async function getMerchantPaymentMode(
     columns: { paymentMode: true },
   });
   return merchant ? { paymentMode: merchant.paymentMode } : null;
+}
+
+/**
+ * Status buka/tutup sebuah Lapak, tanpa sesi (dibaca Pembeli lewat cart
+ * client-side untuk mengunci Checkout — lihat CartProvider/CheckoutGate).
+ * `null` kalau Lapak tidak ada/belum aktif; pemanggil sebaiknya anggap
+ * "buka" (paling tidak menghalangi) sampai data ini termuat.
+ */
+export async function getStallOpenState(
+  slug: string,
+): Promise<{ isOpen: boolean; reopensAt: string | null } | null> {
+  const merchant = await db.query.merchants.findFirst({
+    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
+    columns: { id: true },
+  });
+  if (!merchant) return null;
+
+  const { isOpen, reopensAt } = await getMerchantOpenState(merchant.id);
+  return { isOpen, reopensAt: reopensAt ? reopensAt.toISOString() : null };
 }
 
 /** Daftar Item milik Lapak sendiri (dashboard Pedagang) — identitas dari sesi login. */

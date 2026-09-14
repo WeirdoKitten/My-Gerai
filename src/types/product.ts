@@ -16,6 +16,10 @@ export type StallCatalogView = {
     stallName: string;
     category: string;
     photoUrl: string | null;
+    /** `false` = Lapak sedang tutup (manual atau jadwal) — katalog tetap tampil, checkout dikunci. */
+    isOpen: boolean;
+    /** Kapan Lapak buka lagi (ISO string), cuma terisi kalau `isOpen` false & ada jadwal. */
+    reopensAt: string | null;
   };
   products: BuyerProductView[];
 };

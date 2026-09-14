@@ -12,12 +12,13 @@ import {
 } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { db } from "@/lib/db/client";
-import { merchants } from "@/lib/db/schema";
+import { merchantOperatingHours, merchants } from "@/lib/db/schema";
 import {
   checkRateLimit,
   getClientIp,
   RATE_LIMIT_MESSAGE,
 } from "@/lib/rate-limit/limiter";
+import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveQrisPhoto } from "@/lib/upload/storage";
 import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
 import {
@@ -34,6 +35,10 @@ import {
   type UpdateMerchantProfileInput,
   updateMerchantProfileSchema,
 } from "@/lib/validation/merchant.schema";
+import {
+  type SetOperatingHoursInput,
+  setOperatingHoursSchema,
+} from "@/lib/validation/merchant-hours.schema";
 import { getActivePlatformConfig } from "@/server/config";
 import type {
   AdminMerchantView,
@@ -43,10 +48,13 @@ import type {
 } from "@/types/admin";
 import type {
   LoginMerchantResult,
+  MerchantOpenStatusView,
   MerchantPaymentSettingsView,
   MerchantProfileView,
   QrMenuView,
   RegisterMerchantResult,
+  SetOperatingHoursResult,
+  ToggleMerchantOpenResult,
   UpdateMerchantProfileResult,
   UploadQrisPhotoResult,
 } from "@/types/merchant";
@@ -251,6 +259,105 @@ export async function getMerchantPaymentSettings(): Promise<MerchantPaymentSetti
     qrisPhotoUrl: merchant.qrisPhotoUrl,
     storefrontLocked,
   };
+}
+
+/** Status buka/tutup + jadwal Lapak sendiri (`/dashboard/jadwal`) — identitas dari sesi login. */
+export async function getMerchantOpenStatus(): Promise<MerchantOpenStatusView | null> {
+  const session = await getMerchantSession();
+  if (!session) return null;
+
+  const [merchant, { isOpen, reopensAt }, hours] = await Promise.all([
+    db.query.merchants.findFirst({
+      where: eq(merchants.id, session.merchantId),
+      columns: { manualOverride: true },
+    }),
+    getMerchantOpenState(session.merchantId),
+    db.query.merchantOperatingHours.findMany({
+      where: eq(merchantOperatingHours.merchantId, session.merchantId),
+      columns: { dayOfWeek: true, openTime: true, closeTime: true },
+    }),
+  ]);
+  if (!merchant) return null;
+
+  return {
+    isOpen,
+    manualOverride: merchant.manualOverride,
+    reopensAt: reopensAt ? reopensAt.toISOString() : null,
+    hours: hours.map((h) => ({
+      dayOfWeek: h.dayOfWeek,
+      openTime: h.openTime.slice(0, 5),
+      closeTime: h.closeTime.slice(0, 5),
+    })),
+  };
+}
+
+/**
+ * Override manual status buka/tutup — berlaku sampai batas jadwal berikutnya
+ * berlalu (lihat getMerchantOpenState), kalau Lapak sudah punya jadwal.
+ * Kalau belum punya jadwal sama sekali, berlaku terus sampai diubah lagi.
+ */
+export async function toggleMerchantOpen(
+  nextState: "open" | "closed",
+): Promise<ToggleMerchantOpenResult> {
+  const session = await getMerchantSession();
+  if (!session)
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  await db
+    .update(merchants)
+    .set({ manualOverride: nextState, manualOverrideSetAt: new Date() })
+    .where(eq(merchants.id, session.merchantId));
+
+  return { ok: true };
+}
+
+/** Hapus override manual — Lapak balik murni ikut jadwal tanpa perlu menunggu batas jadwal berikutnya. */
+export async function clearMerchantOverride(): Promise<ToggleMerchantOpenResult> {
+  const session = await getMerchantSession();
+  if (!session)
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  await db
+    .update(merchants)
+    .set({ manualOverride: null, manualOverrideSetAt: null })
+    .where(eq(merchants.id, session.merchantId));
+
+  return { ok: true };
+}
+
+/** Ganti seluruh jadwal operasional Lapak sendiri — replace-all (hapus semua baris lama, insert baris baru). */
+export async function setMerchantOperatingHours(
+  input: SetOperatingHoursInput,
+): Promise<SetOperatingHoursResult> {
+  const session = await getMerchantSession();
+  if (!session)
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  const parsed = setOperatingHoursSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Jadwal tidak valid.",
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(merchantOperatingHours)
+      .where(eq(merchantOperatingHours.merchantId, session.merchantId));
+    if (parsed.data.length > 0) {
+      await tx.insert(merchantOperatingHours).values(
+        parsed.data.map((row) => ({
+          merchantId: session.merchantId,
+          dayOfWeek: row.dayOfWeek,
+          openTime: row.openTime,
+          closeTime: row.closeTime,
+        })),
+      );
+    }
+  });
+
+  return { ok: true, message: "Jadwal operasional disimpan." };
 }
 
 /**

@@ -22,6 +22,9 @@
 | Kode Pesanan | `orderCode` |
 | Status Pesanan | `OrderStatus` (enum: lihat [DATA-MODEL.md](DATA-MODEL.md#orders-pesanan)) |
 | QR Menu | `StallQrCode` |
+| Jam Operasional | `OperatingHours` (tabel `merchant_operating_hours`) |
+| Status Buka/Tutup | `isOpen` (turunan, dihitung `getMerchantOpenState` — bukan kolom) |
+| Override Manual | `manualOverride` (kolom `merchants.manual_override`, nilai `"open"`\|`"closed"`) |
 | Biaya Layanan | `platformFee` |
 | Saldo Pedagang | `merchantBalance` (nilai turunan, bukan kolom, lihat [DATA-MODEL.md](DATA-MODEL.md#payouts-pencairan)) |
 | Pencairan | `Payout` |

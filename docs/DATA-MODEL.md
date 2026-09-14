@@ -11,6 +11,7 @@ erDiagram
     MERCHANTS ||--o{ ORDERS : "menerima"
     MERCHANTS ||--o{ PAYOUTS : "menerima pencairan"
     MERCHANTS ||--o{ SERVICE_FEE_INVOICES : "ditagih (qris_pribadi)"
+    MERCHANTS ||--o{ MERCHANT_OPERATING_HOURS : "jadwal buka"
     ORDERS ||--|{ ORDER_ITEMS : "terdiri dari"
     PRODUCTS ||--o{ ORDER_ITEMS : "dipesan sebagai"
     ORDERS ||--o| PAYMENTS : "dibayar via"
@@ -35,7 +36,17 @@ erDiagram
         string payout_bank_code "kode bank/e-wallet Iris (mis. bca, bri, gopay), nullable"
         string payout_account_number "nomor rekening/e-wallet, nullable"
         string payout_account_holder "nama pemilik hasil validasi Iris, nullable"
+        string manual_override "open|closed, nullable (2026-09-14). Override manual status buka/tutup — lihat MERCHANT_OPERATING_HOURS & getMerchantOpenState."
+        timestamp manual_override_set_at "nullable; kapan override dipasang, dipakai cek masih berlaku atau sudah basi (lewat batas jadwal berikutnya)"
         timestamp created_at
+    }
+
+    MERCHANT_OPERATING_HOURS {
+        uuid id PK
+        uuid merchant_id FK
+        int day_of_week "0=Minggu..6=Sabtu (konvensi Postgres EXTRACT(dow), sama seperti weekdayStats di reports.ts). Tidak ada baris utk suatu hari = tutup hari itu."
+        time open_time
+        time close_time "closeTime <= openTime dianggap jendela menembus tengah malam"
     }
 
     PRODUCTS {
@@ -168,6 +179,12 @@ erDiagram
 - `payout_bank_code` / `payout_account_number` / `payout_account_holder` (nullable, Fase 6): **menggantikan** kolom lama `payout_account_info` (teks bebas). Diisi Pedagang di `/dashboard/profil`, `payout_account_holder` hasil `DisbursementProvider.validateBankAccount()` (Iris) — bukan diketik. Job Pencairan otomatis **melewati** Lapak yang ketiganya belum lengkap/tervalidasi (Admin lihat penanda di `/admin/merchants`).
 - `payment_mode` (Fase 7, default `gateway`): **hanya Admin** yang boleh mengubah (`setMerchantPaymentMode`, ditolak server kalau mau switch ke `qris_pribadi` tapi `qris_photo_url` masih kosong) — Pedagang cuma unggah/kelola foto QRIS miliknya sendiri, bukan self-service ganti mode. Lihat [ARSITEKTUR-SISTEM.md ADR 2026-09-11](ARSITEKTUR-SISTEM.md).
 - `qris_photo_url` (nullable, Fase 7): foto QRIS statis Pedagang, path `/uploads/qris/<uuid>.<ext>` (pola sama upload foto Item/Lapak — volume Docker, magic-bytes validation). Dipakai sebagai gambar QR di halaman status Pesanan Pembeli saat `payment_mode = qris_pribadi`.
+- `manual_override` / `manual_override_set_at` (nullable, 2026-09-14): override manual status buka/tutup Lapak, diisi Pedagang lewat toggle di header dashboard. Dihitung lazy bareng `merchant_operating_hours` oleh `getMerchantOpenState` (`src/lib/schedule/is-merchant-open.ts`) — **tanpa keduanya** (belum pernah toggle, belum ada jadwal) Lapak dianggap **selalu buka** (default aman, tidak meregresi Lapak lama). Override cuma berlaku selama segmen jadwal yang sama saat dipasang — begitu lewat batas jadwal berikutnya, otomatis basi & kembali murni ikut jadwal (atau Pedagang bisa hapus manual lewat "Ikuti Jadwal Lagi" di `/dashboard/jadwal`).
+
+### `merchant_operating_hours` (Jadwal Operasional — 2026-09-14)
+- Opsional per Lapak — **tidak ada baris untuk suatu `day_of_week`** berarti Lapak tutup hari itu (bukan kolom `is_closed` terpisah). `UNIQUE(merchant_id, day_of_week)` — satu jadwal per hari.
+- `open_time`/`close_time`: jam lokal (WIB, tanpa kolom timezone — Lapak selalu satu zona waktu). `close_time <= open_time` diartikan jendela menembus tengah malam (mis. buka 22:00 tutup 02:00 keesokan harinya) — ditangani `evaluateSchedule` (`src/lib/schedule/evaluate.ts`, pure & unit-tested di `tests/unit/schedule-evaluate.test.ts`).
+- Dikelola Pedagang sendiri lewat `setMerchantOperatingHours` — pola **replace-all** (hapus semua baris lama Lapak itu, insert ulang sesuai form), bukan update per-baris.
 
 ### `admins`
 - `password_hash`: sama seperti `merchants.password_hash`, dibuat manual oleh Admin lain lewat proses internal (bukan self-service).
