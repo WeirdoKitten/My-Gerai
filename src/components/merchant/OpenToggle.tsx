@@ -28,19 +28,26 @@ export function OpenToggle({ initialIsOpen }: { initialIsOpen: boolean }) {
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <span
           className={cn(
-            "size-2.5 shrink-0 rounded-full",
+            "mt-1.5 size-2.5 shrink-0 rounded-full",
             isOpen ? "bg-success" : "bg-danger",
           )}
         />
-        <p className="text-sm font-semibold text-ink">
-          Status Lapak:{" "}
-          <span className={isOpen ? "text-success" : "text-danger"}>
-            {isOpen ? "Buka" : "Tutup"}
-          </span>
-        </p>
+        <div>
+          <p className="text-sm font-semibold text-ink">
+            Status Lapak:{" "}
+            <span className={isOpen ? "text-success" : "text-danger"}>
+              {isOpen ? "Buka" : "Tutup"}
+            </span>
+          </p>
+          <p className="text-xs text-ink-muted">
+            {isOpen
+              ? "Sudah bisa menerima Pesanan baru."
+              : "Belum bisa menerima Pesanan sampai status diubah."}
+          </p>
+        </div>
       </div>
       <Toggle
         checked={isOpen}
