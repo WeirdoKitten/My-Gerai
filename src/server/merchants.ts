@@ -311,20 +311,6 @@ export async function toggleMerchantOpen(
   return { ok: true };
 }
 
-/** Hapus override manual — Lapak balik murni ikut jadwal tanpa perlu menunggu batas jadwal berikutnya. */
-export async function clearMerchantOverride(): Promise<ToggleMerchantOpenResult> {
-  const session = await getMerchantSession();
-  if (!session)
-    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
-
-  await db
-    .update(merchants)
-    .set({ manualOverride: null, manualOverrideSetAt: null })
-    .where(eq(merchants.id, session.merchantId));
-
-  return { ok: true };
-}
-
 /** Ganti seluruh jadwal operasional Lapak sendiri — replace-all (hapus semua baris lama, insert baris baru). */
 export async function setMerchantOperatingHours(
   input: SetOperatingHoursInput,

@@ -9,6 +9,8 @@ import { Toggle } from "@/components/ui/Toggle";
 import { setMerchantOperatingHours } from "@/server/merchants";
 import type { OperatingHoursRow } from "@/types/merchant";
 
+// Indeks array ini = dayOfWeek konvensi Postgres (0=Minggu..6=Sabtu) — JANGAN
+// diurutkan ulang, dipakai langsung sebagai indeks `entries` di bawah.
 const DAY_LABELS = [
   "Minggu",
   "Senin",
@@ -18,6 +20,10 @@ const DAY_LABELS = [
   "Jumat",
   "Sabtu",
 ];
+
+// Urutan tampilan saja (Senin di atas, Minggu di bawah) — nilainya tetap
+// dayOfWeek asli, cuma urutan render-nya yang beda dari DAY_LABELS di atas.
+const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 type DayEntry = { enabled: boolean; openTime: string; closeTime: string };
 
@@ -79,7 +85,8 @@ export function OperatingHoursForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Card className="flex flex-col divide-y divide-line">
-        {DAY_LABELS.map((label, dayOfWeek) => {
+        {DISPLAY_ORDER.map((dayOfWeek) => {
+          const label = DAY_LABELS[dayOfWeek];
           const entry = entries[dayOfWeek];
           return (
             <div
