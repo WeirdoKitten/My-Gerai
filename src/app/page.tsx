@@ -1,7 +1,7 @@
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
 import { Magnetic } from "@/components/landing/Magnetic";
-import { PhoneMockup } from "@/components/landing/PhoneMockup";
+import { OrderFlowMockup } from "@/components/landing/OrderFlowMockup";
 import { Reveal } from "@/components/landing/Reveal";
 import { RevealText } from "@/components/landing/RevealText";
 import { ScrollProgressBar } from "@/components/landing/ScrollProgressBar";
@@ -151,11 +151,7 @@ export default function Home() {
           <AmbientBlobs />
           <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:gap-10 lg:py-28">
             <div className="flex flex-col items-start">
-              <Reveal delay={0.05}>
-                <Badge tone="primary">Untuk Pedagang Kaki Lima</Badge>
-              </Reveal>
-
-              <h1 className="mt-5 text-5xl font-extrabold leading-[0.98] tracking-tight text-ink sm:text-6xl lg:text-7xl">
+              <h1 className="text-5xl font-extrabold leading-[0.98] tracking-tight text-ink sm:text-6xl lg:text-7xl">
                 <RevealText text="Pesanan Masuk Sendiri," delay={0.1} />
                 <br />
                 <RevealText
@@ -211,7 +207,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <PhoneMockup />
+            <OrderFlowMockup />
           </div>
 
           <Reveal delay={1.3} className="hidden justify-center pb-10 lg:flex">
@@ -289,13 +285,13 @@ export default function Home() {
             <div className="mt-16 grid gap-6 lg:grid-cols-2 lg:gap-8">
               <Reveal>
                 <TiltCard pad="lg" className="flex h-full flex-col gap-6">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-tint text-brand">
-                      <StoreIcon className="size-6" />
-                    </div>
-                    <h3 className="text-xl font-bold text-ink">
+                  <div className="border-b border-line pb-5">
+                    <h3 className="text-2xl font-bold text-ink">
                       Untuk Pedagang
                     </h3>
+                    <p className="mt-1.5 text-sm text-ink-muted">
+                      Kelola Lapak dari HP, tanpa ribet.
+                    </p>
                   </div>
                   <ul className="flex flex-col gap-5">
                     {MERCHANT_FEATURES.map((feature) => (
@@ -317,13 +313,13 @@ export default function Home() {
 
               <Reveal delay={0.12}>
                 <TiltCard pad="lg" className="flex h-full flex-col gap-6">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-tint text-brand">
-                      <CartIcon className="size-6" />
-                    </div>
-                    <h3 className="text-xl font-bold text-ink">
+                  <div className="border-b border-line pb-5">
+                    <h3 className="text-2xl font-bold text-ink">
                       Untuk Pembeli
                     </h3>
+                    <p className="mt-1.5 text-sm text-ink-muted">
+                      Pesan cepat, tanpa install apa pun.
+                    </p>
                   </div>
                   <ul className="flex flex-col gap-5">
                     {BUYER_FEATURES.map((feature) => (
