@@ -3,10 +3,13 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
+import { HEADER_ICON_CLASS } from "@/components/merchant/header-icon-class";
+import { SoundToggle } from "@/components/merchant/SoundToggle";
 import { QrIcon, UserIcon } from "@/components/ui/icons";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
+import { SoundProvider } from "@/lib/sound/sound-context";
 import { logoutMerchant } from "@/server/merchants";
 
 // QR Menu & Profil = tujuan sesekali (cetak QR sekali, atur profil jarang) →
@@ -18,9 +21,6 @@ const NAV: NavItem[] = [
   { href: "/dashboard/laporan", label: "Laporan", icon: "chart" },
 ];
 
-const HEADER_ICON_CLASS =
-  "flex size-9 items-center justify-center rounded-control border border-line text-ink-muted transition-colors hover:bg-bg hover:text-ink";
-
 export default async function DashboardLayout({
   children,
 }: {
@@ -31,31 +31,34 @@ export default async function DashboardLayout({
 
   return (
     <ToastProvider>
-      <DashboardShell
-        brand={<Wordmark label={session.stallName} className="text-sm" />}
-        nav={NAV}
-        logoutAction={logoutMerchant}
-        headerAction={
-          <>
-            <Link
-              href="/dashboard/qr"
-              aria-label="QR Menu"
-              className={HEADER_ICON_CLASS}
-            >
-              <QrIcon className="size-4" />
-            </Link>
-            <Link
-              href="/dashboard/profil"
-              aria-label="Profil Lapak"
-              className={HEADER_ICON_CLASS}
-            >
-              <UserIcon className="size-4" />
-            </Link>
-          </>
-        }
-      >
-        {children}
-      </DashboardShell>
+      <SoundProvider>
+        <DashboardShell
+          brand={<Wordmark label={session.stallName} className="text-sm" />}
+          nav={NAV}
+          logoutAction={logoutMerchant}
+          headerAction={
+            <>
+              <SoundToggle />
+              <Link
+                href="/dashboard/qr"
+                aria-label="QR Menu"
+                className={HEADER_ICON_CLASS}
+              >
+                <QrIcon className="size-4" />
+              </Link>
+              <Link
+                href="/dashboard/profil"
+                aria-label="Profil Lapak"
+                className={HEADER_ICON_CLASS}
+              >
+                <UserIcon className="size-4" />
+              </Link>
+            </>
+          }
+        >
+          {children}
+        </DashboardShell>
+      </SoundProvider>
     </ToastProvider>
   );
 }
