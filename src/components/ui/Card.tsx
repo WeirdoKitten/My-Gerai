@@ -10,6 +10,23 @@ const PAD: Record<Pad, string> = {
   lg: "p-5",
 };
 
+export function cardClasses({
+  pad = "md",
+  elevated = false,
+  className,
+}: {
+  pad?: Pad;
+  elevated?: boolean;
+  className?: string;
+} = {}): string {
+  return cn(
+    "rounded-card border border-line bg-surface",
+    PAD[pad],
+    elevated && "shadow-card",
+    className,
+  );
+}
+
 export function Card({
   as: Tag = "div",
   pad = "md",
@@ -24,15 +41,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <Tag
-      className={cn(
-        "rounded-card border border-line bg-surface",
-        PAD[pad],
-        elevated && "shadow-card",
-        className,
-      )}
-      {...rest}
-    >
+    <Tag className={cardClasses({ pad, elevated, className })} {...rest}>
       {children}
     </Tag>
   );
