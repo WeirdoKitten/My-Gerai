@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { DownloadIcon } from "@/components/ui/icons";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatRupiah } from "@/lib/utils/money";
 import { FINAL_ORDER_STATUSES } from "@/lib/utils/order-status";
@@ -12,6 +13,14 @@ import { getOrderStatus, simulatePaymentSuccess } from "@/server/orders";
 import type { BuyerOrderStatusView } from "@/types/order";
 
 const POLL_INTERVAL_MS = 4000;
+
+/** Tebak ekstensi file dari URL gambar atau, kalau tidak ada di URL (data URI), dari MIME type hasil fetch. */
+function guessQrExtension(url: string, mimeType: string): string {
+  const fromUrl = url.match(/\.(png|jpe?g|webp)(?:[?#]|$)/i)?.[1];
+  if (fromUrl) return fromUrl.toLowerCase();
+  const fromMime = mimeType.split("/")[1];
+  return fromMime === "jpeg" ? "jpg" : (fromMime ?? "png");
+}
 
 export function OrderStatusView({
   initialOrder,
@@ -21,6 +30,7 @@ export function OrderStatusView({
   const [order, setOrder] = useState(initialOrder);
   const [simulating, setSimulating] = useState(false);
   const [simulateError, setSimulateError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const orderIdRef = useRef(initialOrder.id);
 
   useEffect(() => {
@@ -46,16 +56,34 @@ export function OrderStatusView({
     setSimulating(false);
   }
 
+  async function handleDownloadQr() {
+    const url = order.qrImageUrl;
+    if (!url) return;
+
+    setDownloading(true);
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const ext = guessQrExtension(url, blob.type);
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `qris-${order.orderCode}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Gagal (mis. gambar lintas-domain tanpa CORS) — buka di tab baru
+      // supaya Pembeli tetap bisa simpan manual (tekan lama/klik kanan).
+      window.open(url, "_blank");
+    }
+    setDownloading(false);
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <Card pad="lg" className="flex flex-col items-center gap-2 text-center">
-        <p className="text-sm text-ink-muted">Kode Pesanan</p>
-        <p className="text-3xl font-extrabold tracking-[0.15em] tabular-nums text-ink">
-          {order.orderCode}
-        </p>
-        <OrderStatusBadge status={order.status} />
-      </Card>
-
       {order.qrImageUrl ? (
         <Card pad="lg" className="flex flex-col items-center gap-3">
           <p className="text-center text-sm text-ink-muted">
@@ -71,6 +99,22 @@ export function OrderStatusView({
             alt="QR pembayaran"
             className="h-auto w-full max-w-xs rounded-control object-contain"
           />
+          <Button
+            type="button"
+            variant="secondary"
+            fullWidth
+            loading={downloading}
+            onClick={handleDownloadQr}
+          >
+            {downloading ? (
+              "Menyimpan..."
+            ) : (
+              <>
+                <DownloadIcon className="size-4" />
+                Simpan Gambar QR
+              </>
+            )}
+          </Button>
           {order.canSimulate ? (
             <>
               <Button
@@ -96,6 +140,14 @@ export function OrderStatusView({
           )}
         </Card>
       ) : null}
+
+      <Card pad="lg" className="flex flex-col items-center gap-2 text-center">
+        <p className="text-sm text-ink-muted">Kode Pesanan</p>
+        <p className="text-3xl font-extrabold tracking-[0.15em] tabular-nums text-ink">
+          {order.orderCode}
+        </p>
+        <OrderStatusBadge status={order.status} />
+      </Card>
 
       {order.sandboxQrUrl ? (
         <Card className="flex items-center gap-2">
