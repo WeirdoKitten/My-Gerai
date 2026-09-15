@@ -69,7 +69,7 @@ export function OrderStatusView({
           <img
             src={order.qrImageUrl}
             alt="QR pembayaran"
-            className="size-48 rounded-control"
+            className="h-auto w-full max-w-xs rounded-control object-contain"
           />
           {order.canSimulate ? (
             <>
