@@ -45,6 +45,13 @@ body {
   line-height: 1.5;
 }
 
+/** Scroll halus ke section lewat link jangkar navbar landing (`#cara-kerja`, dst). */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
