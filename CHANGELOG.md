@@ -2,6 +2,17 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-15 — Riwayat Pesanan demo di server produksi, sembunyikan "Modal" di daftar Item, notifikasi suara pindah ke Profil
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR baru 2026-09-15). Kode baru: `src/lib/db/seed-demo-orders.ts`, `src/components/merchant/SoundSettingRow.tsx`. Kode ubah: `src/lib/db/seed-demo.ts` (tambah Lapak `nasi-goreng-raja-rasa`), `Dockerfile`, `docker-entrypoint.sh`, `package.json` (script `db:seed:demo:orders`), `src/components/merchant/ProductListItem.tsx`, `src/app/(merchant)/dashboard/{layout,profil/page}.tsx`. Kode hapus: `src/components/merchant/SoundToggle.tsx` (digantikan `SoundSettingRow`).
+**Alasan:** Permintaan User — (1) asisten rekomendasi Laporan Penjualan (ADR 2026-09-09) tidak bisa didemokan di server karena belum ada riwayat Pesanan di sana (seeder riwayat Pesanan yang ada, `seed-orders.ts`, sengaja dev-only/localhost-only), sekalian ingin lapak Nasi Goreng Raja Rasa ikut punya data; (2) teks "Modal Rp..." di kartu Item dashboard Pedagang dianggap tidak perlu tampil di daftar; (3) ikon notifikasi suara di header dipindah ke halaman Profil (pola sama "Jadwal Operasional" — item pengaturan, bukan ikon header permanen).
+**Ringkasan:**
+- **`seed-demo-orders.ts`** (baru, prod-safe) — versi `seed-orders.ts` tanpa guard localhost dan tanpa mengubah status Item (dev version men-toggle "Pangsit Goreng" jadi available untuk simulasi "Item mati" — tidak pantas di server publik). Idempoten via delete-lalu-insert-ulang ber-marker (`buyerNote = "[seed-demo-orders]"`), jendela 30 hari mengikuti tanggal berjalan. Di-bundle esbuild ke `scripts/seed-demo-orders.mjs`, dijalankan `docker-entrypoint.sh` setelah `seed-demo.mjs` selama `SEED_DEMO=true`.
+- **`seed-demo.ts`**: tambah Lapak kedua `nasi-goreng-raja-rasa` (mirror dari `seed.ts`) supaya asisten rekomendasi bisa didemokan untuk 2 Lapak.
+- **`ProductListItem.tsx`**: baris "· Modal {harga}" di kartu Item dashboard dihapus (harga modal tetap bisa diisi/diubah lewat form "Ubah Item" — cuma ringkasan di kartu yang disembunyikan).
+- **`SoundSettingRow`** (baru, di halaman Profil, setelah "Metode Pembayaran") menggantikan `SoundToggle` (ikon header) — sekarang berupa row + `Toggle` switch, konsisten dengan pola `SettingsLinkRow` yang sudah ada. Ikon speaker di header dashboard dihapus.
+- **Diverifikasi**: `tsc`/`biome check` lulus. `pnpm db:seed:demo:orders` dijalankan ke DB dev lokal (146/143 Pesanan dibayar untuk Bakso Pak Budi/Nasi Goreng Raja Rasa, di atas ambang `INSIGHT_MIN_PAID_ORDERS`/`INSIGHT_MIN_HISTORY_DAYS`) — dijalankan dua kali berturut-turut untuk cek idempotensi. Alur nyata lewat Playwright (login kedua Lapak): kartu "Rekomendasi Asisten" terisi di Laporan Penjualan untuk kedua Lapak (termasuk insight "sering dibeli bareng" untuk Nasi Goreng Raja Rasa); `/dashboard/produk` tidak lagi menampilkan teks "Modal"; `/dashboard/profil` menampilkan row toggle notifikasi suara (klik mengubah state), header tidak lagi punya ikon speaker; nol console error.
+
 ## 2026-09-15 — Landing: mockup hero dua-layar, rapikan kartu Fitur, hapus badge eyebrow
 
 **Dampak:** Kode baru: `src/components/landing/OrderFlowMockup.tsx` (ganti `PhoneMockup.tsx`, dihapus). Kode ubah: `src/app/page.tsx`.
