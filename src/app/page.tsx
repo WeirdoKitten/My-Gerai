@@ -1,7 +1,7 @@
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
 import { Magnetic } from "@/components/landing/Magnetic";
-import { OrderFlowMockup } from "@/components/landing/OrderFlowMockup";
+import { PhoneMockup } from "@/components/landing/PhoneMockup";
 import { Reveal } from "@/components/landing/Reveal";
 import { RevealText } from "@/components/landing/RevealText";
 import { ScrollProgressBar } from "@/components/landing/ScrollProgressBar";
@@ -14,7 +14,6 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
-  LightbulbIcon,
   QrIcon,
   ReceiptIcon,
   StoreIcon,
@@ -207,7 +206,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <OrderFlowMockup />
+            <PhoneMockup />
           </div>
 
           <Reveal delay={1.3} className="hidden justify-center pb-10 lg:flex">
@@ -242,7 +241,7 @@ export default function Home() {
                 <Reveal key={step.title} delay={index * 0.15}>
                   <TiltCard
                     pad="lg"
-                    className="relative flex h-full flex-col gap-5 py-8"
+                    className="relative flex h-full flex-col gap-8 py-8"
                   >
                     <span
                       aria-hidden="true"
@@ -284,8 +283,8 @@ export default function Home() {
 
             <div className="mt-16 grid gap-6 lg:grid-cols-2 lg:gap-8">
               <Reveal>
-                <TiltCard pad="lg" className="flex h-full flex-col gap-6">
-                  <div className="border-b border-line pb-5">
+                <TiltCard pad="lg" className="flex h-full flex-col gap-9">
+                  <div className="border-b border-line pb-6">
                     <h3 className="text-2xl font-bold text-ink">
                       Untuk Pedagang
                     </h3>
@@ -312,8 +311,8 @@ export default function Home() {
               </Reveal>
 
               <Reveal delay={0.12}>
-                <TiltCard pad="lg" className="flex h-full flex-col gap-6">
-                  <div className="border-b border-line pb-5">
+                <TiltCard pad="lg" className="flex h-full flex-col gap-9">
+                  <div className="border-b border-line pb-6">
                     <h3 className="text-2xl font-bold text-ink">
                       Untuk Pembeli
                     </h3>
@@ -355,8 +354,7 @@ export default function Home() {
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-36">
             <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
               <Reveal>
-                <Badge tone="primary">Asisten AI</Badge>
-                <h2 className="mt-4 text-3xl font-bold tracking-tight text-ink lg:text-5xl">
+                <h2 className="text-3xl font-bold tracking-tight text-ink lg:text-5xl">
                   <RevealText text="Asisten AI yang Bantu Kamu" />
                   <br />
                   <RevealText
@@ -379,18 +377,16 @@ export default function Home() {
               <div className="flex flex-col gap-5">
                 {INSIGHT_EXAMPLES.map((insight, i) => (
                   <Reveal key={insight.title} delay={0.15 + i * 0.12}>
-                    <TiltCard pad="lg" className="flex gap-4">
-                      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-brand-tint text-brand">
-                        <LightbulbIcon className="size-5" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-ink">
-                          {insight.title}
-                        </p>
-                        <p className="mt-1.5 text-sm text-ink-muted">
-                          {insight.text}
-                        </p>
-                      </div>
+                    <TiltCard pad="lg" className="flex flex-col gap-2.5">
+                      <span className="text-xs font-bold uppercase tracking-wide text-brand-strong">
+                        Rekomendasi {i + 1}
+                      </span>
+                      <p className="text-base font-semibold text-ink">
+                        {insight.title}
+                      </p>
+                      <p className="text-sm leading-relaxed text-ink-muted">
+                        {insight.text}
+                      </p>
                     </TiltCard>
                   </Reveal>
                 ))}
