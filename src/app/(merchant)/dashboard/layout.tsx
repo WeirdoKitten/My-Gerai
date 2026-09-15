@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
 import { HEADER_ICON_CLASS } from "@/components/merchant/header-icon-class";
-import { SoundToggle } from "@/components/merchant/SoundToggle";
 import { QrIcon, UserIcon } from "@/components/ui/icons";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Wordmark } from "@/components/ui/Wordmark";
@@ -38,7 +37,6 @@ export default async function DashboardLayout({
           logoutAction={logoutMerchant}
           headerAction={
             <>
-              <SoundToggle />
               <Link
                 href="/dashboard/qr"
                 aria-label="QR Menu"

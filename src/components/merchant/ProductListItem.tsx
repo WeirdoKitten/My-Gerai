@@ -41,11 +41,6 @@ export function ProductListItem({
         <p className="truncate font-semibold text-ink">{product.name}</p>
         <p className="text-sm tabular-nums text-ink-muted">
           {formatRupiah(product.price)}
-          {product.costPrice != null ? (
-            <span className="ml-2 text-ink-muted">
-              · Modal {formatRupiah(product.costPrice)}
-            </span>
-          ) : null}
           {product.stock !== null ? (
             <span
               className={cn(

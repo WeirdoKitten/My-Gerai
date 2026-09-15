@@ -1,6 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { MerchantProfileForm } from "@/components/merchant/MerchantProfileForm";
+import { SoundSettingRow } from "@/components/merchant/SoundSettingRow";
 import { ArrowRightIcon, ClockIcon, WalletIcon } from "@/components/ui/icons";
 import { getMerchantProfile } from "@/server/merchants";
 
@@ -44,6 +45,7 @@ export default async function MerchantProfilePage() {
         icon={<WalletIcon className="size-4 text-ink-muted" />}
         label="Metode Pembayaran"
       />
+      <SoundSettingRow />
       <MerchantProfileForm profile={profile} />
     </div>
   );
