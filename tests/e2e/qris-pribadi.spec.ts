@@ -1,11 +1,12 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
-// Kredensial & fixture dari src/lib/db/seed.ts — Lapak KEDUA (Warung Cak
-// Slamet), terpisah dari order-flow.spec.ts (Bakso Pak Budi) supaya tidak
-// saling bentrok.
-const MERCHANT_SLUG = "warung-cak-slamet";
-const MERCHANT_PHONE = "084444444444";
+// Kredensial & fixture dari src/lib/db/seed.ts — Lapak SATU-SATUNYA (Bakso
+// Pak Budi), sama dengan order-flow.spec.ts. Aman dipakai bareng karena
+// keduanya jalan serial (workers: 1, urutan file alfabetis: order-flow lebih
+// dulu, baru file ini) — lihat catatan urutan serupa di playwright.config.ts.
+const MERCHANT_SLUG = "bakso-pak-budi";
+const MERCHANT_PHONE = "082222222222";
 const MERCHANT_PASSWORD = "password";
 const ADMIN_PHONE = "081111111111";
 const ADMIN_PASSWORD = "password";
@@ -40,7 +41,7 @@ test.describe.serial("alur QRIS pribadi + tagihan Biaya Layanan", () => {
     await expect(page).toHaveURL(/\/admin\/merchants$/);
 
     const card = page
-      .getByText("Warung Cak Slamet", { exact: true })
+      .getByText("Bakso Pak Budi", { exact: true })
       .locator("xpath=ancestor::*[contains(@class,'rounded-card')][1]");
     await card.getByRole("button", { name: "Ubah" }).click();
     await expect(
@@ -67,11 +68,11 @@ test.describe.serial("alur QRIS pribadi + tagihan Biaya Layanan", () => {
     await expect(
       page.getByText("Biaya Layanan", { exact: true }),
     ).toHaveCount(0);
-    // Rp13.000 = subtotal Nasi Goreng persis, TANPA Biaya Layanan Rp1.000 di
-    // atasnya (beda dari mode gateway).
+    // Rp12.000 = subtotal Bakso Halus persis (Item pertama diurut nama), TANPA
+    // Biaya Layanan Rp1.000 di atasnya (beda dari mode gateway).
     await expect(
       page.getByRole("button", { name: /Buat Pesanan/ }),
-    ).toContainText("13.000");
+    ).toContainText("12.000");
 
     await page.getByLabel("Nama").fill("Pembeli QRIS E2E");
     await page.getByRole("button", { name: /Buat Pesanan/ }).click();

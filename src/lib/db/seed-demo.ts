@@ -53,44 +53,6 @@ async function main(): Promise<void> {
     .onConflictDoNothing({ target: merchants.slug })
     .returning();
 
-  const [merchantTwo] = await db
-    .insert(merchants)
-    .values({
-      slug: "warung-cak-slamet",
-      stallName: "Warung Cak Slamet",
-      ownerName: "Slamet Riyadi",
-      category: "Makanan",
-      phone: "084444444444",
-      passwordHash,
-      status: "approved",
-    })
-    .onConflictDoNothing({ target: merchants.slug })
-    .returning();
-
-  await db
-    .insert(merchants)
-    .values([
-      {
-        slug: "batagor-bu-siti",
-        stallName: "Batagor Bu Siti",
-        ownerName: "Siti Aminah",
-        category: "Makanan",
-        phone: "083333333333",
-        passwordHash,
-        status: "pending",
-      },
-      {
-        slug: "cakue-mang-udin",
-        stallName: "Cakue Mang Udin",
-        ownerName: "Udin Saepudin",
-        category: "Makanan",
-        phone: "085555555555",
-        passwordHash,
-        status: "pending",
-      },
-    ])
-    .onConflictDoNothing({ target: merchants.slug });
-
   if (merchant) {
     await db.insert(products).values([
       {
@@ -135,16 +97,6 @@ async function main(): Promise<void> {
         photoUrl: await seedProductPhoto("pangsit.jpg"),
       },
     ]);
-  }
-  if (merchantTwo) {
-    await db.insert(products).values({
-      merchantId: merchantTwo.id,
-      name: "Nasi Goreng",
-      price: 13000,
-      costPrice: 8000,
-      status: "available",
-      photoUrl: await seedProductPhoto("nasi-goreng.jpg"),
-    });
   }
 
   const adaConfig = await db.query.platformConfig.findFirst({
