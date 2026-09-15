@@ -2,6 +2,27 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-15 — Landing: mockup hero dua-layar, rapikan kartu Fitur, hapus badge eyebrow
+
+**Dampak:** Kode baru: `src/components/landing/OrderFlowMockup.tsx` (ganti `PhoneMockup.tsx`, dihapus). Kode ubah: `src/app/page.tsx`.
+**Alasan:** Susulan permintaan User — kartu "Untuk Pedagang" kelihatan padat (ikon lingkaran header nempel dekat ikon bullet pertama), dan mockup hero (cuma 1 layar menu) dianggap kurang "menjual" ceritanya.
+**Ringkasan:**
+- **`OrderFlowMockup`** menggantikan `PhoneMockup` — dua "layar" mini (menu Pembeli -> dashboard Pedagang) dihubungkan `FlowConnector` (panah berdenyut + label "Otomatis"), menunjukkan langsung cerita utama produk: Pesanan Pembeli otomatis nyampe ke Pedagang. Susunan berdampingan di desktop (`lg:flex-row`), bertumpuk dengan panah ke bawah di mobile/tablet (`flex-col`). Satu grup dianimasikan bareng (entrance + parallax scroll + tilt hover), bukan per-layar.
+- Kartu "Untuk Pedagang"/"Untuk Pembeli": ikon lingkaran di header dihapus, diganti judul + subjudul singkat + garis pembatas (`border-b`) sebelum daftar fitur — menghindari kesan "ikon bertumpuk" dengan ikon kecil di bullet pertama.
+- Badge eyebrow "Untuk Pedagang Kaki Lima" di paling atas hero dihapus.
+- **Diverifikasi**: `tsc`/`biome lint` lulus. Screenshot Playwright di desktop (1440px), tablet (820px), dan mobile (390px) — dua layar mockup terbaca jelas di ketiga ukuran, nol console error.
+
+## 2026-09-15 — Notifikasi suara Pesanan masuk (dashboard Pedagang)
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 ikon header Pedagang, §6 daftar ikon — `volume`/`volume-off` baru). Kode baru: `src/lib/sound/{storage,sound-context}.tsx`, `src/components/merchant/{SoundToggle,header-icon-class}.ts(x)`, `public/sounds/order-chime.wav`. Kode ubah: `src/components/ui/icons.tsx` (`VolumeIcon`/`VolumeOffIcon`), `src/app/(merchant)/dashboard/layout.tsx`, `src/components/merchant/MerchantOrderList.tsx`.
+**Alasan:** Permintaan User — ingin dering notifikasi seperti GoFood/GrabFood tiap ada Pesanan baru masuk, supaya Pedagang tidak harus menatap layar terus untuk tahu ada Pesanan.
+**Ringkasan:**
+- **`SoundProvider`** (`src/lib/sound/sound-context.tsx`) — Context baru dipasang di `dashboard/layout.tsx` (pola sama `CartProvider`/`ToastProvider`). Chime = file audio statis (`public/sounds/order-chime.wav`, digenerate lokal lewat skrip Python, bukan diambil dari layanan pihak ketiga — jadi tidak ada masalah lisensi), diputar lewat elemen `<audio>` bawaan browser. Percobaan pertama pakai sintesis Web Audio API (oscillator, tanpa file) sempat dipertimbangkan — diganti ke file statis atas permintaan User (lebih sederhana/eksplisit, bunyinya juga lebih "nyata" daripada nada sintetis).
+- Browser mengunci pemutaran audio sampai ada gesture User pertama (klik/tap/keydown) — didengarkan sekali secara global di `SoundProvider`, supaya notifikasi pertama tidak diam-diam gagal bunyi.
+- **`MerchantOrderList`** melacak `id` Pesanan yang sudah "dilihat" (`Set`, termasuk isi awal SSR) tiap polling 5 detik — Pesanan `id` baru yang belum pernah terlihat memicu chime. Sengaja pakai `id` (bukan posisi array/panjang list) karena daftar diurut FIFO (`asc(createdAt)`) dan status Pesanan yang sama bisa berubah (mis. Pedagang sendiri klik "Tandai Diproses") tanpa itu berarti Pesanan baru.
+- **`SoundToggle`** — ikon header baru (`VolumeIcon`/`VolumeOffIcon`, `aria-pressed`), di sebelah kiri ikon QR Menu. Preferensi tersimpan `localStorage` (`mygerai_order_sound_v1`, pola sama `cart`), default **aktif**.
+- **Diverifikasi**: `tsc`/`biome lint` lulus. Alur nyata lewat Playwright (dua context terpisah — dashboard Pedagang & Pembeli checkout): toggle ikon mengubah `aria-pressed` + `localStorage` + tidak memicu chime; Pembeli menyelesaikan checkout & simulasi pembayaran di context lain → setelah siklus polling berikutnya, pemutaran `order-chime.wav` (di-spy lewat `HTMLMediaElement.play`) terpanggil tanpa console error.
+
 ## 2026-09-15 — Landing page dirombak jadi halaman marketing (responsif desktop)
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§4 Layout — catat pengecualian landing dari aturan "satu kolom, tanpa breakpoint"). Kode ubah: `src/app/page.tsx`.
