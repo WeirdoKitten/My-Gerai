@@ -107,11 +107,11 @@ export function OrderStatusView({
             onClick={handleDownloadQr}
           >
             {downloading ? (
-              "Menyimpan..."
+              "Mengunduh..."
             ) : (
               <>
                 <DownloadIcon className="size-4" />
-                Simpan Gambar QR
+                Unduh Gambar QR
               </>
             )}
           </Button>
