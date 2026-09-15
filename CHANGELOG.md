@@ -2,6 +2,26 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-15 — Landing page dirombak jadi halaman marketing (responsif desktop)
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§4 Layout — catat pengecualian landing dari aturan "satu kolom, tanpa breakpoint"). Kode ubah: `src/app/page.tsx`.
+**Alasan:** Permintaan User — landing page lama cuma kolom `max-w-md` (tampilan HP) walau dibuka di desktop, dianggap kurang menarik & tidak mendukung marketing produk. Diminta dibuat lebih "megah", nyaman dilihat, dan responsif di semua ukuran layar — khusus halaman ini saja, bukan seluruh app.
+**Ringkasan:**
+- `page.tsx` dirombak total: header (Wordmark + Masuk/Daftar), hero 2 kolom di desktop (headline + CTA + mockup HP dari komponen `ui/` — bukan foto), "Cara kerja" (3 kartu), fitur "Untuk Pedagang"/"Untuk Pembeli", seksi "Asisten Rekomendasi" (contoh insight nyata dari `insights.ts`: restock, jam ramai, kombo laris), CTA penutup, footer. Tetap satu kolom di mobile, `grid md:`/`lg:` di layar lebar.
+- Full Server Component (tanpa `"use client"`), full pakai komponen & token `ui/` yang sudah ada (`Card`, `Button`/`ButtonLink`, `Badge`, ikon inline) — nol warna arbitrer/`dark:`/`zinc-*` baru.
+- **Diverifikasi**: `tsc`/`biome lint` lulus. Diverifikasi visual (Playwright screenshot) di lebar mobile (390px) & desktop (1440px) terhadap dev server nyata — nol console error di keduanya.
+
+## 2026-09-15 — Seed dev disederhanakan jadi Bakso Pak Budi + Admin saja
+
+**Dampak:** Kode ubah: `src/lib/db/seed.ts`, `src/lib/db/seed-demo.ts`, `tests/e2e/qris-pribadi.spec.ts`, `src/components/merchant/ProductForm.tsx`.
+**Alasan:** Permintaan User — seed lokal & demo dulu bikin beberapa Lapak fixture (pending approve/reject, Lapak kedua buat isolasi data) yang menambah noise saat cuma butuh fokus ke satu Lapak (Bakso Pak Budi). Sekalian: label "Harga" di form Item dianggap ambigu berdampingan dengan "Harga Modal" — diubah jadi "Harga Jual".
+**Ringkasan:**
+- `seed.ts`/`seed-demo.ts`: hapus fixture Lapak `batagor-bu-siti` (pending), `cakue-mang-udin` (pending), `warung-cak-slamet` (approved kedua + Item Nasi Goreng) — tersisa cuma Admin + Bakso Pak Budi.
+- `tests/e2e/qris-pribadi.spec.ts` (sebelumnya pakai Lapak kedua supaya tidak bentrok dengan `order-flow.spec.ts`) dialihkan ke Bakso Pak Budi juga — aman karena kedua spec jalan serial (`workers: 1`, urutan file alfabetis); Item pertama & harga di assertion checkout disesuaikan ("Bakso Halus", Rp12.000).
+- `ProductForm.tsx`: label input harga jual Item diubah dari "Harga (Rp)" → "Harga Jual (Rp)".
+- `pnpm db:seed` + `pnpm db:seed:orders` dijalankan ke DB dev lokal — 140 Pesanan dibayar/±29 hari riwayat, di atas ambang `INSIGHT_MIN_PAID_ORDERS`/`INSIGHT_MIN_HISTORY_DAYS` (lihat `src/lib/report/insights.ts`) supaya kartu "Rekomendasi Asisten" di Laporan Penjualan langsung terisi.
+- **Diverifikasi**: `tsc`/`biome lint` lulus untuk file yang berubah; query langsung ke DB dev mengonfirmasi jumlah & rentang tanggal Pesanan.
+
 ## 2026-09-14 — Pop up "Lapak tutup" gantikan banner + cegat klik Checkout di menu
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (update bullet Pembeli di "Toggle Buka/Tutup Lapak + Jadwal Operasional"). Kode baru: `src/components/buyer/ClosedStallNotice.tsx`. Kode ubah: `src/app/(buyer)/menu/[stallSlug]/page.tsx`, `src/components/buyer/FloatingCartBar.tsx`, `src/lib/cart/cart-context.tsx`.

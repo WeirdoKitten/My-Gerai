@@ -157,13 +157,15 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 
 ## 4. Layout
 
-**Mobile-first, satu kolom.** Semua permukaan = kolom di tengah, `bg-bg` mengisi samping. Tidak ada grid multi-kolom / breakpoint layout (dicoba 2026-09-08, di-revert — hasilnya jelek di layar lebar). Konten baru mengikuti pola ini kecuali ada alasan kuat.
+**Mobile-first, satu kolom.** Semua permukaan **transaksional** (Pembeli, dashboard Pedagang, Admin) = kolom di tengah, `bg-bg` mengisi samping. Tidak ada grid multi-kolom / breakpoint layout di situ (dicoba 2026-09-08, di-revert — hasilnya jelek di layar lebar). Konten baru di permukaan-permukaan itu mengikuti pola ini kecuali ada alasan kuat.
+
+**Landing `/` = pengecualian yang disengaja (2026-09-15).** Ini satu-satunya halaman *marketing*, bukan alur transaksi — tujuannya konversi (ajak daftar Lapak / lihat demo), jadi layar lebar sengaja dipakai penuh: bagian per bagian dalam `<section>` full-bleed (`border-t border-line` sebagai pemisah), masing-masing berisi container `mx-auto max-w-6xl px-5 sm:px-8`. Hero & seksi Asisten jadi `grid lg:grid-cols-2`, "Cara kerja" jadi `grid md:grid-cols-3`, kartu fitur Pedagang/Pembeli jadi `grid lg:grid-cols-2` — semua tetap satu kolom di mobile (breakpoint `md`/`lg` saja). Tetap dari komponen `ui/` (Card, Button/ButtonLink, Badge, ikon) + token yang sama, tanpa breakpoint layout di halaman lain.
 
 | Permukaan | Lebar |
 |---|---|
 | Pembeli (menu, checkout, status, 404) — `(buyer)/layout.tsx` | `max-w-md`, wordmark kecil di atas |
 | Halaman auth (login/daftar) | `max-w-sm`, center V+H |
-| Landing `/` | `max-w-md`, 1 kolom |
+| Landing `/` | full-bleed per seksi, tiap seksi `max-w-6xl` — lihat pengecualian di atas |
 | Dashboard Pedagang (`DashboardShell` width `max-w-2xl`) | `max-w-2xl`, `px-4 py-6` |
 | Panel Admin (`DashboardShell` width `max-w-3xl`) | `max-w-3xl` |
 
