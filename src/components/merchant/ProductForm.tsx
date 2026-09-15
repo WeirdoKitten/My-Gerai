@@ -119,7 +119,7 @@ export function ProductForm({
           maxLength={500}
         />
       </Field>
-      <Field label="Harga (Rp)">
+      <Field label="Harga Jual (Rp)">
         <Input
           type="number"
           inputMode="numeric"
