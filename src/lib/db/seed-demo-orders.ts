@@ -57,6 +57,8 @@ type MerchantOrderPlan = {
   favoredItem: string;
   /** Pasangan Item yang sengaja sering dibeli bareng (opsional). */
   comboItem?: string;
+  /** Peluang `comboItem` ikut dibeli tiap kali `favoredItem` dipesan (0-1). Default 0.5. */
+  comboChance?: number;
 };
 
 const PLANS: MerchantOrderPlan[] = [
@@ -65,6 +67,9 @@ const PLANS: MerchantOrderPlan[] = [
     rngSeed: 20260909,
     favoredItem: "Bakso Urat",
     comboItem: "Es Teh Manis",
+    // Sengaja hampir selalu (bukan cuma "sering") — supaya sinyal "sering
+    // dibeli bareng" & ide paket hemat di asisten rekomendasi jelas kuat.
+    comboChance: 0.97,
   },
   {
     slug: "nasi-goreng-raja-rasa",
@@ -174,7 +179,12 @@ async function seedMerchantOrders(plan: MerchantOrderPlan): Promise<void> {
         const p = pick(sellable);
         chosen.set(p.id, p);
       }
-      if (favored && combo && chosen.has(favored.id) && rand() < 0.5) {
+      if (
+        favored &&
+        combo &&
+        chosen.has(favored.id) &&
+        rand() < (plan.comboChance ?? 0.5)
+      ) {
         chosen.set(combo.id, combo);
       }
 

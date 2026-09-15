@@ -191,7 +191,10 @@ function comboInsight(input: InsightInput): Insight | null {
     kind: "sering_bareng",
     title: `"${pair.nameA}" & "${pair.nameB}" sering dibeli bareng`,
     body: `Pembeli memesan keduanya bersama ${pair.count} kali. Coba tawarkan sebagai paket hemat — bisa mendorong yang cuma beli satu jadi ambil dua.`,
-    priority: 45,
+    // Di atas "hari sepi" (informatif) tapi di bawah stok/pareto/jam ramai
+    // (operasional mendesak) — paket hemat actionable & langsung berpotensi
+    // nambah omzet, pantas diprioritaskan di atas insight yang cuma observasi.
+    priority: 65,
   };
 }
 

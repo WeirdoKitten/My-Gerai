@@ -8,8 +8,12 @@ import { seedProductPhoto, seedQrisPhoto } from "./seed-photo";
  * `seed.ts`:
  *
  * - **Tanpa `TRUNCATE`**. Tidak pernah menghapus data yang sudah ada.
- * - **Idempoten**. Kalau Lapak demo `bakso-pak-budi` sudah ada, seluruh
- *   proses dilewati. Insert lain juga pakai `onConflictDoNothing`.
+ * - **Idempoten per-Lapak** lewat `onConflictDoNothing({ target: merchants.slug })`
+ *   + insert Item digerbang `if (merchant)` (cuma jalan kalau baris Lapak
+ *   itu baru dibuat). Sengaja TIDAK ada early-return blanket di awal fungsi
+ *   berdasar satu Lapak saja — pernah bikin bug: begitu `bakso-pak-budi`
+ *   sudah ada, seluruh fungsi (termasuk Lapak lain yang baru ditambah)
+ *   ikut dilewati walau belum pernah dibuat sama sekali.
  *
  * Dijalankan oleh `docker-entrypoint.sh` **hanya bila** env `SEED_DEMO=true`
  * (lihat Dockerfile & docs/TEKNOLOGI.md). Di-bundle jadi
@@ -22,16 +26,7 @@ import { seedProductPhoto, seedQrisPhoto } from "./seed-photo";
 const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "password";
 
 async function main(): Promise<void> {
-  const sudahAda = await db.query.merchants.findFirst({
-    columns: { id: true },
-    where: (m, { eq }) => eq(m.slug, "bakso-pak-budi"),
-  });
-  if (sudahAda) {
-    console.log("Data demo sudah ada — seed dilewati (idempoten).");
-    return;
-  }
-
-  console.log("Mengisi data demo...");
+  console.log("Mengisi data demo (idempoten per-Lapak)...");
   const passwordHash = await hashPassword(DEMO_PASSWORD);
 
   await db
