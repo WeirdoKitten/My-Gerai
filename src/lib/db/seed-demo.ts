@@ -1,7 +1,7 @@
 import { hashPassword } from "../auth/password";
 import { client, db } from "./client";
 import { admins, merchants, platformConfig, products } from "./schema";
-import { seedProductPhoto } from "./seed-photo";
+import { seedProductPhoto, seedQrisPhoto } from "./seed-photo";
 
 /**
  * Seed data DEMO untuk server (staging / demo publik) — versi AMAN dari
@@ -99,6 +99,83 @@ async function main(): Promise<void> {
     ]);
   }
 
+  const [merchantRajaRasa] = await db
+    .insert(merchants)
+    .values({
+      slug: "nasi-goreng-raja-rasa",
+      stallName: "Nasi Goreng Raja Rasa",
+      ownerName: "Satria",
+      category: "Makanan",
+      phone: "082343455263",
+      passwordHash,
+      status: "approved",
+      paymentMode: "qris_pribadi",
+      qrisPhotoUrl: await seedQrisPhoto("nasi-goreng-raja-rasa.jpg"),
+    })
+    .onConflictDoNothing({ target: merchants.slug })
+    .returning();
+
+  if (merchantRajaRasa) {
+    await db.insert(products).values([
+      {
+        merchantId: merchantRajaRasa.id,
+        name: "Nasi Goreng Biasa",
+        price: 15000,
+        costPrice: 10000,
+        status: "available",
+        photoUrl: await seedProductPhoto("nasi-goreng-biasa.jpg"),
+      },
+      {
+        merchantId: merchantRajaRasa.id,
+        name: "Nasi Goreng Double Telor",
+        price: 18000,
+        costPrice: 13000,
+        status: "available",
+        photoUrl: await seedProductPhoto("nasi-goreng-double-telor.jpg"),
+      },
+      {
+        merchantId: merchantRajaRasa.id,
+        name: "Nasi Goreng Mawut",
+        price: 18000,
+        costPrice: 13000,
+        status: "available",
+        photoUrl: await seedProductPhoto("nasi-goreng-mawut.jpg"),
+      },
+      {
+        merchantId: merchantRajaRasa.id,
+        name: "Kwetiaw Goreng",
+        price: 15000,
+        costPrice: 10000,
+        status: "available",
+        photoUrl: await seedProductPhoto("kwetiau-goreng.jpg"),
+      },
+      {
+        merchantId: merchantRajaRasa.id,
+        name: "Mie Goreng Biasa",
+        price: 15000,
+        costPrice: 10000,
+        status: "available",
+        photoUrl: await seedProductPhoto("mie-goreng-biasa.jpg"),
+      },
+      {
+        merchantId: merchantRajaRasa.id,
+        name: "Mie Goreng Double Telor",
+        price: 18000,
+        costPrice: 13000,
+        status: "available",
+        photoUrl: await seedProductPhoto("mie-goreng-double-telor.jpg"),
+      },
+      {
+        merchantId: merchantRajaRasa.id,
+        name: "Capcay Goreng",
+        price: 15000,
+        costPrice: 10000,
+        status: "available",
+        photoUrl: await seedProductPhoto("capcay-goreng.jpg"),
+      },
+    ]);
+  }
+
   const adaConfig = await db.query.platformConfig.findFirst({
     columns: { id: true },
     where: (c, { eq }) => eq(c.key, "platform_fee_amount"),
@@ -111,7 +188,12 @@ async function main(): Promise<void> {
   }
 
   console.log("Seed data demo selesai.");
-  console.log(`  Pedagang approved : 082222222222 / ${DEMO_PASSWORD}`);
+  console.log(
+    `  Pedagang approved : 082222222222 / ${DEMO_PASSWORD} -> Bakso Pak Budi`,
+  );
+  console.log(
+    `  Pedagang approved : 082343455263 / ${DEMO_PASSWORD} -> Nasi Goreng Raja Rasa`,
+  );
   console.log(`  Admin             : 081111111111 / ${DEMO_PASSWORD}`);
 }
 
