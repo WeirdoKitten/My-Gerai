@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
 import { Magnetic } from "@/components/landing/Magnetic";
@@ -23,6 +22,7 @@ import {
   WalletIcon,
 } from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/Wordmark";
+import { buildRegistrationQrPoster } from "@/lib/utils/registration-qr";
 
 const NAV_LINKS = [
   { href: "#cara-kerja", label: "Cara Kerja" },
@@ -113,7 +113,7 @@ const INSIGHT_EXAMPLES = [
 export default async function Home() {
   const appUrl = process.env.APP_URL || "http://localhost:3000";
   const registerUrl = `${appUrl}/daftar`;
-  const registerQrImageUrl = await QRCode.toDataURL(registerUrl);
+  const registerQrImageUrl = await buildRegistrationQrPoster(registerUrl);
 
   return (
     <>
@@ -436,36 +436,63 @@ export default async function Home() {
             </Reveal>
           </div>
         </section>
+
+        {/* Ajak Pedagang Lain */}
+        <section className="w-full border-t border-line">
+          <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-32">
+            <Reveal className="mx-auto max-w-xl text-center">
+              <Badge tone="primary">Ajak Pedagang Lain</Badge>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-ink lg:text-5xl">
+                <RevealText text="Kenalkan MyGerai ke" />
+                <br />
+                <RevealText
+                  text="Pedagang di Sekitarmu"
+                  delay={0.3}
+                  className="text-brand-strong"
+                />
+              </h2>
+              <p className="mt-4 text-base text-ink-muted lg:text-lg">
+                Cetak QR ini dan tempel di warung tetangga, pasar, atau
+                komunitas pedagang kamu. Mereka tinggal scan, isi data,
+                langsung bisa jualan online hari itu juga.
+              </p>
+            </Reveal>
+
+            <Reveal
+              delay={0.2}
+              className="mx-auto mt-12 flex max-w-xs flex-col items-center gap-5"
+            >
+              {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
+              <img
+                src={registerQrImageUrl}
+                alt="Poster QR Pendaftaran Pedagang MyGerai"
+                className="w-full drop-shadow-xl"
+              />
+              <Magnetic className="w-full">
+                <a
+                  href={registerQrImageUrl}
+                  download="qr-daftar-pedagang.svg"
+                  className={buttonClasses({
+                    variant: "primary",
+                    size: "md",
+                    fullWidth: true,
+                  })}
+                >
+                  Unduh QR untuk Dicetak
+                </a>
+              </Magnetic>
+            </Reveal>
+          </div>
+        </section>
       </main>
 
       <footer className="w-full border-t border-line">
-        <Reveal className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-5 py-8 text-center sm:flex-row sm:justify-between sm:px-8 sm:text-left">
+        <Reveal className="mx-auto flex w-full max-w-6xl flex-col items-center gap-3 px-5 py-8 text-center sm:flex-row sm:justify-between sm:px-8 sm:text-left">
           <div>
             <Wordmark />
             <p className="mt-1 text-xs text-ink-muted">
               Pesan lewat scan QR, bayar QRIS, langsung masuk ke Pedagang.
             </p>
-          </div>
-
-          <div className="flex flex-col items-center gap-2 sm:items-start">
-            <p className="text-xs font-semibold text-ink">
-              Kenalkan MyGerai ke Pedagang Lain
-            </p>
-            <div className="flex items-center gap-3">
-              {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
-              <img
-                src={registerQrImageUrl}
-                alt="QR Pendaftaran Pedagang"
-                className="size-16 rounded-control border border-line"
-              />
-              <a
-                href={registerQrImageUrl}
-                download="qr-daftar-pedagang.png"
-                className={buttonClasses({ variant: "secondary", size: "sm" })}
-              >
-                Unduh QR
-              </a>
-            </div>
           </div>
 
           <p className="text-xs text-ink-muted">© 2026 MyGerai</p>
