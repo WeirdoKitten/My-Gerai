@@ -2,7 +2,6 @@
 
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import QRCode from "qrcode";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import {
@@ -20,6 +19,7 @@ import {
 } from "@/lib/rate-limit/limiter";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveQrisPhoto } from "@/lib/upload/storage";
+import { buildMenuQrPoster } from "@/lib/utils/qr-poster";
 import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
 import {
   type ApproveMerchantInput,
@@ -393,7 +393,7 @@ export async function getMerchantQrMenu(): Promise<QrMenuView | null> {
 
   const appUrl = process.env.APP_URL || "http://localhost:3000";
   const url = `${appUrl}/menu/${session.slug}`;
-  const qrImageUrl = await QRCode.toDataURL(url);
+  const qrImageUrl = await buildMenuQrPoster(url, session.stallName);
 
   return { url, qrImageUrl };
 }

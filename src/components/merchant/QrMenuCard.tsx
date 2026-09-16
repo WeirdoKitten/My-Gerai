@@ -1,6 +1,6 @@
-import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { DownloadQrPosterButton } from "@/components/ui/DownloadQrPosterButton";
 import type { QrMenuView } from "@/types/merchant";
 
 export function QrMenuCard({ qr }: { qr: QrMenuView }) {
@@ -9,18 +9,16 @@ export function QrMenuCard({ qr }: { qr: QrMenuView }) {
       {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
       <img
         src={qr.qrImageUrl}
-        alt="QR Menu"
-        className="size-52 rounded-control border border-line"
+        alt="Poster QR Menu"
+        className="w-full max-w-xs drop-shadow-xl"
       />
       <p className="break-all text-xs text-ink-muted">{qr.url}</p>
-      <div className="flex items-center gap-2">
-        <a
-          href={qr.qrImageUrl}
-          download="qr-menu.png"
-          className={buttonClasses({ variant: "secondary", size: "sm" })}
-        >
-          Unduh QR Menu
-        </a>
+      <div className="flex w-full max-w-xs flex-col items-center gap-2">
+        <DownloadQrPosterButton
+          svgDataUrl={qr.qrImageUrl}
+          filename="qr-menu.png"
+          label="Unduh QR Menu"
+        />
         <CopyButton value={qr.url} label="link menu" />
       </div>
     </Card>

@@ -2,18 +2,26 @@
 
 import { useState } from "react";
 import { buttonClasses } from "@/components/ui/Button";
-import { REGISTRATION_QR_POSTER_SIZE } from "@/lib/utils/registration-qr";
+import { QR_POSTER_SIZE } from "@/lib/utils/qr-poster";
 
 // Render 3x lipat ukuran asli supaya tetap tajam waktu dicetak besar.
 const EXPORT_SCALE = 3;
 
 /**
- * Poster QR di-generate server-side sebagai SVG (lihat registration-qr.ts).
- * Tombol ini merasterisasi SVG itu jadi PNG di browser lewat <canvas> — tanpa
+ * Poster QR di-generate server-side sebagai SVG (lihat qr-poster.ts). Tombol
+ * ini merasterisasi SVG itu jadi PNG di browser lewat <canvas> — tanpa
  * dependency image-processing baru di server (mis. sharp), karena ini murni
  * kebutuhan sekali unduh, bukan sesuatu yang perlu diproses saat build/start.
  */
-export function DownloadQrPosterButton({ svgDataUrl }: { svgDataUrl: string }) {
+export function DownloadQrPosterButton({
+  svgDataUrl,
+  filename,
+  label = "Unduh QR",
+}: {
+  svgDataUrl: string;
+  filename: string;
+  label?: string;
+}) {
   const [isPreparing, setIsPreparing] = useState(false);
 
   async function handleDownload() {
@@ -27,15 +35,15 @@ export function DownloadQrPosterButton({ svgDataUrl }: { svgDataUrl: string }) {
       });
 
       const canvas = document.createElement("canvas");
-      canvas.width = REGISTRATION_QR_POSTER_SIZE.width * EXPORT_SCALE;
-      canvas.height = REGISTRATION_QR_POSTER_SIZE.height * EXPORT_SCALE;
+      canvas.width = QR_POSTER_SIZE.width * EXPORT_SCALE;
+      canvas.height = QR_POSTER_SIZE.height * EXPORT_SCALE;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
-      link.download = "qr-daftar-pedagang.png";
+      link.download = filename;
       link.click();
     } catch (error) {
       console.error("[DownloadQrPosterButton] gagal ekspor PNG", error);
@@ -55,7 +63,7 @@ export function DownloadQrPosterButton({ svgDataUrl }: { svgDataUrl: string }) {
         fullWidth: true,
       })}
     >
-      {isPreparing ? "Menyiapkan..." : "Unduh QR Pendaftaran"}
+      {isPreparing ? "Menyiapkan..." : label}
     </button>
   );
 }

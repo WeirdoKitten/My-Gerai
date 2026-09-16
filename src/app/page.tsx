@@ -1,6 +1,5 @@
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
-import { DownloadQrPosterButton } from "@/components/landing/DownloadQrPosterButton";
 import { Magnetic } from "@/components/landing/Magnetic";
 import { PhoneMockup } from "@/components/landing/PhoneMockup";
 import { Reveal } from "@/components/landing/Reveal";
@@ -9,6 +8,7 @@ import { ScrollProgressBar } from "@/components/landing/ScrollProgressBar";
 import { TiltCard } from "@/components/landing/TiltCard";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
+import { DownloadQrPosterButton } from "@/components/ui/DownloadQrPosterButton";
 import {
   CartIcon,
   ChartIcon,
@@ -22,7 +22,7 @@ import {
   WalletIcon,
 } from "@/components/ui/icons";
 import { Wordmark } from "@/components/ui/Wordmark";
-import { buildRegistrationQrPoster } from "@/lib/utils/registration-qr";
+import { buildRegistrationQrPoster } from "@/lib/utils/qr-poster";
 
 // Halaman ini tanpa API dinamis (cookies/headers) jadi Next.js akan
 // men-static-generate-nya sekali saat `pnpm build` — di titik itu APP_URL
@@ -476,7 +476,11 @@ export default async function Home() {
                 className="w-full drop-shadow-xl"
               />
               <Magnetic className="w-full">
-                <DownloadQrPosterButton svgDataUrl={registerQrImageUrl} />
+                <DownloadQrPosterButton
+                  svgDataUrl={registerQrImageUrl}
+                  filename="qr-daftar-pedagang.png"
+                  label="Unduh QR Pendaftaran"
+                />
               </Magnetic>
             </Reveal>
           </div>
