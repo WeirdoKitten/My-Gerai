@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
@@ -22,7 +23,6 @@ import {
   TagIcon,
   WalletIcon,
 } from "@/components/ui/icons";
-import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { buildRegistrationQrPoster } from "@/lib/utils/qr-poster";
 import { listApprovedMerchants } from "@/server/merchants";
@@ -366,11 +366,21 @@ export default async function Home() {
 
         {/* Gerai Terdaftar */}
         {approvedMerchants.length > 0 ? (
-          <section className="w-full border-t border-line">
+          <section className="relative w-full overflow-hidden border-t border-line">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/3 rounded-full opacity-50 blur-3xl"
+              style={{
+                background:
+                  "radial-gradient(circle, var(--color-brand-tint) 0%, transparent 70%)",
+              }}
+            />
             <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-36">
-              <Reveal className="mx-auto max-w-xl text-center">
-                <Badge tone="primary">Gerai Terdaftar</Badge>
-                <h2 className="mt-4 text-3xl font-bold tracking-tight text-ink lg:text-5xl">
+              <Reveal className="mx-auto max-w-2xl text-center">
+                <Badge tone="primary">
+                  {approvedMerchants.length}+ Gerai Sudah Bergabung
+                </Badge>
+                <h2 className="mt-4 text-4xl font-bold tracking-tight text-ink lg:text-6xl">
                   <RevealText text="Sudah Jualan di" />
                   <br />
                   <RevealText
@@ -379,37 +389,73 @@ export default async function Home() {
                     className="text-brand-strong"
                   />
                 </h2>
-                <p className="mt-4 text-base text-ink-muted lg:text-lg">
-                  Dari kaki lima sampai warung tetangga. Intip menunya langsung,
-                  atau jadi salah satu berikutnya.
+                <p className="mt-5 text-base text-ink-muted lg:text-lg">
+                  Klik salah satu gerai buat intip menunya langsung — lihat
+                  sendiri kenapa mereka pindah pesanan online ke MyGerai.
                 </p>
               </Reveal>
 
-              <div className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {approvedMerchants.map((merchant, index) => (
-                  <Reveal key={merchant.slug} delay={index * 0.05}>
-                    <Link href={`/menu/${merchant.slug}`}>
+                  <Reveal key={merchant.slug} delay={index * 0.08}>
+                    <Link
+                      href={`/menu/${merchant.slug}`}
+                      className="block h-full"
+                    >
                       <TiltCard
-                        pad="md"
-                        className="flex h-full flex-col items-center gap-3 text-center"
+                        pad="none"
+                        elevated
+                        className="group flex h-full flex-col overflow-hidden"
                       >
-                        <PhotoThumb
-                          src={merchant.photoUrl}
-                          alt={merchant.stallName}
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-ink">
-                            {merchant.stallName}
-                          </p>
-                          <p className="mt-0.5 text-xs text-ink-muted">
-                            {merchant.category}
-                          </p>
+                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-tint">
+                          {merchant.photoUrl ? (
+                            <Image
+                              src={merchant.photoUrl}
+                              alt={merchant.stallName}
+                              fill
+                              sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 90vw"
+                              className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          ) : (
+                            <div className="flex size-full items-center justify-center bg-gradient-to-br from-brand-tint via-brand-tint to-brand/10">
+                              <StoreIcon className="size-16 text-brand/50" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                          <div className="absolute inset-x-0 bottom-0 p-5">
+                            <p className="line-clamp-2 text-xl font-bold leading-tight text-white">
+                              {merchant.stallName}
+                            </p>
+                            <div className="mt-1.5 flex items-center justify-between gap-2">
+                              <p className="truncate text-sm text-white/80">
+                                {merchant.category}
+                              </p>
+                              <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-white/90">
+                                Lihat Menu
+                                <ChevronDownIcon className="size-3.5 -rotate-90" />
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </TiltCard>
                     </Link>
                   </Reveal>
                 ))}
               </div>
+
+              <Reveal
+                delay={0.2}
+                className="mt-16 flex flex-col items-center gap-4 text-center"
+              >
+                <p className="text-base font-semibold text-ink lg:text-lg">
+                  Mau gerai kamu tampil di sini juga?
+                </p>
+                <Magnetic>
+                  <ButtonLink href="/daftar" size="md">
+                    Daftarkan Lapak Sekarang
+                  </ButtonLink>
+                </Magnetic>
+              </Reveal>
             </div>
           </section>
         ) : null}
