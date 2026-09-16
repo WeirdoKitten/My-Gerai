@@ -13,11 +13,14 @@ export function QrMenuCard({ qr }: { qr: QrMenuView }) {
         className="w-full max-w-xs drop-shadow-xl"
       />
       <p className="break-all text-xs text-ink-muted">{qr.url}</p>
-      <div className="flex w-full max-w-xs flex-col items-center gap-2">
+      <div className="flex items-center gap-2">
         <DownloadQrPosterButton
           svgDataUrl={qr.qrImageUrl}
           filename="qr-menu.png"
           label="Unduh QR Menu"
+          variant="secondary"
+          size="sm"
+          fullWidth={false}
         />
         <CopyButton value={qr.url} label="link menu" />
       </div>

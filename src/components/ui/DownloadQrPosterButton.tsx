@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { buttonClasses } from "@/components/ui/Button";
+import {
+  type ButtonSize,
+  type ButtonVariant,
+  buttonClasses,
+} from "@/components/ui/Button";
 import { QR_POSTER_SIZE } from "@/lib/utils/qr-poster";
 
 // Render 3x lipat ukuran asli supaya tetap tajam waktu dicetak besar.
@@ -17,10 +21,16 @@ export function DownloadQrPosterButton({
   svgDataUrl,
   filename,
   label = "Unduh QR",
+  variant = "primary",
+  size = "md",
+  fullWidth = true,
 }: {
   svgDataUrl: string;
   filename: string;
   label?: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
 }) {
   const [isPreparing, setIsPreparing] = useState(false);
 
@@ -57,11 +67,7 @@ export function DownloadQrPosterButton({
       type="button"
       onClick={handleDownload}
       disabled={isPreparing}
-      className={buttonClasses({
-        variant: "primary",
-        size: "md",
-        fullWidth: true,
-      })}
+      className={buttonClasses({ variant, size, fullWidth })}
     >
       {isPreparing ? "Menyiapkan..." : label}
     </button>

@@ -47,7 +47,7 @@ type QrPosterOptions = {
 };
 
 /**
- * Poster QR mandiri (frame batik + judul + lambang toko di tengah QR +
+ * Poster QR mandiri (frame + motif titik halus + judul + lambang toko di tengah QR +
  * caption) — dipakai untuk QR pendaftaran Pedagang & QR Menu tiap Lapak,
  * beda cuma teksnya. Bukan QR polos, supaya tetap menarik saat diunduh &
  * dicetak lepas dari halaman. Logo di tengah aman karena errorCorrectionLevel
@@ -94,23 +94,14 @@ export async function buildQrPoster({
     <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="${BRAND_STRONG}" flood-opacity="0.18" />
     </filter>
-    <pattern id="batikKawung" width="64" height="64" patternUnits="userSpaceOnUse">
-      <g fill="${BRAND_STRONG}" opacity="0.07">
-        <ellipse cx="32" cy="14" rx="11" ry="15" />
-        <ellipse cx="32" cy="50" rx="11" ry="15" />
-        <ellipse cx="14" cy="32" rx="15" ry="11" />
-        <ellipse cx="50" cy="32" rx="15" ry="11" />
-        <circle cx="32" cy="32" r="5" />
-        <circle cx="0" cy="0" r="5" />
-        <circle cx="64" cy="0" r="5" />
-        <circle cx="0" cy="64" r="5" />
-        <circle cx="64" cy="64" r="5" />
-      </g>
+    <pattern id="dotMotif" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="2.5" fill="${BRAND_STRONG}" opacity="0.1" />
+      <circle cx="24" cy="24" r="2.5" fill="${BRAND_STRONG}" opacity="0.1" />
     </pattern>
   </defs>
 
   <rect width="${size}" height="${height}" rx="36" fill="${BRAND_TINT}" />
-  <rect width="${size}" height="${height}" rx="36" fill="url(#batikKawung)" />
+  <rect width="${size}" height="${height}" rx="36" fill="url(#dotMotif)" />
   <rect x="3" y="3" width="${size - 6}" height="${height - 6}" rx="33" fill="none" stroke="${BRAND_STRONG}" stroke-width="3" />
 
   <rect x="${frame}" y="${frame}" width="${size - frame * 2}" height="${headerHeight}" rx="18" fill="${BRAND_STRONG}" />
