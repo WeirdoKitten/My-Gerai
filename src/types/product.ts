@@ -1,9 +1,25 @@
+export type ProductVariantOptionView = {
+  id: string;
+  name: string;
+  /** Tambahan/pengurangan harga per unit terhadap harga dasar Item. */
+  priceDelta: number;
+};
+
+/** Satu grup varian (mis. "Level Pedas") milik sebuah Item, beserta pilihannya. */
+export type ProductVariantGroupView = {
+  id: string;
+  name: string;
+  options: ProductVariantOptionView[];
+};
+
 export type BuyerProductView = {
   id: string;
   name: string;
   description: string | null;
   price: number;
   photoUrl: string | null;
+  /** `[]` = Item ini tidak punya varian, tampil & dipesan seperti biasa. */
+  variantGroups: ProductVariantGroupView[];
 };
 
 /**
@@ -51,6 +67,8 @@ export type MerchantProductView = {
   stock: number | null;
   photoUrl: string | null;
   status: "available" | "sold_out";
+  /** Jumlah grup varian Item ini (badge di daftar Item) — 0 = tidak ada varian. */
+  variantGroupCount: number;
 };
 
 export type CreateProductResult =
@@ -63,3 +81,5 @@ export type SetProductStatusResult = { ok: boolean; message?: string };
 export type UploadProductPhotoResult =
   | { ok: true; url: string }
   | { ok: false; message: string };
+
+export type SaveProductVariantGroupsResult = { ok: boolean; message?: string };

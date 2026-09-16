@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { getMerchantPaymentMode, getStallOpenState } from "@/server/products";
+import { cartLineKey } from "./line-key";
 import { loadCart, saveCart } from "./storage";
 import { type CartItem, type CartState, EMPTY_CART_STATE } from "./types";
 
@@ -18,9 +19,9 @@ type MerchantPaymentMode = "gateway" | "qris_pribadi";
 type CartAction =
   | { type: "HYDRATE"; state: CartState }
   | { type: "ADD_ITEM"; stallSlug: string; item: CartItem }
-  | { type: "UPDATE_QTY"; productId: string; qty: number }
-  | { type: "UPDATE_NOTE"; productId: string; note: string }
-  | { type: "REMOVE_ITEM"; productId: string }
+  | { type: "UPDATE_QTY"; lineKey: string; qty: number }
+  | { type: "UPDATE_NOTE"; lineKey: string; note: string }
+  | { type: "REMOVE_ITEM"; lineKey: string }
   | { type: "CLEAR" };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
@@ -33,12 +34,15 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         state.stallSlug && state.stallSlug !== action.stallSlug
           ? EMPTY_CART_STATE
           : state;
+      // Kunci baris = productId + pilihan varian (lihat cartLineKey) — dua
+      // pilihan varian berbeda untuk Item yang sama TIDAK boleh tergabung.
+      const newLineKey = cartLineKey(action.item);
       const existing = base.items.find(
-        (item) => item.productId === action.item.productId,
+        (item) => cartLineKey(item) === newLineKey,
       );
       const items = existing
         ? base.items.map((item) =>
-            item.productId === action.item.productId
+            cartLineKey(item) === newLineKey
               ? {
                   ...item,
                   qty: item.qty + action.item.qty,
@@ -52,14 +56,14 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     case "UPDATE_QTY": {
       if (action.qty <= 0) {
         const items = state.items.filter(
-          (item) => item.productId !== action.productId,
+          (item) => cartLineKey(item) !== action.lineKey,
         );
         return { stallSlug: items.length > 0 ? state.stallSlug : null, items };
       }
       return {
         ...state,
         items: state.items.map((item) =>
-          item.productId === action.productId
+          cartLineKey(item) === action.lineKey
             ? { ...item, qty: action.qty }
             : item,
         ),
@@ -69,14 +73,14 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return {
         ...state,
         items: state.items.map((item) =>
-          item.productId === action.productId
+          cartLineKey(item) === action.lineKey
             ? { ...item, note: action.note }
             : item,
         ),
       };
     case "REMOVE_ITEM": {
       const items = state.items.filter(
-        (item) => item.productId !== action.productId,
+        (item) => cartLineKey(item) !== action.lineKey,
       );
       return { stallSlug: items.length > 0 ? state.stallSlug : null, items };
     }
@@ -106,9 +110,9 @@ type CartContextValue = {
   /** Jadwal Lapak aktif buka lagi (ISO string) — null kalau tidak diketahui. */
   reopensAt: string | null;
   addItem: (stallSlug: string, item: CartItem) => void;
-  updateQty: (productId: string, qty: number) => void;
-  updateNote: (productId: string, note: string) => void;
-  removeItem: (productId: string) => void;
+  updateQty: (lineKey: string, qty: number) => void;
+  updateNote: (lineKey: string, note: string) => void;
+  removeItem: (lineKey: string) => void;
   clearCart: () => void;
 };
 
@@ -190,11 +194,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       reopensAt,
       addItem: (stallSlug, item) =>
         dispatch({ type: "ADD_ITEM", stallSlug, item }),
-      updateQty: (productId, qty) =>
-        dispatch({ type: "UPDATE_QTY", productId, qty }),
-      updateNote: (productId, note) =>
-        dispatch({ type: "UPDATE_NOTE", productId, note }),
-      removeItem: (productId) => dispatch({ type: "REMOVE_ITEM", productId }),
+      updateQty: (lineKey, qty) =>
+        dispatch({ type: "UPDATE_QTY", lineKey, qty }),
+      updateNote: (lineKey, note) =>
+        dispatch({ type: "UPDATE_NOTE", lineKey, note }),
+      removeItem: (lineKey) => dispatch({ type: "REMOVE_ITEM", lineKey }),
       clearCart: () => dispatch({ type: "CLEAR" }),
     };
   }, [state, paymentMode, isOpen, reopensAt]);

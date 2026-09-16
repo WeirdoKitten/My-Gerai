@@ -11,9 +11,12 @@ import { db } from "@/lib/db/client";
 import {
   merchants,
   orderItems,
+  orderItemVariantSelections,
   orders,
   payments,
   products,
+  productVariantGroups,
+  productVariantOptions,
 } from "@/lib/db/schema";
 import { getPaymentProvider, getPaymentProviderName } from "@/lib/payment";
 import {
@@ -100,6 +103,85 @@ async function expireOrderIfNeeded(order: Order): Promise<Order> {
   return current ?? order;
 }
 
+type OrderVariantGroup = {
+  id: string;
+  name: string;
+  options: Array<{ id: string; name: string; priceDelta: number }>;
+};
+
+/** Batch-fetch grup+opsi varian sejumlah Item sekaligus, dipakai validasi & snapshot harga di `createOrder`. */
+async function fetchVariantGroupsForOrder(
+  productIds: string[],
+): Promise<Map<string, OrderVariantGroup[]>> {
+  if (productIds.length === 0) return new Map();
+
+  const groups = await db.query.productVariantGroups.findMany({
+    where: inArray(productVariantGroups.productId, productIds),
+    orderBy: [asc(productVariantGroups.sortOrder)],
+  });
+  if (groups.length === 0) return new Map();
+
+  const groupIds = groups.map((group) => group.id);
+  const options = await db.query.productVariantOptions.findMany({
+    where: inArray(productVariantOptions.groupId, groupIds),
+  });
+  const optionsByGroupId = new Map<string, typeof options>();
+  for (const option of options) {
+    const list = optionsByGroupId.get(option.groupId) ?? [];
+    list.push(option);
+    optionsByGroupId.set(option.groupId, list);
+  }
+
+  const groupsByProductId = new Map<string, OrderVariantGroup[]>();
+  for (const group of groups) {
+    const list = groupsByProductId.get(group.productId) ?? [];
+    list.push({
+      id: group.id,
+      name: group.name,
+      options: (optionsByGroupId.get(group.id) ?? []).map((option) => ({
+        id: option.id,
+        name: option.name,
+        priceDelta: option.priceDelta,
+      })),
+    });
+    groupsByProductId.set(group.productId, list);
+  }
+  return groupsByProductId;
+}
+
+type OrderItemVariantSelection = {
+  groupNameSnapshot: string;
+  optionNameSnapshot: string;
+  priceDeltaSnapshot: number;
+};
+
+/** Batch-fetch snapshot pilihan varian sejumlah baris order_items sekaligus. */
+async function fetchVariantSelectionsByOrderItemId(
+  orderItemIds: string[],
+): Promise<Map<string, OrderItemVariantSelection[]>> {
+  if (orderItemIds.length === 0) return new Map();
+
+  const selections = await db.query.orderItemVariantSelections.findMany({
+    where: inArray(orderItemVariantSelections.orderItemId, orderItemIds),
+    orderBy: [asc(orderItemVariantSelections.sortOrder)],
+  });
+
+  const selectionsByOrderItemId = new Map<
+    string,
+    OrderItemVariantSelection[]
+  >();
+  for (const selection of selections) {
+    const list = selectionsByOrderItemId.get(selection.orderItemId) ?? [];
+    list.push({
+      groupNameSnapshot: selection.groupNameSnapshot,
+      optionNameSnapshot: selection.optionNameSnapshot,
+      priceDeltaSnapshot: selection.priceDeltaSnapshot,
+    });
+    selectionsByOrderItemId.set(selection.orderItemId, list);
+  }
+  return selectionsByOrderItemId;
+}
+
 export async function createOrder(
   input: CreateOrderInput,
 ): Promise<CreateOrderResult> {
@@ -162,14 +244,23 @@ export async function createOrder(
   const productById = new Map(
     availableProducts.map((product) => [product.id, product]),
   );
+  const variantGroupsByProductId = await fetchVariantGroupsForOrder(productIds);
 
   const orderItemRows: Array<{
+    id: string;
     productId: string;
     productNameSnapshot: string;
     priceSnapshot: number;
     costPriceSnapshot: number | null;
     qty: number;
     note: string | null;
+  }> = [];
+  const variantSelectionRows: Array<{
+    orderItemId: string;
+    groupNameSnapshot: string;
+    optionNameSnapshot: string;
+    priceDeltaSnapshot: number;
+    sortOrder: number;
   }> = [];
   const calcItems: OrderCalcItem[] = [];
 
@@ -191,14 +282,60 @@ export async function createOrder(
             : `Stok "${product.name}" tinggal ${product.stock}.`,
       };
     }
-    calcItems.push({ price: product.price, qty: item.qty });
+
+    // Varian: kalau Item punya grup varian, Pembeli wajib pilih tepat satu
+    // opsi valid per grup — tidak lebih (grup asing/dobel), tidak kurang
+    // (grup belum dijawab). Kategori error sama seperti produk tidak
+    // tersedia di atas: race antara Pedagang mengubah varian & Pembeli checkout.
+    const groups = variantGroupsByProductId.get(product.id) ?? [];
+    const selectedOptionIdByGroupId = new Map(
+      item.variantSelections.map((s) => [s.groupId, s.optionId]),
+    );
+    const itemVariantSnapshots: Array<{
+      groupNameSnapshot: string;
+      optionNameSnapshot: string;
+      priceDeltaSnapshot: number;
+    }> = [];
+    let variantPriceDelta = 0;
+    for (const group of groups) {
+      const optionId = selectedOptionIdByGroupId.get(group.id);
+      const option = optionId
+        ? group.options.find((o) => o.id === optionId)
+        : undefined;
+      if (!option) {
+        return {
+          ok: false,
+          message: `Pilih ${group.name} untuk "${product.name}".`,
+        };
+      }
+      variantPriceDelta += option.priceDelta;
+      itemVariantSnapshots.push({
+        groupNameSnapshot: group.name,
+        optionNameSnapshot: option.name,
+        priceDeltaSnapshot: option.priceDelta,
+      });
+    }
+    if (selectedOptionIdByGroupId.size !== groups.length) {
+      return {
+        ok: false,
+        message: `Pilihan varian tidak valid untuk "${product.name}", silakan perbarui Keranjang.`,
+      };
+    }
+
+    const effectiveUnitPrice = product.price + variantPriceDelta;
+    const orderItemId = randomUUID();
+    calcItems.push({ price: effectiveUnitPrice, qty: item.qty });
     orderItemRows.push({
+      id: orderItemId,
       productId: product.id,
       productNameSnapshot: product.name,
-      priceSnapshot: product.price,
+      priceSnapshot: effectiveUnitPrice,
       costPriceSnapshot: product.costPrice,
       qty: item.qty,
       note: item.note ?? null,
+    });
+    itemVariantSnapshots.forEach((snapshot, sortOrder) => {
+      variantSelectionRows.push({ orderItemId, sortOrder, ...snapshot });
     });
   }
 
@@ -273,6 +410,10 @@ export async function createOrder(
       .insert(orderItems)
       .values(orderItemRows.map((row) => ({ ...row, orderId })));
 
+    if (variantSelectionRows.length > 0) {
+      await tx.insert(orderItemVariantSelections).values(variantSelectionRows);
+    }
+
     await tx.insert(payments).values({
       orderId,
       provider: paymentRow.provider,
@@ -331,6 +472,8 @@ export async function getOrderStatus(
     }),
     db.query.orderItems.findMany({ where: eq(orderItems.orderId, current.id) }),
   ]);
+  const variantSelectionsByOrderItemId =
+    await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
 
   // `qrString` bisa payload EMV (dirender lokal jadi data URI) ATAU URL gambar
   // dari Midtrans (dipakai apa adanya). Mock selalu payload. QRIS pribadi
@@ -375,6 +518,7 @@ export async function getOrderStatus(
       priceSnapshot: item.priceSnapshot,
       qty: item.qty,
       note: item.note,
+      variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
     })),
     qrImageUrl,
     canSimulate:
@@ -538,6 +682,8 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
     list.push(item);
     itemsByOrderId.set(item.orderId, list);
   }
+  const variantSelectionsByOrderItemId =
+    await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
 
   return activeOrders.map((order) => ({
     id: order.id,
@@ -552,6 +698,7 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
       priceSnapshot: item.priceSnapshot,
       qty: item.qty,
       note: item.note,
+      variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
     })),
     awaitingManualConfirmation:
       order.status === "menunggu_pembayaran" &&
@@ -590,6 +737,8 @@ export async function listMerchantOrderHistory(): Promise<
     list.push(item);
     itemsByOrderId.set(item.orderId, list);
   }
+  const variantSelectionsByOrderItemId =
+    await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
 
   return pastOrders.map((order) => ({
     id: order.id,
@@ -606,6 +755,7 @@ export async function listMerchantOrderHistory(): Promise<
       id: item.id,
       productNameSnapshot: item.productNameSnapshot,
       priceSnapshot: item.priceSnapshot,
+      variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
       qty: item.qty,
       note: item.note,
     })),

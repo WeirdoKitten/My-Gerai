@@ -35,6 +35,13 @@ export function CheckoutForm({
         productId: item.productId,
         qty: item.qty,
         note: item.note || undefined,
+        // Buang field display-only (groupName/optionName/priceDelta) — server
+        // selalu re-derive harga sendiri dari groupId+optionId, tidak pernah
+        // mempercayai apa pun dari klien.
+        variantSelections: item.variantSelections.map((s) => ({
+          groupId: s.groupId,
+          optionId: s.optionId,
+        })),
       })),
     });
 

@@ -262,7 +262,7 @@
 - [ ] OTP untuk login Pedagang/Admin (hardening keamanan).
 - [ ] Model settlement Split/Marketplace (uang langsung ter-split ke Pedagang) — kalau Aplikator naik jadi badan usaha.
 - [ ] Refund/pembatalan Pesanan setelah `dibayar` (Midtrans refund API + penyesuaian Saldo/Pencairan).
-- [ ] Varian Item (ukuran, level pedas, dll).
+- [x] ~~Varian Item (ukuran, level pedas, dll).~~ — **selesai 2026-09-16** (grup+opsi varian per Item, harga per opsi opsional, stok tetap di level Item — lihat [DATA-MODEL.md](DATA-MODEL.md#product_variant_groups--product_variant_options-varian-item--2026-09-16)).
 - [ ] Multi-Lapak per Pedagang.
 - [ ] Notifikasi WhatsApp ke Pedagang saat ada Pesanan baru.
 - [x] ~~Laporan analitik penjualan (harian/mingguan) untuk Pedagang~~ — **selesai 2026-09-09** (versi ringan + asisten aturan, lihat seksi "Laporan Penjualan + Asisten Rekomendasi"). Sisa: laporan **Admin** lintas-Lapak, analitik mendalam, ekspor, asisten LLM — masih ide masa depan.

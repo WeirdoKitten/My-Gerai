@@ -159,6 +159,34 @@ export const products = pgTable("products", {
 });
 
 /**
+ * Grup varian sebuah Item (mis. "Level Pedas", "Ukuran", "Warna"). Satu Item
+ * boleh punya banyak grup sekaligus. Stok TIDAK dipisah per varian — varian
+ * murni preferensi/pilihan, stok tetap dihitung di `products.stock`.
+ */
+export const productVariantGroups = pgTable("product_variant_groups", {
+  id: uuid().primaryKey().defaultRandom(),
+  productId: uuid()
+    .notNull()
+    .references(() => products.id, { onDelete: "cascade" }),
+  name: text().notNull(),
+  sortOrder: integer().notNull().default(0),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Satu pilihan di dalam grup varian (mis. "Pedas", "Jumbo"). */
+export const productVariantOptions = pgTable("product_variant_options", {
+  id: uuid().primaryKey().defaultRandom(),
+  groupId: uuid()
+    .notNull()
+    .references(() => productVariantGroups.id, { onDelete: "cascade" }),
+  name: text().notNull(),
+  /** Tambahan/pengurangan harga per unit terhadap products.price. Default 0. */
+  priceDelta: integer().notNull().default(0),
+  sortOrder: integer().notNull().default(0),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Pesanan. Halaman status Pembeli (`/pesanan/[orderId]`) tidak butuh akun —
  * `id` (UUID, sulit ditebak) yang jadi "kredensial" akses, dibaca lewat Route
  * Handler/Server Component yang query by primary key. Tidak ada isu RLS/anon
@@ -198,6 +226,26 @@ export const orderItems = pgTable("order_items", {
   qty: integer().notNull(),
   note: text(),
 });
+
+/**
+ * Snapshot pilihan varian Pembeli saat Pesanan dibuat. Sengaja TANPA FK ke
+ * `product_variant_groups`/`product_variant_options` — kalau Pedagang
+ * mengubah/menghapus grup atau opsi itu nanti, baris histori ini tetap utuh
+ * (pola sama seperti `productNameSnapshot`/`priceSnapshot` di atas).
+ */
+export const orderItemVariantSelections = pgTable(
+  "order_item_variant_selections",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    orderItemId: uuid()
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    groupNameSnapshot: text().notNull(),
+    optionNameSnapshot: text().notNull(),
+    priceDeltaSnapshot: integer().notNull(),
+    sortOrder: integer().notNull().default(0),
+  },
+);
 
 /** Catatan transaksi payment gateway (mock dev/test, Midtrans produksi). */
 export const payments = pgTable("payments", {

@@ -51,16 +51,25 @@ function MerchantOrderHistoryCard({
       </p>
       <ul className="flex flex-col gap-1 border-t border-line pt-3">
         {order.items.map((item) => (
-          <li key={item.id} className="flex justify-between gap-2 text-sm">
-            <span className="text-ink">
-              {item.qty}× {item.productNameSnapshot}
-              {item.note ? (
-                <span className="text-ink-muted"> — {item.note}</span>
-              ) : null}
-            </span>
-            <span className="tabular-nums text-ink-muted">
-              {formatRupiah(item.priceSnapshot * item.qty)}
-            </span>
+          <li key={item.id} className="flex flex-col gap-0.5 text-sm">
+            <div className="flex justify-between gap-2">
+              <span className="text-ink">
+                {item.qty}× {item.productNameSnapshot}
+                {item.note ? (
+                  <span className="text-ink-muted"> — {item.note}</span>
+                ) : null}
+              </span>
+              <span className="tabular-nums text-ink-muted">
+                {formatRupiah(item.priceSnapshot * item.qty)}
+              </span>
+            </div>
+            {item.variantSelections.length > 0 ? (
+              <p className="text-xs text-ink-muted">
+                {item.variantSelections
+                  .map((s) => `${s.groupNameSnapshot}: ${s.optionNameSnapshot}`)
+                  .join(" · ")}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>

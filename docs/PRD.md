@@ -60,7 +60,6 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - Metode bayar selain QRIS (tunai, transfer manual, dompet digital langsung).
 - **Refund/pembatalan Pesanan setelah `dibayar`** — belum ditangani di Fase 6.
 - Accelerated/instant settlement (H+0) — pakai default H+1.
-- Varian Item (ukuran baju S/M/L, level pedas, dsb).
 - Multi-Lapak per satu Pedagang.
 - Riwayat Pesanan Pembeli lintas sesi (karena tanpa akun).
 - Notifikasi WhatsApp/SMS ke Pembeli atau Pedagang.

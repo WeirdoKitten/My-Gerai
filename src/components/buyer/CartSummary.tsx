@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { useCart } from "@/lib/cart/cart-context";
+import { cartLineKey } from "@/lib/cart/line-key";
 import { formatRupiah } from "@/lib/utils/money";
 
 export function CartSummary({
@@ -23,43 +24,53 @@ export function CartSummary({
   return (
     <Card pad="none">
       <ul className="divide-y divide-line">
-        {items.map((item) => (
-          <li key={item.productId} className="flex flex-col gap-2.5 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">{item.name}</p>
-                <p className="text-sm tabular-nums text-ink-muted">
-                  {formatRupiah(item.price)}
-                </p>
-                {item.note ? (
-                  <p className="mt-0.5 text-sm text-ink-muted">
-                    Catatan: {item.note}
+        {items.map((item) => {
+          const lineKey = cartLineKey(item);
+          return (
+            <li key={lineKey} className="flex flex-col gap-2.5 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-ink">{item.name}</p>
+                  <p className="text-sm tabular-nums text-ink-muted">
+                    {formatRupiah(item.price)}
                   </p>
-                ) : null}
+                  {item.variantSelections.length > 0 ? (
+                    <p className="mt-0.5 text-sm text-ink-muted">
+                      {item.variantSelections
+                        .map((s) => `${s.groupName}: ${s.optionName}`)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
+                  {item.note ? (
+                    <p className="mt-0.5 text-sm text-ink-muted">
+                      Catatan: {item.note}
+                    </p>
+                  ) : null}
+                </div>
+                <p className="shrink-0 font-semibold tabular-nums text-ink">
+                  {formatRupiah(item.price * item.qty)}
+                </p>
               </div>
-              <p className="shrink-0 font-semibold tabular-nums text-ink">
-                {formatRupiah(item.price * item.qty)}
-              </p>
-            </div>
-            <div className="flex items-center justify-between">
-              <QuantityStepper
-                value={item.qty}
-                min={1}
-                max={50}
-                label={`jumlah ${item.name}`}
-                onDecrement={() => updateQty(item.productId, item.qty - 1)}
-                onIncrement={() => updateQty(item.productId, item.qty + 1)}
-              />
-              <button
-                type="button"
-                onClick={() => removeItem(item.productId)}
-                className="text-sm font-semibold text-danger transition-colors hover:text-danger-hover"
-              >
-                Hapus
-              </button>
-            </div>
-          </li>
-        ))}
+              <div className="flex items-center justify-between">
+                <QuantityStepper
+                  value={item.qty}
+                  min={1}
+                  max={50}
+                  label={`jumlah ${item.name}`}
+                  onDecrement={() => updateQty(lineKey, item.qty - 1)}
+                  onIncrement={() => updateQty(lineKey, item.qty + 1)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeItem(lineKey)}
+                  className="text-sm font-semibold text-danger transition-colors hover:text-danger-hover"
+                >
+                  Hapus
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
       <div className="flex flex-col gap-1.5 border-t border-line p-4">
         <div className="flex items-center justify-between text-sm">

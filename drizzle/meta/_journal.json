@@ -57,6 +57,13 @@
       "when": 1789372235845,
       "tag": "0007_lethal_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789558466152,
+      "tag": "0008_pink_triathlon",
+      "breakpoints": true
     }
   ]
 }

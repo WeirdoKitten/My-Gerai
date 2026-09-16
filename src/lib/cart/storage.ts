@@ -10,7 +10,17 @@ export function loadCart(): CartState {
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.items)) {
       return EMPTY_CART_STATE;
     }
-    return parsed;
+    // Cart tersimpan dari sebelum fitur varian ada belum punya
+    // `variantSelections` — normalisasi jadi `[]` supaya tidak crash.
+    return {
+      ...parsed,
+      items: parsed.items.map((item) => ({
+        ...item,
+        variantSelections: Array.isArray(item.variantSelections)
+          ? item.variantSelections
+          : [],
+      })),
+    };
   } catch {
     return EMPTY_CART_STATE;
   }

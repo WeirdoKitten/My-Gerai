@@ -12,8 +12,11 @@ erDiagram
     MERCHANTS ||--o{ PAYOUTS : "menerima pencairan"
     MERCHANTS ||--o{ SERVICE_FEE_INVOICES : "ditagih (qris_pribadi)"
     MERCHANTS ||--o{ MERCHANT_OPERATING_HOURS : "jadwal buka"
+    PRODUCTS ||--o{ PRODUCT_VARIANT_GROUPS : "punya grup varian"
+    PRODUCT_VARIANT_GROUPS ||--|{ PRODUCT_VARIANT_OPTIONS : "punya pilihan"
     ORDERS ||--|{ ORDER_ITEMS : "terdiri dari"
     PRODUCTS ||--o{ ORDER_ITEMS : "dipesan sebagai"
+    ORDER_ITEMS ||--o{ ORDER_ITEM_VARIANT_SELECTIONS : "snapshot varian dipilih"
     ORDERS ||--o| PAYMENTS : "dibayar via"
     PAYOUTS ||--o{ ORDERS : "mencairkan dana"
     PLATFORM_CONFIG ||--o{ ORDERS : "fee snapshot dari"
@@ -62,6 +65,23 @@ erDiagram
         timestamp created_at
     }
 
+    PRODUCT_VARIANT_GROUPS {
+        uuid id PK
+        uuid product_id FK
+        string name "mis. Level Pedas, Ukuran, Warna"
+        int sort_order
+        timestamp created_at
+    }
+
+    PRODUCT_VARIANT_OPTIONS {
+        uuid id PK
+        uuid group_id FK
+        string name "mis. Pedas, Jumbo"
+        int price_delta "default 0; tambahan/pengurangan harga per unit thd products.price"
+        int sort_order
+        timestamp created_at
+    }
+
     ORDERS {
         uuid id PK
         uuid merchant_id FK
@@ -88,6 +108,15 @@ erDiagram
         int cost_price_snapshot "nullable; snapshot products.cost_price saat Pesanan dibuat (2026-09-14) — konsisten dengan price_snapshot, supaya Keuntungan Pesanan lama tidak berubah retroaktif kalau harga modal Item diedit"
         int qty
         text note
+    }
+
+    ORDER_ITEM_VARIANT_SELECTIONS {
+        uuid id PK
+        uuid order_item_id FK
+        string group_name_snapshot
+        string option_name_snapshot
+        int price_delta_snapshot
+        int sort_order
     }
 
     PAYMENTS {
@@ -193,6 +222,11 @@ erDiagram
 - `status = sold_out` dipakai Pedagang untuk menyembunyikan Item yang habis tanpa menghapus datanya (histori pesanan lama tetap valid lewat snapshot di `order_items`).
 - `cost_price` (nullable, 2026-09-14): harga modal (HPP) per unit, diisi opsional oleh Pedagang di `ProductForm`. **Tidak pernah** dikirim ke Pembeli (`getStallCatalog`/`BuyerProductView` tidak menyertakannya). Dipakai `getMerchantSalesReport` untuk menghitung `summary.profit`; kalau ada Item terjual yang belum punya `cost_price`, `summary.profitIncomplete = true`.
 
+### `product_variant_groups` / `product_variant_options` (Varian Item — 2026-09-16)
+- Satu Item boleh punya banyak grup varian sekaligus (mis. "Ukuran" DAN "Warna" bersamaan) — `product_variant_groups.product_id` cascade delete kalau Item dihapus, `product_variant_options.group_id` cascade delete kalau grupnya dihapus.
+- Tiap grup single-select: kalau Item punya grup varian, Pembeli **wajib** pilih tepat satu opsi per grup sebelum bisa checkout (divalidasi ulang di server oleh `createOrder`, tidak percaya pilihan dari klien). Stok **tidak** dipisah per kombinasi varian — tetap satu `products.stock` untuk semua pilihan (keputusan User, demi kesederhanaan skala kaki lima).
+- `price_delta` (default 0) opsional per opsi (mis. "Jumbo" = +2000) — dijumlahkan ke `products.price` jadi harga efektif per unit, disimpan sebagai `order_items.price_snapshot` (lihat di bawah). Dikelola Pedagang lewat `saveProductVariantGroups` — pola **replace-all** (hapus semua grup lama Item itu, insert ulang sesuai form), sama seperti `merchant_operating_hours`.
+
 ### `orders` (Pesanan)
 - `order_code`: pendek & mudah disebutkan lisan (huruf+angka, mis. 4 karakter), **unik per hari per Lapak** (boleh berulang lintas hari/lintas Lapak) — cukup untuk kebutuhan verbal saat pengambilan, tidak perlu unik global.
 - `platform_fee_snapshot`: **wajib** diisi dari nilai `platform_config` yang berlaku **saat Pesanan dibuat**, bukan dihitung ulang saat laporan ditarik — ini yang membuat histori tidak berubah kalau Admin ubah Biaya Layanan di kemudian hari (lihat [RULES.md](RULES.md#6-uang--konfigurasi-bisnis)).
@@ -204,6 +238,11 @@ erDiagram
 ### `order_items`
 - Menyimpan `product_name_snapshot` & `price_snapshot` supaya kalau Pedagang mengubah harga/nama Item di kemudian hari, histori Pesanan lama tidak ikut berubah.
 - `cost_price_snapshot` (nullable, 2026-09-14): sama prinsipnya dengan `price_snapshot` — diisi dari `products.cost_price` **saat Pesanan dibuat** (`createOrder`), bukan dihitung ulang belakangan, supaya Keuntungan Pesanan lama tidak berubah retroaktif kalau Pedagang mengedit harga modal Item. `NULL` kalau Item belum punya harga modal saat Pesanan itu dibuat.
+- `price_snapshot` (2026-09-16): kalau Item yang dipesan punya varian, nilainya sudah **harga efektif** (`products.price` + jumlah `price_delta` opsi yang dipilih Pembeli) — bukan `products.price` polos. `calculateOrderTotals`/laporan penjualan tidak perlu tahu soal varian sama sekali karena angka ini sudah final per unit.
+
+### `order_item_variant_selections` (Varian Item — 2026-09-16)
+- Snapshot pilihan varian Pembeli **saat Pesanan dibuat** — sengaja **TANPA FK** ke `product_variant_groups`/`product_variant_options` (beda dari kebanyakan child table lain di sini): kalau Pedagang kemudian menghapus/mengubah grup atau opsi itu, baris histori ini tetap utuh. Prinsipnya sama dengan `product_name_snapshot`/`price_snapshot` di atas.
+- `price_delta_snapshot` di sini murni buat **ditampilkan balik** (mis. "Ukuran: Jumbo") di halaman status Pesanan Pembeli & dashboard Pedagang — nilainya sudah ikut dijumlahkan ke `order_items.price_snapshot`, tidak dipakai ulang untuk kalkulasi apa pun.
 
 ### `payments`
 - `provider = mock` untuk transaksi dev/test, `provider = midtrans` untuk staging/produksi (lihat [TEKNOLOGI.md](TEKNOLOGI.md#payment-provider--disbursement-provider-abstraction)), `provider = qris_pribadi` (Fase 7) untuk Pesanan Lapak yang bayar langsung ke QRIS Pedagang (tanpa gateway sama sekali). **Wajib** difilter/dipisah per `provider` di semua laporan keuangan, supaya uang "palsu" (mock) tidak tercampur perhitungan real. Enum lama `tripay` dibiarkan di definisi enum (tidak pernah dipakai) — tidak perlu migrasi menghapusnya.

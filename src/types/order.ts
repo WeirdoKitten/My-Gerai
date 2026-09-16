@@ -3,6 +3,13 @@ import type { orderItems, orders } from "@/lib/db/schema";
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
 
+/** Snapshot satu pilihan varian pada baris Item Pesanan — lihat order_item_variant_selections. */
+export type OrderItemVariantSelectionView = {
+  groupNameSnapshot: string;
+  optionNameSnapshot: string;
+  priceDeltaSnapshot: number;
+};
+
 /** Baris Item yang aman ditampilkan ke Pembeli (tanpa data internal). */
 export type BuyerOrderItemView = {
   id: string;
@@ -10,6 +17,7 @@ export type BuyerOrderItemView = {
   priceSnapshot: number;
   qty: number;
   note: string | null;
+  variantSelections: OrderItemVariantSelectionView[];
 };
 
 /**
@@ -61,6 +69,7 @@ export type MerchantOrderItemView = {
   priceSnapshot: number;
   qty: number;
   note: string | null;
+  variantSelections: OrderItemVariantSelectionView[];
 };
 
 /**

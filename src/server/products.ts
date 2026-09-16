@@ -1,11 +1,16 @@
 "use server";
 
-import { and, asc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { getMerchantSession } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { db } from "@/lib/db/client";
-import { merchants, products } from "@/lib/db/schema";
+import {
+  merchants,
+  products,
+  productVariantGroups,
+  productVariantOptions,
+} from "@/lib/db/schema";
 import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit/limiter";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveProductPhoto } from "@/lib/upload/storage";
@@ -20,6 +25,7 @@ import type {
   CreateProductResult,
   MerchantPaymentModeView,
   MerchantProductView,
+  ProductVariantGroupView,
   SetProductStatusResult,
   StallCatalogResult,
   UpdateProductResult,
@@ -27,6 +33,47 @@ import type {
 } from "@/types/product";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+
+/** Batch-fetch grup+opsi varian sejumlah Item sekaligus (2 query, bukan N+1). */
+async function fetchVariantGroupsByProductId(
+  productIds: string[],
+): Promise<Map<string, ProductVariantGroupView[]>> {
+  if (productIds.length === 0) return new Map();
+
+  const groups = await db.query.productVariantGroups.findMany({
+    where: inArray(productVariantGroups.productId, productIds),
+    orderBy: [asc(productVariantGroups.sortOrder)],
+  });
+  if (groups.length === 0) return new Map();
+
+  const groupIds = groups.map((group) => group.id);
+  const options = await db.query.productVariantOptions.findMany({
+    where: inArray(productVariantOptions.groupId, groupIds),
+    orderBy: [asc(productVariantOptions.sortOrder)],
+  });
+  const optionsByGroupId = new Map<string, typeof options>();
+  for (const option of options) {
+    const list = optionsByGroupId.get(option.groupId) ?? [];
+    list.push(option);
+    optionsByGroupId.set(option.groupId, list);
+  }
+
+  const groupsByProductId = new Map<string, ProductVariantGroupView[]>();
+  for (const group of groups) {
+    const list = groupsByProductId.get(group.productId) ?? [];
+    list.push({
+      id: group.id,
+      name: group.name,
+      options: (optionsByGroupId.get(group.id) ?? []).map((option) => ({
+        id: option.id,
+        name: option.name,
+        priceDelta: option.priceDelta,
+      })),
+    });
+    groupsByProductId.set(group.productId, list);
+  }
+  return groupsByProductId;
+}
 
 /**
  * Katalog publik sebuah Lapak. `{ok:false}` membedakan slug yang memang
@@ -58,6 +105,9 @@ export async function getStallCatalog(
     }),
     getMerchantOpenState(merchant.id),
   ]);
+  const variantGroupsByProductId = await fetchVariantGroupsByProductId(
+    merchantProducts.map((product) => product.id),
+  );
 
   return {
     ok: true,
@@ -76,6 +126,7 @@ export async function getStallCatalog(
         description: product.description,
         price: product.price,
         photoUrl: product.photoUrl,
+        variantGroups: variantGroupsByProductId.get(product.id) ?? [],
       })),
     },
   };
@@ -125,6 +176,9 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     where: eq(products.merchantId, session.merchantId),
     orderBy: [asc(products.name)],
   });
+  const variantGroupsByProductId = await fetchVariantGroupsByProductId(
+    merchantProducts.map((product) => product.id),
+  );
 
   return merchantProducts.map((product) => ({
     id: product.id,
@@ -135,6 +189,7 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     stock: product.stock,
     photoUrl: product.photoUrl,
     status: product.status,
+    variantGroupCount: variantGroupsByProductId.get(product.id)?.length ?? 0,
   }));
 }
 
