@@ -16,6 +16,9 @@ const BRAND_STRONG = "#c2410c";
 const BRAND_TINT = "#fff1e7";
 const SURFACE = "#ffffff";
 
+/** Dimensi tetap poster (tidak berubah oleh panjang URL) — dipakai lagi saat merasterisasi ke PNG di klien. */
+export const REGISTRATION_QR_POSTER_SIZE = { width: 520, height: 612 };
+
 /**
  * Poster QR pendaftaran Pedagang: SVG mandiri (frame + judul + lambang toko
  * di tengah QR + caption), bukan QR polos, supaya tetap menarik saat diunduh
@@ -37,7 +40,7 @@ export async function buildRegistrationQrPoster(url: string): Promise<string> {
   const modules = Number(viewBoxMatch[1]);
   const pathData = pathMatch[1];
 
-  const size = 520;
+  const size = REGISTRATION_QR_POSTER_SIZE.width;
   const frame = 24;
   const headerHeight = 64;
   const qrCard = 400;
@@ -50,7 +53,7 @@ export async function buildRegistrationQrPoster(url: string): Promise<string> {
   const logoR = 36;
   const logoCx = size / 2;
   const logoCy = qrY + qrSize / 2;
-  const height = qrCardY + qrCard + 96;
+  const height = REGISTRATION_QR_POSTER_SIZE.height;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${height}" viewBox="0 0 ${size} ${height}">
   <defs>
@@ -63,7 +66,7 @@ export async function buildRegistrationQrPoster(url: string): Promise<string> {
   <rect x="3" y="3" width="${size - 6}" height="${height - 6}" rx="33" fill="none" stroke="${BRAND_STRONG}" stroke-width="3" />
 
   <rect x="${frame}" y="${frame}" width="${size - frame * 2}" height="${headerHeight}" rx="18" fill="${BRAND_STRONG}" />
-  <text x="${size / 2}" y="${frame + headerHeight / 2 + 8}" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="${SURFACE}">Daftar Jadi Pedagang</text>
+  <text x="${size / 2}" y="${frame + headerHeight / 2 + 8}" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" font-weight="800" fill="${SURFACE}">MyGerai</text>
 
   <rect x="${qrCardX}" y="${qrCardY}" width="${qrCard}" height="${qrCard}" rx="24" fill="${SURFACE}" stroke="${LINE}" stroke-width="2" filter="url(#cardShadow)" />
   <g transform="translate(${qrX} ${qrY}) scale(${scale})" shape-rendering="crispEdges">
@@ -75,8 +78,8 @@ export async function buildRegistrationQrPoster(url: string): Promise<string> {
     ${STORE_ICON_PATHS.map((d) => `<path d="${d}" />`).join("\n    ")}
   </svg>
 
-  <text x="${size / 2}" y="${qrCardY + qrCard + 40}" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="${INK}">Scan &amp; Isi Data — Gratis</text>
-  <text x="${size / 2}" y="${qrCardY + qrCard + 64}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="${INK_MUTED}">Tanpa kartu kredit • 100% harga jual milikmu</text>
+  <text x="${size / 2}" y="${qrCardY + qrCard + 40}" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="${INK}">Scan &amp; Daftar Gratis</text>
+  <text x="${size / 2}" y="${qrCardY + qrCard + 64}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="${INK_MUTED}">100% harga jual milikmu</text>
 </svg>`;
 
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;

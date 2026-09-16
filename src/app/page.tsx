@@ -1,5 +1,6 @@
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
+import { DownloadQrPosterButton } from "@/components/landing/DownloadQrPosterButton";
 import { Magnetic } from "@/components/landing/Magnetic";
 import { PhoneMockup } from "@/components/landing/PhoneMockup";
 import { Reveal } from "@/components/landing/Reveal";
@@ -7,7 +8,6 @@ import { RevealText } from "@/components/landing/RevealText";
 import { ScrollProgressBar } from "@/components/landing/ScrollProgressBar";
 import { TiltCard } from "@/components/landing/TiltCard";
 import { Badge } from "@/components/ui/Badge";
-import { buttonClasses } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import {
   CartIcon,
@@ -469,17 +469,7 @@ export default async function Home() {
                 className="w-full drop-shadow-xl"
               />
               <Magnetic className="w-full">
-                <a
-                  href={registerQrImageUrl}
-                  download="qr-daftar-pedagang.svg"
-                  className={buttonClasses({
-                    variant: "primary",
-                    size: "md",
-                    fullWidth: true,
-                  })}
-                >
-                  Unduh QR untuk Dicetak
-                </a>
+                <DownloadQrPosterButton svgDataUrl={registerQrImageUrl} />
               </Magnetic>
             </Reveal>
           </div>
