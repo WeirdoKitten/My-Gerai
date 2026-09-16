@@ -63,3 +63,15 @@ export type MerchantOpenStatusView = {
 
 export type ToggleMerchantOpenResult = { ok: boolean; message?: string };
 export type SetOperatingHoursResult = { ok: boolean; message?: string };
+
+/**
+ * Satu Lapak untuk showcase publik di landing page — TANPA sesi, jadi field
+ * dibatasi ketat: tidak ada phone/alamat/status internal, cuma yang aman
+ * dilihat siapa saja (mirip semangat `BuyerProductView`).
+ */
+export type PublicMerchantListItem = {
+  slug: string;
+  stallName: string;
+  category: string;
+  photoUrl: string | null;
+};

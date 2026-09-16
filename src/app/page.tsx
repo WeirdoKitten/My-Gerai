@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
 import { Magnetic } from "@/components/landing/Magnetic";
@@ -21,8 +22,10 @@ import {
   TagIcon,
   WalletIcon,
 } from "@/components/ui/icons";
+import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { buildRegistrationQrPoster } from "@/lib/utils/qr-poster";
+import { listApprovedMerchants } from "@/server/merchants";
 
 // Halaman ini tanpa API dinamis (cookies/headers) jadi Next.js akan
 // men-static-generate-nya sekali saat `pnpm build` — di titik itu APP_URL
@@ -120,7 +123,10 @@ const INSIGHT_EXAMPLES = [
 export default async function Home() {
   const appUrl = process.env.APP_URL || "http://localhost:3000";
   const registerUrl = `${appUrl}/daftar`;
-  const registerQrImageUrl = await buildRegistrationQrPoster(registerUrl);
+  const [registerQrImageUrl, approvedMerchants] = await Promise.all([
+    buildRegistrationQrPoster(registerUrl),
+    listApprovedMerchants(),
+  ]);
 
   return (
     <>
@@ -176,8 +182,8 @@ export default async function Home() {
               <Reveal delay={0.75}>
                 <p className="mt-5 max-w-md text-base text-ink-muted lg:text-lg">
                   MyGerai bikin Pembeli pesan dan bayar QRIS sendiri dari HP
-                  mereka. Begitu lunas, Pesanan otomatis nongol di HP kamu,
-                  siap diproses dalam hitungan detik.
+                  mereka. Begitu lunas, Pesanan otomatis nongol di HP kamu, siap
+                  diproses dalam hitungan detik.
                 </p>
               </Reveal>
 
@@ -236,7 +242,10 @@ export default async function Home() {
         </section>
 
         {/* Cara kerja */}
-        <section id="cara-kerja" className="w-full scroll-mt-20 border-t border-line">
+        <section
+          id="cara-kerja"
+          className="w-full scroll-mt-20 border-t border-line"
+        >
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-36">
             <Reveal className="mx-auto max-w-xl text-center">
               <Badge tone="primary">Cara Kerja</Badge>
@@ -244,8 +253,8 @@ export default async function Home() {
                 <RevealText text="Online Dalam 3 Langkah" />
               </h2>
               <p className="mt-4 text-base text-ink-muted lg:text-lg">
-                Tiga langkah simpel. Pembeli dan Pedagang sama-sama
-                dimudahkan, tanpa pelatihan, tanpa ribet.
+                Tiga langkah simpel. Pembeli dan Pedagang sama-sama dimudahkan,
+                tanpa pelatihan, tanpa ribet.
               </p>
             </Reveal>
 
@@ -266,9 +275,7 @@ export default async function Home() {
                       <step.icon className="size-7" />
                     </div>
                     <div className="relative">
-                      <p className="text-xl font-bold text-ink">
-                        {step.title}
-                      </p>
+                      <p className="text-xl font-bold text-ink">{step.title}</p>
                       <p className="mt-2.5 text-sm leading-relaxed text-ink-muted">
                         {step.text}
                       </p>
@@ -281,7 +288,10 @@ export default async function Home() {
         </section>
 
         {/* Fitur Pedagang & Pembeli */}
-        <section id="fitur" className="w-full scroll-mt-20 border-t border-line">
+        <section
+          id="fitur"
+          className="w-full scroll-mt-20 border-t border-line"
+        >
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-36">
             <Reveal className="mx-auto max-w-xl text-center">
               <Badge tone="primary">Fitur</Badge>
@@ -289,8 +299,8 @@ export default async function Home() {
                 <RevealText text="Semua yang Kamu Butuh" />
               </h2>
               <p className="mt-4 text-base text-ink-muted lg:text-lg">
-                Dari terima Pesanan sampai lihat performa Lapak, semua
-                beres dalam satu aplikasi ringan.
+                Dari terima Pesanan sampai lihat performa Lapak, semua beres
+                dalam satu aplikasi ringan.
               </p>
             </Reveal>
 
@@ -354,8 +364,61 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* Gerai Terdaftar */}
+        {approvedMerchants.length > 0 ? (
+          <section className="w-full border-t border-line">
+            <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-36">
+              <Reveal className="mx-auto max-w-xl text-center">
+                <Badge tone="primary">Gerai Terdaftar</Badge>
+                <h2 className="mt-4 text-3xl font-bold tracking-tight text-ink lg:text-5xl">
+                  <RevealText text="Sudah Jualan di" />
+                  <br />
+                  <RevealText
+                    text="MyGerai"
+                    delay={0.3}
+                    className="text-brand-strong"
+                  />
+                </h2>
+                <p className="mt-4 text-base text-ink-muted lg:text-lg">
+                  Dari kaki lima sampai warung tetangga. Intip menunya langsung,
+                  atau jadi salah satu berikutnya.
+                </p>
+              </Reveal>
+
+              <div className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {approvedMerchants.map((merchant, index) => (
+                  <Reveal key={merchant.slug} delay={index * 0.05}>
+                    <Link href={`/menu/${merchant.slug}`}>
+                      <TiltCard
+                        pad="md"
+                        className="flex h-full flex-col items-center gap-3 text-center"
+                      >
+                        <PhotoThumb
+                          src={merchant.photoUrl}
+                          alt={merchant.stallName}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-ink">
+                            {merchant.stallName}
+                          </p>
+                          <p className="mt-0.5 text-xs text-ink-muted">
+                            {merchant.category}
+                          </p>
+                        </div>
+                      </TiltCard>
+                    </Link>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {/* Asisten Rekomendasi */}
-        <section id="asisten" className="relative w-full scroll-mt-20 overflow-hidden border-t border-line">
+        <section
+          id="asisten"
+          className="relative w-full scroll-mt-20 overflow-hidden border-t border-line"
+        >
           <div
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-1/2 -z-10 size-[520px] -translate-y-1/2 translate-x-1/3 rounded-full opacity-60 blur-3xl"
@@ -377,9 +440,9 @@ export default async function Home() {
                   />
                 </h2>
                 <p className="mt-5 text-base text-ink-muted lg:text-lg">
-                  Begitu data Pesanan cukup, MyGerai otomatis kasih
-                  rekomendasi: kapan waktunya restock, jam paling ramai,
-                  sampai Item yang sering dibeli bareng.
+                  Begitu data Pesanan cukup, MyGerai otomatis kasih rekomendasi:
+                  kapan waktunya restock, jam paling ramai, sampai Item yang
+                  sering dibeli bareng.
                 </p>
                 <p className="mt-3 text-base text-ink-muted lg:text-lg">
                   Tidak perlu paham data. Cukup buka Laporan Penjualan, dan
@@ -424,8 +487,8 @@ export default async function Home() {
             </Reveal>
             <Reveal delay={0.25}>
               <p className="max-w-md text-white/85 lg:text-lg">
-                Daftarkan Lapak kamu sekarang, tunggu approval Admin,
-                langsung bisa jualan hari ini juga.
+                Daftarkan Lapak kamu sekarang, tunggu approval Admin, langsung
+                bisa jualan hari ini juga.
               </p>
             </Reveal>
             <Reveal delay={0.4} className="flex flex-col items-center gap-4">
@@ -460,8 +523,8 @@ export default async function Home() {
               </h2>
               <p className="mt-4 text-base text-ink-muted lg:text-lg">
                 Cetak QR ini dan tempel di warung tetangga, pasar, atau
-                komunitas pedagang kamu. Mereka tinggal scan, isi data,
-                langsung bisa jualan online hari itu juga.
+                komunitas pedagang kamu. Mereka tinggal scan, isi data, langsung
+                bisa jualan online hari itu juga.
               </p>
             </Reveal>
 

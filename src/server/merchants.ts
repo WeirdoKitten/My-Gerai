@@ -51,6 +51,7 @@ import type {
   MerchantOpenStatusView,
   MerchantPaymentSettingsView,
   MerchantProfileView,
+  PublicMerchantListItem,
   QrMenuView,
   RegisterMerchantResult,
   SetOperatingHoursResult,
@@ -60,6 +61,9 @@ import type {
 } from "@/types/merchant";
 
 const MAX_QRIS_PHOTO_BYTES = 3 * 1024 * 1024;
+
+/** Batas jumlah Lapak ditampilkan di showcase landing page (skala kaki lima — KISS). */
+const PUBLIC_SHOWCASE_LIMIT = 12;
 
 // Dihitung sekali saat modul dimuat — dipakai supaya waktu verifikasi login
 // tetap konsisten walau nomor HP tidak terdaftar (cegah timing side-channel
@@ -396,6 +400,29 @@ export async function getMerchantQrMenu(): Promise<QrMenuView | null> {
   const qrImageUrl = await buildMenuQrPoster(url, session.stallName);
 
   return { url, qrImageUrl };
+}
+
+/**
+ * Lapak yang sudah disetujui — showcase publik di landing page, TANPA sesi.
+ * Terbaru gabung duluan, dibatasi {@link PUBLIC_SHOWCASE_LIMIT}. Field
+ * dibatasi ketat (lihat `PublicMerchantListItem`) — tidak ada phone/alamat/
+ * status internal, cuma yang aman dilihat siapa saja.
+ */
+export async function listApprovedMerchants(): Promise<
+  PublicMerchantListItem[]
+> {
+  const rows = await db.query.merchants.findMany({
+    where: eq(merchants.status, "approved"),
+    orderBy: (row, { desc }) => [desc(row.createdAt)],
+    limit: PUBLIC_SHOWCASE_LIMIT,
+  });
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    stallName: row.stallName,
+    category: row.category,
+    photoUrl: row.photoUrl,
+  }));
 }
 
 /** Semua Pedagang (untuk panel Admin) — otorisasi via sesi Admin. */
