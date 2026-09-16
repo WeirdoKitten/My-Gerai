@@ -24,6 +24,13 @@ import {
 import { Wordmark } from "@/components/ui/Wordmark";
 import { buildRegistrationQrPoster } from "@/lib/utils/registration-qr";
 
+// Halaman ini tanpa API dinamis (cookies/headers) jadi Next.js akan
+// men-static-generate-nya sekali saat `pnpm build` — di titik itu APP_URL
+// belum ada (env Dokploy cuma di-inject saat container start, lihat
+// Dockerfile), jadi QR pendaftaran akan ke-bake ke fallback localhost kalau
+// tidak dipaksa render per-request seperti ini.
+export const dynamic = "force-dynamic";
+
 const NAV_LINKS = [
   { href: "#cara-kerja", label: "Cara Kerja" },
   { href: "#fitur", label: "Fitur" },
