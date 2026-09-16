@@ -1,3 +1,4 @@
+import QRCode from "qrcode";
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
 import { Magnetic } from "@/components/landing/Magnetic";
@@ -7,6 +8,7 @@ import { RevealText } from "@/components/landing/RevealText";
 import { ScrollProgressBar } from "@/components/landing/ScrollProgressBar";
 import { TiltCard } from "@/components/landing/TiltCard";
 import { Badge } from "@/components/ui/Badge";
+import { buttonClasses } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import {
   CartIcon,
@@ -108,7 +110,11 @@ const INSIGHT_EXAMPLES = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const appUrl = process.env.APP_URL || "http://localhost:3000";
+  const registerUrl = `${appUrl}/daftar`;
+  const registerQrImageUrl = await QRCode.toDataURL(registerUrl);
+
   return (
     <>
       <ScrollProgressBar />
@@ -433,13 +439,35 @@ export default function Home() {
       </main>
 
       <footer className="w-full border-t border-line">
-        <Reveal className="mx-auto flex w-full max-w-6xl flex-col items-center gap-3 px-5 py-8 text-center sm:flex-row sm:justify-between sm:px-8 sm:text-left">
+        <Reveal className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-5 py-8 text-center sm:flex-row sm:justify-between sm:px-8 sm:text-left">
           <div>
             <Wordmark />
             <p className="mt-1 text-xs text-ink-muted">
               Pesan lewat scan QR, bayar QRIS, langsung masuk ke Pedagang.
             </p>
           </div>
+
+          <div className="flex flex-col items-center gap-2 sm:items-start">
+            <p className="text-xs font-semibold text-ink">
+              Kenalkan MyGerai ke Pedagang Lain
+            </p>
+            <div className="flex items-center gap-3">
+              {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
+              <img
+                src={registerQrImageUrl}
+                alt="QR Pendaftaran Pedagang"
+                className="size-16 rounded-control border border-line"
+              />
+              <a
+                href={registerQrImageUrl}
+                download="qr-daftar-pedagang.png"
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
+                Unduh QR
+              </a>
+            </div>
+          </div>
+
           <p className="text-xs text-ink-muted">© 2026 MyGerai</p>
         </Reveal>
       </footer>
