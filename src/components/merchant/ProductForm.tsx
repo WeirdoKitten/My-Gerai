@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -8,11 +8,20 @@ import { Input } from "@/components/ui/Input";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { resizeImage } from "@/lib/upload/resize-image";
 import {
+  getProductVariantGroups,
+  saveProductVariantGroups,
+} from "@/server/product-variants";
+import {
   createProduct,
   updateProduct,
   uploadProductPhoto,
 } from "@/server/products";
 import type { MerchantProductView } from "@/types/product";
+import {
+  type EditableVariantGroup,
+  ProductVariantEditor,
+  toVariantGroupsInput,
+} from "./ProductVariantEditor";
 
 export function ProductForm({
   product,
@@ -40,6 +49,36 @@ export function ProductForm({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Item baru belum punya grup varian (belum ada productId) — mulai kosong.
+  // Item lama: dimuat dari server begitu modal dibuka.
+  const [variantGroups, setVariantGroups] = useState<EditableVariantGroup[]>(
+    [],
+  );
+  const [variantsLoading, setVariantsLoading] = useState(!!product);
+
+  useEffect(() => {
+    if (!product) return;
+    let cancelled = false;
+    getProductVariantGroups(product.id).then((loaded) => {
+      if (cancelled) return;
+      setVariantGroups(
+        loaded.map((group) => ({
+          localId: crypto.randomUUID(),
+          name: group.name,
+          options: group.options.map((option) => ({
+            localId: crypto.randomUUID(),
+            name: option.name,
+            priceDelta: String(option.priceDelta),
+          })),
+        })),
+      );
+      setVariantsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [product]);
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -73,30 +112,50 @@ export function ProductForm({
     const priceNumber = Number(price);
     const costPriceValue = costPrice.trim() === "" ? null : Number(costPrice);
     const stockValue = stock.trim() === "" ? null : Number(stock);
-    const result = product
-      ? await updateProduct({
-          productId: product.id,
-          name,
-          description: description || undefined,
-          price: priceNumber,
-          costPrice: costPriceValue,
-          stock: stockValue,
-          photoUrl,
-        })
-      : await createProduct({
-          name,
-          description: description || undefined,
-          price: priceNumber,
-          costPrice: costPriceValue,
-          stock: stockValue,
-          photoUrl,
-        });
 
-    if (!result.ok) {
-      setError(result.message ?? "Gagal menyimpan Item.");
+    let productId: string;
+    if (product) {
+      const result = await updateProduct({
+        productId: product.id,
+        name,
+        description: description || undefined,
+        price: priceNumber,
+        costPrice: costPriceValue,
+        stock: stockValue,
+        photoUrl,
+      });
+      if (!result.ok) {
+        setError(result.message ?? "Gagal menyimpan Item.");
+        setSubmitting(false);
+        return;
+      }
+      productId = product.id;
+    } else {
+      const result = await createProduct({
+        name,
+        description: description || undefined,
+        price: priceNumber,
+        costPrice: costPriceValue,
+        stock: stockValue,
+        photoUrl,
+      });
+      if (!result.ok) {
+        setError(result.message ?? "Gagal menyimpan Item.");
+        setSubmitting(false);
+        return;
+      }
+      productId = result.productId;
+    }
+    const variantResult = await saveProductVariantGroups({
+      productId,
+      groups: toVariantGroupsInput(variantGroups),
+    });
+    if (!variantResult.ok) {
+      setError(variantResult.message ?? "Gagal menyimpan varian.");
       setSubmitting(false);
       return;
     }
+
     onDone();
   }
 
@@ -193,13 +252,31 @@ export function ProductForm({
         {photoError ? <Alert tone="error">{photoError}</Alert> : null}
       </div>
 
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold text-ink">
+          Varian (opsional)
+        </span>
+        <p className="text-xs text-ink-muted">
+          Mis. Level Pedas, Ukuran, atau Warna. Stok tetap satu untuk seluruh
+          Item, tidak dipisah per pilihan.
+        </p>
+        {variantsLoading ? (
+          <p className="text-sm text-ink-muted">Memuat varian...</p>
+        ) : (
+          <ProductVariantEditor
+            groups={variantGroups}
+            onChange={setVariantGroups}
+          />
+        )}
+      </div>
+
       {error ? <Alert tone="error">{error}</Alert> : null}
       <div className="flex gap-2">
         <Button
           type="submit"
           fullWidth
           loading={submitting}
-          disabled={uploading}
+          disabled={uploading || variantsLoading}
         >
           {submitting ? "Menyimpan..." : "Simpan"}
         </Button>

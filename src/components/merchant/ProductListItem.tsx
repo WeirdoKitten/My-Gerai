@@ -10,7 +10,6 @@ import { formatRupiah } from "@/lib/utils/money";
 import { setProductStatus } from "@/server/products";
 import type { MerchantProductView } from "@/types/product";
 import { ProductForm } from "./ProductForm";
-import { ProductVariantManager } from "./ProductVariantManager";
 
 export function ProductListItem({
   product,
@@ -20,7 +19,6 @@ export function ProductListItem({
   onChanged: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [managingVariants, setManagingVariants] = useState(false);
   const [toggling, setToggling] = useState(false);
 
   async function handleToggle() {
@@ -77,13 +75,6 @@ export function ProductListItem({
         </button>
         <button
           type="button"
-          onClick={() => setManagingVariants(true)}
-          className="rounded-lg px-2.5 py-1 text-sm font-semibold text-brand-strong transition-colors hover:bg-brand-tint"
-        >
-          Varian
-        </button>
-        <button
-          type="button"
           onClick={() => setEditing(true)}
           className="rounded-lg px-2.5 py-1 text-sm font-semibold text-brand-strong transition-colors hover:bg-brand-tint"
         >
@@ -99,22 +90,6 @@ export function ProductListItem({
             onChanged();
           }}
           onCancel={() => setEditing(false)}
-        />
-      </Modal>
-
-      <Modal
-        open={managingVariants}
-        onClose={() => setManagingVariants(false)}
-        title="Varian Item"
-      >
-        <ProductVariantManager
-          productId={product.id}
-          productName={product.name}
-          onDone={() => {
-            setManagingVariants(false);
-            onChanged();
-          }}
-          onCancel={() => setManagingVariants(false)}
         />
       </Modal>
     </Card>

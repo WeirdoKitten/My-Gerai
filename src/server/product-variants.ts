@@ -17,7 +17,7 @@ import type {
   SaveProductVariantGroupsResult,
 } from "@/types/product";
 
-/** Grup varian + pilihannya milik sebuah Item — dipakai isi form `ProductVariantManager`. */
+/** Grup varian + pilihannya milik sebuah Item — dipakai isi form `ProductForm` (lewat `ProductVariantEditor`). */
 export async function getProductVariantGroups(
   productId: string,
 ): Promise<ProductVariantGroupView[]> {

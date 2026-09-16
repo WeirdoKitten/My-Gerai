@@ -1,85 +1,70 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import {
-  getProductVariantGroups,
-  saveProductVariantGroups,
-} from "@/server/product-variants";
 
 // `localId` cuma buat React key (bukan dikirim ke server) — grup/opsi baru
 // belum punya id DB, dan replace-all di server tidak butuh id sama sekali.
-type EditableOption = { localId: string; name: string; priceDelta: string };
-type EditableGroup = {
+export type EditableVariantOption = {
   localId: string;
   name: string;
-  options: EditableOption[];
+  priceDelta: string;
+};
+export type EditableVariantGroup = {
+  localId: string;
+  name: string;
+  options: EditableVariantOption[];
 };
 
-function blankOption(): EditableOption {
+function blankOption(): EditableVariantOption {
   return { localId: crypto.randomUUID(), name: "", priceDelta: "0" };
 }
 
-export function ProductVariantManager({
-  productId,
-  productName,
-  onDone,
-  onCancel,
+export function blankVariantGroup(): EditableVariantGroup {
+  return { localId: crypto.randomUUID(), name: "", options: [blankOption()] };
+}
+
+/** Konversi state editor jadi input siap kirim ke `saveProductVariantGroups`. */
+export function toVariantGroupsInput(groups: EditableVariantGroup[]) {
+  return groups.map((group) => ({
+    name: group.name,
+    options: group.options.map((option) => ({
+      name: option.name,
+      priceDelta:
+        option.priceDelta.trim() === "" ? 0 : Number(option.priceDelta),
+    })),
+  }));
+}
+
+/**
+ * Editor grup varian Item — controlled, tidak fetch/submit sendiri. Dipakai
+ * inline di dalam `ProductForm` (popup Tambah/Ubah Item) supaya varian
+ * tersimpan dalam satu langkah "Simpan" yang sama dengan field Item lainnya.
+ */
+export function ProductVariantEditor({
+  groups,
+  onChange,
 }: {
-  productId: string;
-  productName: string;
-  onDone: () => void;
-  onCancel: () => void;
+  groups: EditableVariantGroup[];
+  onChange: (groups: EditableVariantGroup[]) => void;
 }) {
-  const [groups, setGroups] = useState<EditableGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    getProductVariantGroups(productId).then((loaded) => {
-      if (cancelled) return;
-      setGroups(
-        loaded.map((group) => ({
-          localId: crypto.randomUUID(),
-          name: group.name,
-          options: group.options.map((option) => ({
-            localId: crypto.randomUUID(),
-            name: option.name,
-            priceDelta: String(option.priceDelta),
-          })),
-        })),
-      );
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [productId]);
-
   function addGroup() {
-    setGroups((prev) => [
-      ...prev,
-      { localId: crypto.randomUUID(), name: "", options: [blankOption()] },
-    ]);
+    onChange([...groups, blankVariantGroup()]);
   }
 
   function removeGroup(groupIndex: number) {
-    setGroups((prev) => prev.filter((_, i) => i !== groupIndex));
+    onChange(groups.filter((_, i) => i !== groupIndex));
   }
 
   function updateGroupName(groupIndex: number, name: string) {
-    setGroups((prev) =>
-      prev.map((group, i) => (i === groupIndex ? { ...group, name } : group)),
+    onChange(
+      groups.map((group, i) => (i === groupIndex ? { ...group, name } : group)),
     );
   }
 
   function addOption(groupIndex: number) {
-    setGroups((prev) =>
-      prev.map((group, i) =>
+    onChange(
+      groups.map((group, i) =>
         i === groupIndex
           ? { ...group, options: [...group.options, blankOption()] }
           : group,
@@ -88,8 +73,8 @@ export function ProductVariantManager({
   }
 
   function removeOption(groupIndex: number, optionIndex: number) {
-    setGroups((prev) =>
-      prev.map((group, i) =>
+    onChange(
+      groups.map((group, i) =>
         i === groupIndex
           ? {
               ...group,
@@ -106,8 +91,8 @@ export function ProductVariantManager({
     field: "name" | "priceDelta",
     value: string,
   ) {
-    setGroups((prev) =>
-      prev.map((group, i) =>
+    onChange(
+      groups.map((group, i) =>
         i === groupIndex
           ? {
               ...group,
@@ -120,44 +105,8 @@ export function ProductVariantManager({
     );
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-
-    const result = await saveProductVariantGroups({
-      productId,
-      groups: groups.map((group) => ({
-        name: group.name,
-        options: group.options.map((option) => ({
-          name: option.name,
-          priceDelta:
-            option.priceDelta.trim() === "" ? 0 : Number(option.priceDelta),
-        })),
-      })),
-    });
-
-    if (!result.ok) {
-      setError(result.message ?? "Gagal menyimpan varian.");
-      setSubmitting(false);
-      return;
-    }
-    onDone();
-  }
-
-  if (loading) {
-    return <p className="text-sm text-ink-muted">Memuat...</p>;
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="text-sm text-ink-muted">
-        Atur pilihan varian untuk{" "}
-        <span className="font-semibold">{productName}</span> — mis. Level Pedas,
-        Ukuran, atau Warna. Kosongkan semua grup untuk menghapus varian dari
-        Item ini.
-      </p>
-
+    <div className="flex flex-col gap-3">
       {groups.map((group, groupIndex) => (
         <div
           key={group.localId}
@@ -244,19 +193,9 @@ export function ProductVariantManager({
         </div>
       ))}
 
-      <Button type="button" variant="secondary" onClick={addGroup}>
+      <Button type="button" variant="secondary" size="sm" onClick={addGroup}>
         + Tambah Grup Varian
       </Button>
-
-      {error ? <Alert tone="error">{error}</Alert> : null}
-      <div className="flex gap-2">
-        <Button type="submit" fullWidth loading={submitting}>
-          {submitting ? "Menyimpan..." : "Simpan"}
-        </Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Batal
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }
