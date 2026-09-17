@@ -1,9 +1,11 @@
 import type { Route } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { MerchantProfileForm } from "@/components/merchant/MerchantProfileForm";
 import { SoundSettingRow } from "@/components/merchant/SoundSettingRow";
 import { ArrowRightIcon, ClockIcon, WalletIcon } from "@/components/ui/icons";
 import { getMerchantProfile } from "@/server/merchants";
+import { hasAnyProduct } from "@/server/products";
 
 function SettingsLinkRow({
   href,
@@ -29,6 +31,8 @@ function SettingsLinkRow({
 }
 
 export default async function MerchantProfilePage() {
+  if (!(await hasAnyProduct())) redirect("/dashboard/produk");
+
   const profile = await getMerchantProfile();
   if (!profile) return null;
 

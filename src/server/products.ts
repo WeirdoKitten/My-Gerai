@@ -193,6 +193,18 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
   }));
 }
 
+/** Lapak sudah punya minimal 1 Item? Dipakai gate onboarding di dashboard. */
+export async function hasAnyProduct(): Promise<boolean> {
+  const session = await getMerchantSession();
+  if (!session) return false;
+
+  const existing = await db.query.products.findFirst({
+    where: eq(products.merchantId, session.merchantId),
+    columns: { id: true },
+  });
+  return !!existing;
+}
+
 export async function createProduct(
   input: CreateProductInput,
 ): Promise<CreateProductResult> {

@@ -1,7 +1,11 @@
+import { redirect } from "next/navigation";
 import { MerchantOrderHistoryList } from "@/components/merchant/MerchantOrderHistoryList";
 import { listMerchantOrderHistory } from "@/server/orders";
+import { hasAnyProduct } from "@/server/products";
 
 export default async function MerchantOrderHistoryPage() {
+  if (!(await hasAnyProduct())) redirect("/dashboard/produk");
+
   const orders = await listMerchantOrderHistory();
 
   return (

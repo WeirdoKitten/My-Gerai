@@ -1,9 +1,13 @@
+import { redirect } from "next/navigation";
 import { MerchantOrderList } from "@/components/merchant/MerchantOrderList";
 import { OpenToggle } from "@/components/merchant/OpenToggle";
 import { getMerchantOpenStatus } from "@/server/merchants";
 import { listMerchantOrders } from "@/server/orders";
+import { hasAnyProduct } from "@/server/products";
 
 export default async function MerchantDashboardPage() {
+  if (!(await hasAnyProduct())) redirect("/dashboard/produk");
+
   const [orders, openStatus] = await Promise.all([
     listMerchantOrders(),
     getMerchantOpenStatus(),

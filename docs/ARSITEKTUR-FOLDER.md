@@ -30,6 +30,7 @@
 │   │   ├── (merchant)/
 │   │   │   ├── login/page.tsx
 │   │   │   ├── daftar/page.tsx                # Onboarding Pedagang baru
+│   │   │   ├── daftar/status/page.tsx         # Status pendaftaran (menunggu approval Admin)
 │   │   │   └── dashboard/
 │   │   │       ├── page.tsx                   # Daftar Pesanan masuk (polling)
 │   │   │       ├── riwayat/page.tsx           # Riwayat Pesanan (status akhir, read-only) — tab terpisah
