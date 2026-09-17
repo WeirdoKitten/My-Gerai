@@ -19,6 +19,7 @@ import {
 } from "@/lib/rate-limit/limiter";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveQrisPhoto } from "@/lib/upload/storage";
+import { findNearestArea } from "@/lib/utils/geo";
 import { buildMenuQrPoster } from "@/lib/utils/qr-poster";
 import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
 import {
@@ -40,6 +41,7 @@ import {
   setOperatingHoursSchema,
 } from "@/lib/validation/merchant-hours.schema";
 import { getActivePlatformConfig } from "@/server/config";
+import { listServiceAreas } from "@/server/service-areas";
 import type {
   AdminMerchantView,
   ApproveMerchantResult,
@@ -410,25 +412,42 @@ export async function getMerchantQrMenu(): Promise<QrMenuView | null> {
  * Lapak yang sudah disetujui — showcase publik di landing page, TANPA sesi.
  * Terbaru gabung duluan, dibatasi {@link PUBLIC_SHOWCASE_LIMIT}. Field
  * dibatasi ketat (lihat `PublicMerchantListItem`) — tidak ada phone/alamat/
- * status internal, cuma yang aman dilihat siapa saja.
+ * status internal, cuma yang aman dilihat siapa saja. Area (`areaId`/
+ * `areaName`) dihitung lazy di sini lewat `findNearestArea` -- tidak
+ * disimpan di `merchants`, jadi perubahan Area oleh Admin langsung berlaku.
  */
 export async function listApprovedMerchants(): Promise<
   PublicMerchantListItem[]
 > {
-  const rows = await db.query.merchants.findMany({
-    where: eq(merchants.status, "approved"),
-    orderBy: (row, { desc }) => [desc(row.createdAt)],
-    limit: PUBLIC_SHOWCASE_LIMIT,
-  });
+  const [rows, areas] = await Promise.all([
+    db.query.merchants.findMany({
+      where: eq(merchants.status, "approved"),
+      orderBy: (row, { desc }) => [desc(row.createdAt)],
+      limit: PUBLIC_SHOWCASE_LIMIT,
+    }),
+    listServiceAreas(),
+  ]);
 
-  return rows.map((row) => ({
-    slug: row.slug,
-    stallName: row.stallName,
-    category: row.category,
-    photoUrl: row.photoUrl,
-    latitude: row.latitude,
-    longitude: row.longitude,
-  }));
+  return rows.map((row) => {
+    const area =
+      row.latitude != null && row.longitude != null
+        ? findNearestArea(
+            { latitude: row.latitude, longitude: row.longitude },
+            areas,
+          )
+        : null;
+
+    return {
+      slug: row.slug,
+      stallName: row.stallName,
+      category: row.category,
+      photoUrl: row.photoUrl,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      areaId: area?.id ?? null,
+      areaName: area?.name ?? null,
+    };
+  });
 }
 
 /** Semua Pedagang (untuk panel Admin) — otorisasi via sesi Admin. */

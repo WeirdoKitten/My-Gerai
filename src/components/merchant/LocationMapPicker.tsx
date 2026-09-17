@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useState } from "react";
 import {
+  Circle,
   MapContainer,
   Marker,
   TileLayer,
@@ -49,9 +50,12 @@ function RecenterOnChange({ target }: { target: Coordinates | null }) {
 export function LocationMapPicker({
   value,
   onChange,
+  radiusKm,
 }: {
   value: Coordinates | null;
   onChange: (coords: Coordinates | null) => void;
+  /** Opsional -- kalau diisi, gambar lingkaran radius (km) di sekitar `value` (dipakai Admin memilih cakupan Area Lapak). */
+  radiusKm?: number;
 }) {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
@@ -112,6 +116,13 @@ export function LocationMapPicker({
                   onChange({ latitude: pos.lat, longitude: pos.lng });
                 },
               }}
+            />
+          ) : null}
+          {value && radiusKm ? (
+            <Circle
+              center={[value.latitude, value.longitude]}
+              radius={radiusKm * 1000}
+              pathOptions={{ color: "#ea580c", fillOpacity: 0.12 }}
             />
           ) : null}
         </MapContainer>

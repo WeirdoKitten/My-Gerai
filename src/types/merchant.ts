@@ -77,7 +77,10 @@ export type PublicMerchantListItem = {
   stallName: string;
   category: string;
   photoUrl: string | null;
-  /** null = Lapak belum pasang titik lokasi -> tidak ikut sortir/filter jarak. */
+  /** null = Lapak belum pasang titik lokasi -> tidak ikut pengelompokan area. */
   latitude: number | null;
   longitude: number | null;
+  /** Area (dari `service_areas`) yang mencakup titik Lapak ini -- lihat `findNearestArea`. null = belum masuk area mana pun. */
+  areaId: string | null;
+  areaName: string | null;
 };

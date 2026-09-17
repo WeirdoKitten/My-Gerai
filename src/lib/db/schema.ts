@@ -100,10 +100,12 @@ export const merchants = pgTable("merchants", {
   /**
    * Titik GPS Lapak (opsional, diisi Pedagang lewat map picker di profil).
    * `null` = belum pernah diisi -> dianggap "lokasi tidak diketahui", tidak
-   * ikut sortir/filter jarak di landing page (lihat listApprovedMerchants).
-   * Selalu diisi/dikosongkan BERSAMAAN (divalidasi di
-   * updateMerchantProfileSchema) -- tidak ada CHECK constraint DB terpisah,
-   * cukup app-level (skala kaki lima, KISS).
+   * ikut pengelompokan area di landing page. Dicocokkan lazy ke `serviceAreas`
+   * terdekat oleh `listApprovedMerchants` (lihat `findNearestArea` di
+   * src/lib/utils/geo.ts) -- tidak disimpan sebagai FK supaya perubahan area
+   * oleh Admin langsung berlaku tanpa migrasi data. Selalu diisi/dikosongkan
+   * BERSAMAAN (divalidasi di updateMerchantProfileSchema) -- tidak ada CHECK
+   * constraint DB terpisah, cukup app-level (skala kaki lima, KISS).
    */
   latitude: doublePrecision(),
   longitude: doublePrecision(),
@@ -336,6 +338,22 @@ export const platformConfig = pgTable("platform_config", {
   key: text().notNull(),
   value: text().notNull(),
   effectiveFrom: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Area Lapak (mis. "Baleendah") — dikelola Admin lewat pola replace-all
+ * (`saveServiceAreas`, sama seperti `merchantOperatingHours`), BUKAN riwayat
+ * seperti `platformConfig`. Tanpa FK ke `merchants` -- keanggotaan Lapak ke
+ * suatu area dihitung lazy (nearest-center kalau radius tumpang tindih) oleh
+ * `listApprovedMerchants` lewat `findNearestArea` (src/lib/utils/geo.ts).
+ */
+export const serviceAreas = pgTable("service_areas", {
+  id: uuid().primaryKey().defaultRandom(),
+  name: text().notNull(),
+  centerLatitude: doublePrecision().notNull(),
+  centerLongitude: doublePrecision().notNull(),
+  radiusKm: doublePrecision().notNull(),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
 /**

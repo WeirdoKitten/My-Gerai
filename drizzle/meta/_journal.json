@@ -71,6 +71,13 @@
       "when": 1789611004977,
       "tag": "0009_same_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789615797227,
+      "tag": "0010_friendly_maestro",
+      "breakpoints": true
     }
   ]
 }
