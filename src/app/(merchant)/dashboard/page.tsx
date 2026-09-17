@@ -4,7 +4,7 @@ import { getMerchantOpenStatus } from "@/server/merchants";
 import { listMerchantOrders } from "@/server/orders";
 
 export default async function MerchantDashboardPage() {
-  const [orders, openStatus] = await Promise.all([
+  const [{ orders, totalActive }, openStatus] = await Promise.all([
     listMerchantOrders(),
     getMerchantOpenStatus(),
   ]);
@@ -13,7 +13,10 @@ export default async function MerchantDashboardPage() {
     <div className="flex flex-col gap-3">
       <OpenToggle initialIsOpen={openStatus?.isOpen ?? true} />
       <h2 className="text-lg font-semibold text-ink">Pesanan Masuk</h2>
-      <MerchantOrderList initialOrders={orders} />
+      <MerchantOrderList
+        initialOrders={orders}
+        initialTotalActive={totalActive}
+      />
     </div>
   );
 }
