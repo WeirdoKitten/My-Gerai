@@ -1,21 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { registerMerchant } from "@/server/merchants";
 
 export function RegisterMerchantForm() {
+  const router = useRouter();
   const [stallName, setStallName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [category, setCategory] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,19 +36,7 @@ export function RegisterMerchantForm() {
       setSubmitting(false);
       return;
     }
-    setSuccessMessage(result.message);
-    setSubmitting(false);
-  }
-
-  if (successMessage) {
-    return (
-      <div className="flex flex-col gap-3">
-        <Alert tone="success">{successMessage}</Alert>
-        <ButtonLink href="/login" variant="secondary" fullWidth>
-          Ke halaman Masuk
-        </ButtonLink>
-      </div>
-    );
+    router.push("/daftar/status");
   }
 
   return (

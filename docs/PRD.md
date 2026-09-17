@@ -103,8 +103,8 @@ sequenceDiagram
 
 1. Buka halaman daftar Pedagang → isi nama Lapak, kategori, nama pemilik, kontak (nomor HP), foto/banner.
 2. Buat akun (nomor HP + password — lihat [TEKNOLOGI.md](TEKNOLOGI.md#autentikasi) untuk alasan tanpa OTP di MVP).
-3. Status Lapak `pending` → menunggu Admin approve.
-4. Setelah `approved` → Pedagang bisa login ke dashboard, tambah Item, dan **QR Menu** aktif (bisa didownload/dicetak).
+3. Status Lapak `pending` → diarahkan ke halaman status pendaftaran (`/daftar/status`, bisa dibuka ulang lewat reload/bookmark) yang menjelaskan Lapak sedang ditinjau Admin.
+4. Setelah `approved` → Pedagang bisa login. Selama Lapak **belum punya Item sama sekali**, semua halaman dashboard otomatis mengarahkan ke "tambah Item" (satu-satunya langkah wajib sebelum Lapak siap dipakai) — begitu Item pertama tersimpan, muncul konfirmasi + link ke QR Menu, dan seluruh dashboard terbuka normal.
 5. Pesanan yang masuk sebelum approve tidak mungkin terjadi (QR belum aktif/tidak bisa diakses publik).
 
 ### 6.3. Alur Admin

@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { SalesReportView } from "@/components/merchant/SalesReportView";
+import { hasAnyProduct } from "@/server/products";
 import { getMerchantSalesReport } from "@/server/reports";
 
 export default async function MerchantReportPage({
@@ -6,6 +8,8 @@ export default async function MerchantReportPage({
 }: {
   searchParams: Promise<{ periode?: string }>;
 }) {
+  if (!(await hasAnyProduct())) redirect("/dashboard/produk");
+
   const { periode } = await searchParams;
   const report = await getMerchantSalesReport(periode ?? "7_hari");
   if (!report) return null;

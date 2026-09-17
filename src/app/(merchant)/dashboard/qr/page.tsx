@@ -1,7 +1,11 @@
+import { redirect } from "next/navigation";
 import { QrMenuCard } from "@/components/merchant/QrMenuCard";
 import { getMerchantQrMenu } from "@/server/merchants";
+import { hasAnyProduct } from "@/server/products";
 
 export default async function MerchantQrPage() {
+  if (!(await hasAnyProduct())) redirect("/dashboard/produk");
+
   const qr = await getMerchantQrMenu();
 
   return (

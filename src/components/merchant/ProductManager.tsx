@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/ButtonLink";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ImageOffIcon, PlusIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
@@ -17,6 +18,7 @@ export function ProductManager({
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [showForm, setShowForm] = useState(false);
+  const [justAddedFirstProduct, setJustAddedFirstProduct] = useState(false);
 
   async function refresh() {
     setProducts(await listMerchantProducts());
@@ -59,11 +61,38 @@ export function ProductManager({
       >
         <ProductForm
           onDone={async () => {
+            const wasFirstProduct = products.length === 0;
             setShowForm(false);
             await refresh();
+            if (wasFirstProduct) setJustAddedFirstProduct(true);
           }}
           onCancel={() => setShowForm(false)}
         />
+      </Modal>
+
+      <Modal
+        open={justAddedFirstProduct}
+        onClose={() => setJustAddedFirstProduct(false)}
+        title="Item Pertama Ditambahkan"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-ink-muted">
+            Lapak kamu sekarang bisa menerima Pesanan. Cetak atau bagikan QR
+            Menu supaya Pembeli bisa mulai memesan.
+          </p>
+          <div className="flex gap-2">
+            <ButtonLink href="/dashboard/qr" fullWidth>
+              Lihat QR Menu
+            </ButtonLink>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setJustAddedFirstProduct(false)}
+            >
+              Lanjut
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

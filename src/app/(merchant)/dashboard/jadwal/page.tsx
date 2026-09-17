@@ -1,10 +1,14 @@
+import { redirect } from "next/navigation";
 import { OperatingHoursForm } from "@/components/merchant/OperatingHoursForm";
 import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/utils/cn";
 import { formatDateTime } from "@/lib/utils/datetime";
 import { getMerchantOpenStatus } from "@/server/merchants";
+import { hasAnyProduct } from "@/server/products";
 
 export default async function MerchantSchedulePage() {
+  if (!(await hasAnyProduct())) redirect("/dashboard/produk");
+
   const status = await getMerchantOpenStatus();
   if (!status) return null;
 
@@ -12,7 +16,8 @@ export default async function MerchantSchedulePage() {
     <div className="flex flex-col gap-4">
       <h2 className="text-lg font-semibold text-ink">Jadwal Operasional</h2>
       <p className="text-sm text-ink-muted">
-        Kalau jadwal sudah diatur, status buka/tutup di halaman pesanan mengikutinya otomatis, tidak perlu ubah status manual tiap hari.
+        Kalau jadwal sudah diatur, status buka/tutup di halaman pesanan
+        mengikutinya otomatis, tidak perlu ubah status manual tiap hari.
       </p>
 
       <Alert

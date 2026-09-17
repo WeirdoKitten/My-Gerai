@@ -1,10 +1,14 @@
+import { redirect } from "next/navigation";
 import { PaymentModeSection } from "@/components/merchant/PaymentModeSection";
 import { ServiceFeeInvoiceList } from "@/components/merchant/ServiceFeeInvoiceList";
 import { Alert } from "@/components/ui/Alert";
 import { getMerchantPaymentSettings } from "@/server/merchants";
+import { hasAnyProduct } from "@/server/products";
 import { listMerchantServiceFeeInvoices } from "@/server/service-fee-invoices";
 
 export default async function MerchantPaymentPage() {
+  if (!(await hasAnyProduct())) redirect("/dashboard/produk");
+
   const [settings, invoices] = await Promise.all([
     getMerchantPaymentSettings(),
     listMerchantServiceFeeInvoices(),
