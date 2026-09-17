@@ -5,130 +5,86 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Reveal } from "@/components/landing/Reveal";
 import { TiltCard } from "@/components/landing/TiltCard";
-import { Button } from "@/components/ui/Button";
 import { ChevronDownIcon, StoreIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
-import {
-  type Coordinates,
-  formatDistanceKm,
-  haversineDistanceKm,
-} from "@/lib/utils/geo";
 import type { PublicMerchantListItem } from "@/types/merchant";
 
-type RadiusFilter = "all" | 1 | 3 | 5;
+type AreaFilter = "all" | "none" | string;
 
-const RADIUS_OPTIONS: { label: string; value: RadiusFilter }[] = [
-  { label: "Semua", value: "all" },
-  { label: "< 1 km", value: 1 },
-  { label: "< 3 km", value: 3 },
-  { label: "< 5 km", value: 5 },
-];
-
-type MerchantWithDistance = PublicMerchantListItem & {
-  distanceKm: number | null;
-};
+type AreaChip = { id: string; name: string; count: number };
 
 export function MerchantShowcase({
   merchants,
 }: {
   merchants: PublicMerchantListItem[];
 }) {
-  const [userCoords, setUserCoords] = useState<Coordinates | null>(null);
-  const [geoState, setGeoState] = useState<
-    "idle" | "loading" | "granted" | "denied"
-  >("idle");
-  const [radiusFilter, setRadiusFilter] = useState<RadiusFilter>("all");
+  const [selectedArea, setSelectedArea] = useState<AreaFilter>("all");
 
-  function handleSortByDistance() {
-    if (!navigator.geolocation) {
-      setGeoState("denied");
-      return;
+  // Chip cuma muncul kalau Admin sudah bikin minimal 1 Area (lihat
+  // /admin/areas) dan minimal 1 Lapak match ke area itu -- kalau belum ada
+  // area sama sekali, landing page tampil grid polos seperti sebelumnya.
+  const { areaChips, unassignedCount } = useMemo(() => {
+    const byArea = new Map<string, AreaChip>();
+    let unassigned = 0;
+    for (const merchant of merchants) {
+      if (merchant.areaId && merchant.areaName) {
+        const existing = byArea.get(merchant.areaId);
+        if (existing) existing.count += 1;
+        else
+          byArea.set(merchant.areaId, {
+            id: merchant.areaId,
+            name: merchant.areaName,
+            count: 1,
+          });
+      } else {
+        unassigned += 1;
+      }
     }
-    setGeoState("loading");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserCoords({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        setGeoState("granted");
-      },
-      () => setGeoState("denied"),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }
-
-  // Lapak tanpa koordinat tetap tampil, cuma dideprioritaskan ke akhir list
-  // (bukan disembunyikan) -- lihat Fase 8 di BACKLOG.md.
-  const sortedMerchants = useMemo<MerchantWithDistance[]>(() => {
-    if (!userCoords) return merchants.map((m) => ({ ...m, distanceKm: null }));
-
-    const withDistance: MerchantWithDistance[] = merchants.map((m) => ({
-      ...m,
-      distanceKm:
-        m.latitude != null && m.longitude != null
-          ? haversineDistanceKm(userCoords, {
-              latitude: m.latitude,
-              longitude: m.longitude,
-            })
-          : null,
-    }));
-
-    const located = withDistance
-      .filter((m) => m.distanceKm != null)
-      .sort((a, b) => (a.distanceKm as number) - (b.distanceKm as number));
-    const unlocated = withDistance.filter((m) => m.distanceKm == null);
-    return [...located, ...unlocated];
-  }, [merchants, userCoords]);
+    return {
+      areaChips: Array.from(byArea.values()).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+      unassignedCount: unassigned,
+    };
+  }, [merchants]);
 
   const visibleMerchants = useMemo(() => {
-    if (radiusFilter === "all" || !userCoords) return sortedMerchants;
-    return sortedMerchants.filter(
-      (m) => m.distanceKm != null && m.distanceKm <= radiusFilter,
-    );
-  }, [sortedMerchants, radiusFilter, userCoords]);
+    if (selectedArea === "all") return merchants;
+    if (selectedArea === "none")
+      return merchants.filter((merchant) => !merchant.areaId);
+    return merchants.filter((merchant) => merchant.areaId === selectedArea);
+  }, [merchants, selectedArea]);
 
   return (
     <div className="mt-16">
-      <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          loading={geoState === "loading"}
-          onClick={handleSortByDistance}
-        >
-          Urutkan berdasarkan jarak terdekat
-        </Button>
-        {geoState === "granted" ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {RADIUS_OPTIONS.map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                onClick={() => setRadiusFilter(option.value)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
-                  radiusFilter === option.value
-                    ? "bg-brand-strong text-white"
-                    : "bg-brand-tint text-brand-strong hover:bg-brand-tint/70",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        {geoState === "denied" ? (
-          <span className="text-xs text-ink-muted">
-            Tidak bisa akses lokasi — menampilkan urutan biasa.
-          </span>
-        ) : null}
-      </div>
+      {areaChips.length > 0 ? (
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-1.5">
+          <AreaChipButton
+            label={`Semua (${merchants.length})`}
+            active={selectedArea === "all"}
+            onClick={() => setSelectedArea("all")}
+          />
+          {areaChips.map((area) => (
+            <AreaChipButton
+              key={area.id}
+              label={`${area.name} (${area.count})`}
+              active={selectedArea === area.id}
+              onClick={() => setSelectedArea(area.id)}
+            />
+          ))}
+          {unassignedCount > 0 ? (
+            <AreaChipButton
+              label={`Lainnya (${unassignedCount})`}
+              active={selectedArea === "none"}
+              onClick={() => setSelectedArea("none")}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {visibleMerchants.length === 0 ? (
         <p className="text-center text-sm text-ink-muted">
-          Tidak ada Lapak dalam radius ini.
+          Tidak ada Lapak di area ini.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -162,9 +118,7 @@ export function MerchantShowcase({
                       <div className="mt-1.5 flex items-center justify-between gap-2">
                         <p className="truncate text-sm text-white/80">
                           {merchant.category}
-                          {merchant.distanceKm != null
-                            ? ` · ${formatDistanceKm(merchant.distanceKm)}`
-                            : ""}
+                          {merchant.areaName ? ` · ${merchant.areaName}` : ""}
                         </p>
                         <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-white/90">
                           Lihat Menu
@@ -180,5 +134,30 @@ export function MerchantShowcase({
         </div>
       )}
     </div>
+  );
+}
+
+function AreaChipButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+        active
+          ? "bg-brand-strong text-white"
+          : "bg-brand-tint text-brand-strong hover:bg-brand-tint/70",
+      )}
+    >
+      {label}
+    </button>
   );
 }

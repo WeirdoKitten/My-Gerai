@@ -26,3 +26,33 @@ export function formatDistanceKm(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} m`;
   return `${km.toLocaleString("id-ID", { maximumFractionDigits: 1 })} km`;
 }
+
+/**
+ * Area (lingkaran pusat+radius) yang mencakup satu titik -- kalau lebih dari
+ * satu area tumpang tindih, menang yang titik tengahnya paling dekat
+ * (keputusan User). `null` kalau tidak ada area yang mencakup titik itu atau
+ * `areas` kosong.
+ */
+export function findNearestArea<
+  T extends {
+    centerLatitude: number;
+    centerLongitude: number;
+    radiusKm: number;
+  },
+>(point: Coordinates, areas: T[]): T | null {
+  let nearest: T | null = null;
+  let nearestDistanceKm = Number.POSITIVE_INFINITY;
+
+  for (const area of areas) {
+    const distanceKm = haversineDistanceKm(point, {
+      latitude: area.centerLatitude,
+      longitude: area.centerLongitude,
+    });
+    if (distanceKm <= area.radiusKm && distanceKm < nearestDistanceKm) {
+      nearest = area;
+      nearestDistanceKm = distanceKm;
+    }
+  }
+
+  return nearest;
+}

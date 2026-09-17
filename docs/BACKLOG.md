@@ -256,9 +256,11 @@
 - [x] `tsc --noEmit` / `pnpm lint` / `pnpm build` lulus di setiap tahap.
 - [ ] **`/security-review`** — jalankan setelah commit (menyentuh uang, upload, webhook — Rule 8).
 
-## Fase 8 — Lokasi GPS Lapak ✅
+## Fase 8 — Lokasi GPS Lapak ✅ (UI sortir-jarak digantikan Fase 9)
 
 > User minta Pembeli bisa lihat lokasi Lapak di landing page (section "Gerai Terdaftar") supaya tahu di mana lapaknya, sekaligus Lapak bisa "dikelompokkan" berdasarkan area — dikonfirmasi User (AskUserQuestion, 2026-09-17): metode grouping **otomatis by jarak GPS** (bukan label area manual), peta pakai **Leaflet + OpenStreetMap** (gratis, cocok skala kaki lima, bukan Google Maps berbayar), landing page **perluas showcase yang sudah ada** (bukan halaman direktori baru). Diwujudkan sebagai sortir jarak terdekat + filter radius dari lokasi Pembeli sendiri (client-side, opsional, tidak pernah jadi syarat). Ini juga menuntaskan item lama di §5 PRD yang sebelumnya menulis hal ini sebagai di luar-scope.
+>
+> **Update 2026-09-17**: setelah dipakai, User minta model pengelompokan yang berbeda (Admin yang tentukan area bernama, bukan Pembeli yang beri izin lokasi) — lihat **Fase 9** di bawah. Tombol "Urutkan jarak terdekat"/filter radius/badge jarak di `MerchantShowcase.tsx` yang dibangun di fase ini **sudah diganti total**. Skema `merchants.latitude`/`longitude` dari fase ini **tetap dipakai** (jadi input `findNearestArea` di Fase 9).
 
 **Skema DB (migrasi `0009_same_zaran.sql`)**
 - [x] `merchants`: kolom baru `latitude`/`longitude` (`doublePrecision`, nullable, tanpa default — baris lama otomatis `NULL` = lokasi belum diisi).
@@ -276,6 +278,29 @@
 - [x] Unit test baru `tests/unit/geo.test.ts` (4 test). `pnpm test` (109 total) lulus.
 - [x] Manual (Playwright ad-hoc, bukan cuma baca kode): profil pasang pin via klik peta → simpan → reload → koordinat identik. Tombol "Pakai lokasi saya sekarang" (geolocation di-mock) → koordinat sesuai. Tombol "Hapus lokasi" → simpan → reload → kembali kosong. Landing page: tombol "Urutkan berdasarkan jarak terdekat" muncul & berfungsi (chip filter radius, tanpa error console) tanpa geolocation granted sekalipun (fallback graceful).
 - [x] `tsc --noEmit` / `pnpm build` lulus. `pnpm lint` bersih untuk semua file yang disentuh Fase 8 (73 error pra-existing di file lain karena CRLF line-ending, tidak terkait Fase 8 — lihat catatan di commit).
+
+## Fase 9 — Area Lapak (pengelompokan otomatis oleh Admin) ✅
+
+> Penerus langsung Fase 8: User minta model pengelompokan area yang berbeda — **Admin** yang mendefinisikan Area bernama (titik pusat + radius, mis. "Baleendah"), lalu **sistem otomatis mengelompokkan** tiap Lapak ke Area yang mencakup koordinatnya, tanpa Pedagang perlu mengetik nama area dan tanpa Pembeli perlu memberi izin lokasi sama sekali. Dikonfirmasi User (AskUserQuestion, 2026-09-17): **mengganti total** UI sortir-jarak Fase 8 (bukan berdampingan); kalau Lapak masuk beberapa Area yang tumpang tindih, menang **Area yang titik pusatnya paling dekat**.
+
+**Skema DB (migrasi `0010_friendly_maestro.sql`)**
+- [x] Tabel baru `service_areas` (`name`, `centerLatitude`, `centerLongitude`, `radiusKm`, `createdAt`) — tanpa FK ke `merchants` (keanggotaan dihitung lazy).
+- [x] Migrasi via `pnpm db:generate` (murni `CREATE TABLE`) ke **kedua** DB (`mygerai` dev + `mygerai_test` — dipelajari dari kelupaan yang sama di Fase 8, sempat bikin `pnpm test:e2e` gagal).
+
+**Kode**
+- [x] `src/lib/validation/service-area.schema.ts` baru — `serviceAreaSchema`/`saveServiceAreasSchema` (array, max 50 area).
+- [x] `src/types/service-area.ts` baru — `ServiceAreaView`, `SaveServiceAreasResult`.
+- [x] `src/server/service-areas.ts` baru — `listServiceAreas` (**publik, tanpa sesi**, dipakai landing page & Admin), `saveServiceAreas` (**Admin-only**, pola **replace-all** dalam transaction, sama seperti `setMerchantOperatingHours`).
+- [x] `findNearestArea` baru di `src/lib/utils/geo.ts` — nearest-center tie-break untuk area tumpang tindih, `null` kalau tidak match/daftar kosong.
+- [x] `listApprovedMerchants` (`src/server/merchants.ts`) hitung `areaId`/`areaName` per Lapak lewat `findNearestArea`; `PublicMerchantListItem` (`src/types/merchant.ts`) tambah kedua field itu (`latitude`/`longitude` tetap ada, tidak dipakai lagi di UI landing tapi tidak dihapus).
+- [x] `LocationMapPicker.tsx` — prop opsional baru `radiusKm` (gambar `<Circle>` react-leaflet sebagai pratinjau cakupan), dipakai Admin, tidak mengubah pemakaian existing di `MerchantProfileForm`.
+- [x] Admin baru: `/admin/areas` (`src/app/(admin)/admin/(dashboard)/areas/page.tsx`) + `ServiceAreaEditor.tsx`/`ServiceAreaManagerForm.tsx` (`src/components/admin/`, pola controlled-editor sama `ProductVariantEditor.tsx`) — tambah/hapus baris Area, satu tombol "Simpan Semua Area" untuk seluruh daftar. Nav baru "Area" (ikon `MapPinIcon` baru) di `(dashboard)/layout.tsx`.
+- [x] `MerchantShowcase.tsx` dirombak total: buang state/tombol/logika sortir-jarak Fase 8, ganti chip filter per Area (`Semua`/nama Area/`Lainnya`) dihitung langsung dari `areaId`/`areaName` yang sudah menempel di data merchant (tidak butuh geolocation Pembeli sama sekali). Chip cuma muncul kalau ada minimal 1 Area. Kartu tampilkan `· <nama Area>` menggantikan badge jarak.
+
+**Verifikasi**
+- [x] Unit test baru di `tests/unit/geo.test.ts` untuk `findNearestArea` (tumpang tindih menang area terdekat, di luar semua radius → null, daftar area kosong → null). `pnpm test` (113 total) lulus.
+- [x] Manual (Playwright ad-hoc): 2 Lapak demo dipasang lokasi berdekatan → Admin buat Area "Baleendah" mencakup keduanya → simpan → reload → area persisten → landing page tampilkan chip "Baleendah (2)" → klik memfilter tepat ke 2 Lapak itu, kartu menampilkan "· Baleendah". Admin hapus semua Area → landing page kembali ke grid polos tanpa baris chip (tanpa error console di semua langkah).
+- [x] `pnpm test:e2e` (7 test lama, regresi) tetap lulus. `tsc --noEmit` / `pnpm build` / `pnpm lint` (file yang disentuh Fase 9) lulus.
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 

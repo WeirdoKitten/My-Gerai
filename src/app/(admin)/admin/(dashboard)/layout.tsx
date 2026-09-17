@@ -8,6 +8,7 @@ import { logoutAdmin } from "@/server/admins";
 
 const NAV: NavItem[] = [
   { href: "/admin/merchants", label: "Pedagang", icon: "store" },
+  { href: "/admin/areas", label: "Area", icon: "map" },
   { href: "/admin/config", label: "Konfigurasi", icon: "settings" },
   { href: "/admin/payouts", label: "Pencairan", icon: "wallet" },
   { href: "/admin/invoices", label: "Tagihan", icon: "receipt" },

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   ChartIcon,
   HistoryIcon,
+  MapPinIcon,
   QrIcon,
   ReceiptIcon,
   SettingsIcon,
@@ -26,6 +27,7 @@ const ICONS = {
   wallet: WalletIcon,
   history: HistoryIcon,
   chart: ChartIcon,
+  map: MapPinIcon,
 } as const;
 
 export type NavItem = {
