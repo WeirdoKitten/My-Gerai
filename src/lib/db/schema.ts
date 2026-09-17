@@ -1,4 +1,5 @@
 import {
+  doublePrecision,
   integer,
   pgEnum,
   pgTable,
@@ -96,6 +97,16 @@ export const merchants = pgTable("merchants", {
   phone: text().notNull().unique(),
   passwordHash: text().notNull(),
   photoUrl: text(),
+  /**
+   * Titik GPS Lapak (opsional, diisi Pedagang lewat map picker di profil).
+   * `null` = belum pernah diisi -> dianggap "lokasi tidak diketahui", tidak
+   * ikut sortir/filter jarak di landing page (lihat listApprovedMerchants).
+   * Selalu diisi/dikosongkan BERSAMAAN (divalidasi di
+   * updateMerchantProfileSchema) -- tidak ada CHECK constraint DB terpisah,
+   * cukup app-level (skala kaki lima, KISS).
+   */
+  latitude: doublePrecision(),
+  longitude: doublePrecision(),
   status: merchantStatusEnum().notNull().default("pending"),
   payoutAccountInfo: text(),
   /** Wajib diisi Admin saat reject — ditampilkan ke Pedagang saat mereka coba login. */

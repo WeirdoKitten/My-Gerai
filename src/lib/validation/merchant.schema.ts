@@ -20,12 +20,37 @@ export const loginMerchantSchema = z.object({
 
 export type LoginMerchantInput = z.infer<typeof loginMerchantSchema>;
 
-export const updateMerchantProfileSchema = z.object({
-  stallName: z.string().trim().min(1, "Nama Lapak wajib diisi.").max(100),
-  ownerName: z.string().trim().min(1, "Nama Pedagang wajib diisi.").max(100),
-  category: z.string().trim().min(1, "Kategori wajib diisi.").max(50),
-  payoutAccountInfo: z.string().trim().max(300).optional(),
-});
+export const updateMerchantProfileSchema = z
+  .object({
+    stallName: z.string().trim().min(1, "Nama Lapak wajib diisi.").max(100),
+    ownerName: z.string().trim().min(1, "Nama Pedagang wajib diisi.").max(100),
+    category: z.string().trim().min(1, "Kategori wajib diisi.").max(50),
+    payoutAccountInfo: z.string().trim().max(300).optional(),
+    latitude: z
+      .number()
+      .min(-90, "Latitude tidak valid.")
+      .max(90, "Latitude tidak valid.")
+      .nullable()
+      .optional(),
+    longitude: z
+      .number()
+      .min(-180, "Longitude tidak valid.")
+      .max(180, "Longitude tidak valid.")
+      .nullable()
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      const hasLat = data.latitude != null;
+      const hasLng = data.longitude != null;
+      return hasLat === hasLng;
+    },
+    {
+      message:
+        "Titik lokasi GPS harus diisi keduanya (latitude & longitude) atau dikosongkan keduanya.",
+      path: ["latitude"],
+    },
+  );
 
 export type UpdateMerchantProfileInput = z.infer<
   typeof updateMerchantProfileSchema

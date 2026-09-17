@@ -53,6 +53,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - [ ] Pesanan yang tidak dibayar dalam waktu tertentu → `kedaluwarsa` otomatis (nilai waktu dapat dikonfigurasi Admin, default 15 menit).
 - [ ] Admin: approve/reject Pedagang baru, atur nominal **Biaya Layanan** (default Rp1.000/pesanan sukses), lihat daftar transaksi & **Saldo Pedagang**. **Pencairan berjalan otomatis** (batch harian via Midtrans Iris, Fase 6) — Admin hanya memantau riwayat, tidak mencatat manual.
 - [ ] Pedagang mengisi **info rekening/e-wallet pencairan** (tervalidasi) di profil — syarat agar Pencairan otomatis bisa jalan.
+- [ ] Pedagang opsional pasang **titik lokasi GPS** Lapak di profil (peta Leaflet + OpenStreetMap, klik/drag pin atau deteksi lokasi otomatis). Ditampilkan di landing page (section showcase "Gerai Terdaftar") supaya Pembeli tahu lokasi fisik Lapak; Pembeli juga bisa urutkan/filter Lapak berdasarkan jarak dari lokasinya sendiri (opsional, tidak pernah jadi syarat). Lihat [BACKLOG.md](BACKLOG.md) Fase 8, [DATA-MODEL.md](DATA-MODEL.md#merchants-pedaganglapak).
 
 ## 5. Di Luar Lingkup MVP (Out of Scope — dicatat sebagai ide masa depan di [BACKLOG.md](BACKLOG.md))
 
@@ -67,7 +68,6 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - Asisten/analitik berbasis **LLM** (tanya-jawab bahasa natural atas data penjualan) — asisten yang ada murni mesin aturan, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09.
 - Aplikasi mobile native (MVP = web saja, mobile-first).
 - Multi-bahasa (MVP: Bahasa Indonesia saja).
-- Pengelompokan Lapak per lokasi/pasar fisik.
 
 ## 6. Alur Pengguna
 

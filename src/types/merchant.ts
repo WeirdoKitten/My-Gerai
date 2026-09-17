@@ -19,6 +19,9 @@ export type MerchantProfileView = {
   /** Read-only di form profil (mengubah nomor HP = urusan auth, terpisah). */
   phone: string;
   payoutAccountInfo: string | null;
+  /** null = Pedagang belum pasang titik lokasi lewat map picker. */
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type UpdateMerchantProfileResult = { ok: boolean; message?: string };
@@ -74,4 +77,7 @@ export type PublicMerchantListItem = {
   stallName: string;
   category: string;
   photoUrl: string | null;
+  /** null = Lapak belum pasang titik lokasi -> tidak ikut sortir/filter jarak. */
+  latitude: number | null;
+  longitude: number | null;
 };

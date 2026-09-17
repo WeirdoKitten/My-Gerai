@@ -211,6 +211,8 @@ export async function getMerchantProfile(): Promise<MerchantProfileView | null> 
     category: merchant.category,
     phone: merchant.phone,
     payoutAccountInfo: merchant.payoutAccountInfo,
+    latitude: merchant.latitude,
+    longitude: merchant.longitude,
   };
 }
 
@@ -236,6 +238,8 @@ export async function updateMerchantProfile(
       ownerName: parsed.data.ownerName,
       category: parsed.data.category,
       payoutAccountInfo: parsed.data.payoutAccountInfo || null,
+      latitude: parsed.data.latitude ?? null,
+      longitude: parsed.data.longitude ?? null,
     })
     .where(eq(merchants.id, session.merchantId));
 
@@ -422,6 +426,8 @@ export async function listApprovedMerchants(): Promise<
     stallName: row.stallName,
     category: row.category,
     photoUrl: row.photoUrl,
+    latitude: row.latitude,
+    longitude: row.longitude,
   }));
 }
 

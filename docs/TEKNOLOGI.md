@@ -28,6 +28,7 @@
 | Validasi input | **Zod** | Skema validasi type-safe, dipakai di form & server action. |
 | Monitoring error (nanti) | **Sentry** (free tier) | Ditambahkan setelah MVP jalan, bukan blocker awal. |
 | QR Code generator | Library `qrcode` (Node) | Generate QR Menu (server-side) sebagai gambar untuk diunduh/dicetak Pedagang. |
+| Peta (titik lokasi Lapak, Fase 8) | **Leaflet + OpenStreetMap** (`leaflet` + `react-leaflet`) | Dipilih User (2026-09-17) atas Google Maps: gratis, tanpa API key/billing — cocok prinsip "cepat, ringan, minim biaya" untuk skala kaki lima. Dipakai **hanya** lewat `src/components/merchant/LocationMapPicker.tsx` (diimpor via `next/dynamic({ssr:false})`, Leaflet butuh `window`) — halaman lain nol dependency peta tambahan (code-split per komponen). **Trade-off**: tile OSM gratis (`tile.openstreetmap.org`) diberi kebijakan penggunaan wajar (Tile Usage Policy) — cukup untuk traffic kaki lima, tapi kalau volume Pembeli jauh lebih besar nanti, upgrade ke tile provider berbayar (mis. MapTiler/Stadia Maps) jadi opsi. Pencarian alamat/geocoding otomatis **tidak** disediakan — Pedagang pasang pin manual (klik/drag di peta) atau lewat `navigator.geolocation` browser. |
 
 ## Kenapa Bukan Alternatif Lain?
 
