@@ -1,5 +1,4 @@
-import Image from "next/image";
-import Link from "next/link";
+import { MerchantShowcase } from "@/components/buyer/MerchantShowcase";
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
 import { CursorGlow } from "@/components/landing/CursorGlow";
 import { Magnetic } from "@/components/landing/Magnetic";
@@ -395,53 +394,7 @@ export default async function Home() {
                 </p>
               </Reveal>
 
-              <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {approvedMerchants.map((merchant, index) => (
-                  <Reveal key={merchant.slug} delay={index * 0.08}>
-                    <Link
-                      href={`/menu/${merchant.slug}`}
-                      className="block h-full"
-                    >
-                      <TiltCard
-                        pad="none"
-                        elevated
-                        className="group flex h-full flex-col overflow-hidden"
-                      >
-                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-tint">
-                          {merchant.photoUrl ? (
-                            <Image
-                              src={merchant.photoUrl}
-                              alt={merchant.stallName}
-                              fill
-                              sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 90vw"
-                              className="object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                          ) : (
-                            <div className="flex size-full items-center justify-center bg-gradient-to-br from-brand-tint via-brand-tint to-brand/10">
-                              <StoreIcon className="size-16 text-brand/50" />
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                          <div className="absolute inset-x-0 bottom-0 p-5">
-                            <p className="line-clamp-2 text-xl font-bold leading-tight text-white">
-                              {merchant.stallName}
-                            </p>
-                            <div className="mt-1.5 flex items-center justify-between gap-2">
-                              <p className="truncate text-sm text-white/80">
-                                {merchant.category}
-                              </p>
-                              <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-white/90">
-                                Lihat Menu
-                                <ChevronDownIcon className="size-3.5 -rotate-90" />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </TiltCard>
-                    </Link>
-                  </Reveal>
-                ))}
-              </div>
+              <MerchantShowcase merchants={approvedMerchants} />
 
               <Reveal
                 delay={0.2}

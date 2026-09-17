@@ -256,6 +256,27 @@
 - [x] `tsc --noEmit` / `pnpm lint` / `pnpm build` lulus di setiap tahap.
 - [ ] **`/security-review`** — jalankan setelah commit (menyentuh uang, upload, webhook — Rule 8).
 
+## Fase 8 — Lokasi GPS Lapak ✅
+
+> User minta Pembeli bisa lihat lokasi Lapak di landing page (section "Gerai Terdaftar") supaya tahu di mana lapaknya, sekaligus Lapak bisa "dikelompokkan" berdasarkan area — dikonfirmasi User (AskUserQuestion, 2026-09-17): metode grouping **otomatis by jarak GPS** (bukan label area manual), peta pakai **Leaflet + OpenStreetMap** (gratis, cocok skala kaki lima, bukan Google Maps berbayar), landing page **perluas showcase yang sudah ada** (bukan halaman direktori baru). Diwujudkan sebagai sortir jarak terdekat + filter radius dari lokasi Pembeli sendiri (client-side, opsional, tidak pernah jadi syarat). Ini juga menuntaskan item lama di §5 PRD yang sebelumnya menulis hal ini sebagai di luar-scope.
+
+**Skema DB (migrasi `0009_same_zaran.sql`)**
+- [x] `merchants`: kolom baru `latitude`/`longitude` (`doublePrecision`, nullable, tanpa default — baris lama otomatis `NULL` = lokasi belum diisi).
+- [x] Migrasi via `pnpm db:generate` (review manual SQL-nya sebelum `pnpm db:migrate`) — murni 2x `ADD COLUMN`.
+
+**Kode**
+- [x] `updateMerchantProfileSchema` (Zod): tambah `latitude`/`longitude` opsional, range `-90..90`/`-180..180`, `.refine()` wajib diisi/dikosongkan bareng.
+- [x] `getMerchantProfile`/`updateMerchantProfile`/`listApprovedMerchants` (`src/server/merchants.ts`) + tipe `MerchantProfileView`/`PublicMerchantListItem` (`src/types/merchant.ts`) — sertakan `latitude`/`longitude`.
+- [x] `src/lib/utils/geo.ts` baru — `haversineDistanceKm`/`formatDistanceKm` (pure function).
+- [x] `src/components/merchant/LocationMapPicker.tsx` baru (Leaflet, client-only via `next/dynamic({ssr:false})`) — klik/drag pin, tombol "Pakai lokasi saya sekarang" (`navigator.geolocation`), tombol "Hapus lokasi". Dependency baru: `leaflet` + `react-leaflet@^5` + `@types/leaflet`. Asset ikon marker dicopy ke `public/leaflet/` (fix bug ikon patah Leaflet+bundler).
+- [x] `MerchantProfileForm.tsx` — field baru "Lokasi Lapak (GPS)" (opsional). **Bug aksesibilitas ditemukan+diperbaiki saat verifikasi manual**: field ini sengaja TIDAK pakai `<Field>` (yang selalu bungkus children dengan `<label>`) — `LocationMapPicker` berisi peta + 2 tombol sekaligus, kalau dibungkus `<label>` browser meng-assign nama aksesibilitas gabungan seluruh field ke tombol-tombol itu (kebukti lewat Playwright `getByRole` gagal menemukan tombol "Hapus lokasi"/"Pakai lokasi saya sekarang" sebelum fix).
+- [x] `src/components/buyer/MerchantShowcase.tsx` baru — grid Lapak dipindah dari `src/app/page.tsx`, tombol "Urutkan jarak terdekat" (klik eksplisit, bukan auto-prompt), filter radius, Lapak tanpa lokasi tetap tampil (dideprioritaskan, bukan disembunyikan).
+
+**Verifikasi**
+- [x] Unit test baru `tests/unit/geo.test.ts` (4 test). `pnpm test` (109 total) lulus.
+- [x] Manual (Playwright ad-hoc, bukan cuma baca kode): profil pasang pin via klik peta → simpan → reload → koordinat identik. Tombol "Pakai lokasi saya sekarang" (geolocation di-mock) → koordinat sesuai. Tombol "Hapus lokasi" → simpan → reload → kembali kosong. Landing page: tombol "Urutkan berdasarkan jarak terdekat" muncul & berfungsi (chip filter radius, tanpa error console) tanpa geolocation granted sekalipun (fallback graceful).
+- [x] `tsc --noEmit` / `pnpm build` lulus. `pnpm lint` bersih untuk semua file yang disentuh Fase 8 (73 error pra-existing di file lain karena CRLF line-ending, tidak terkait Fase 8 — lihat catatan di commit).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.
@@ -267,4 +288,3 @@
 - [ ] Notifikasi WhatsApp ke Pedagang saat ada Pesanan baru.
 - [x] ~~Laporan analitik penjualan (harian/mingguan) untuk Pedagang~~ — **selesai 2026-09-09** (versi ringan + asisten aturan, lihat seksi "Laporan Penjualan + Asisten Rekomendasi"). Sisa: laporan **Admin** lintas-Lapak, analitik mendalam, ekspor, asisten LLM — masih ide masa depan.
 - [ ] PWA "Add to Home Screen" untuk halaman Pembeli.
-- [ ] Pengelompokan Lapak per lokasi/pasar fisik.

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
@@ -8,8 +9,20 @@ import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import type { Coordinates } from "@/lib/utils/geo";
 import { updateMerchantProfile } from "@/server/merchants";
 import type { MerchantProfileView } from "@/types/merchant";
+
+// Leaflet butuh `window` -- wajib dimatikan SSR-nya di Next.js App Router.
+const LocationMapPicker = dynamic(
+  () => import("./LocationMapPicker").then((mod) => mod.LocationMapPicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-64 w-full animate-pulse rounded-xl bg-brand-tint" />
+    ),
+  },
+);
 
 export function MerchantProfileForm({
   profile,
@@ -22,6 +35,11 @@ export function MerchantProfileForm({
   const [category, setCategory] = useState(profile.category);
   const [payoutAccountInfo, setPayoutAccountInfo] = useState(
     profile.payoutAccountInfo ?? "",
+  );
+  const [location, setLocation] = useState<Coordinates | null>(
+    profile.latitude != null && profile.longitude != null
+      ? { latitude: profile.latitude, longitude: profile.longitude }
+      : null,
   );
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -38,6 +56,8 @@ export function MerchantProfileForm({
       ownerName,
       category,
       payoutAccountInfo: payoutAccountInfo || undefined,
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
     });
 
     if (!result.ok) {
@@ -76,6 +96,18 @@ export function MerchantProfileForm({
           maxLength={50}
         />
       </Field>
+      {/* Bukan <Field> (selalu render <label>) -- di dalamnya ada peta + dua
+          tombol sekaligus, jadi <label> akan salah kaprah "melabeli"
+          tombol-tombol itu dengan nama aksesibilitas gabungan seluruh field. */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold text-ink">
+          Lokasi Lapak (GPS)
+        </span>
+        <LocationMapPicker value={location} onChange={setLocation} />
+        <span className="text-xs text-ink-muted">
+          Bantu Pembeli menemukan lapakmu di beranda MyGerai. Opsional.
+        </span>
+      </div>
       <Field
         label="Info Rekening / E-wallet Pencairan"
         hint="Ke mana Admin mengirim uang saat pencairan. Opsional."
