@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Reveal } from "@/components/landing/Reveal";
-import { TiltCard } from "@/components/landing/TiltCard";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { ChevronDownIcon, StoreIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/utils/cn";
 import type { PublicMerchantListItem } from "@/types/merchant";
@@ -88,48 +88,55 @@ export function MerchantShowcase({
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleMerchants.map((merchant, index) => (
-            <Reveal key={merchant.slug} delay={index * 0.08}>
-              <Link href={`/menu/${merchant.slug}`} className="block h-full">
-                <TiltCard
-                  pad="none"
-                  elevated
-                  className="group flex h-full flex-col overflow-hidden"
-                >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-tint">
-                    {merchant.photoUrl ? (
-                      <Image
-                        src={merchant.photoUrl}
-                        alt={merchant.stallName}
-                        fill
-                        sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 90vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="flex size-full items-center justify-center bg-gradient-to-br from-brand-tint via-brand-tint to-brand/10">
-                        <StoreIcon className="size-16 text-brand/50" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 p-5">
-                      <p className="line-clamp-2 text-xl font-bold leading-tight text-white">
-                        {merchant.stallName}
+          {visibleMerchants.map((merchant) => (
+            <Link
+              key={merchant.slug}
+              href={`/menu/${merchant.slug}`}
+              className="block h-full"
+            >
+              <Card
+                pad="none"
+                elevated
+                className="group flex h-full flex-col overflow-hidden"
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-tint">
+                  {merchant.photoUrl ? (
+                    <Image
+                      src={merchant.photoUrl}
+                      alt={merchant.stallName}
+                      fill
+                      sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 90vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center bg-gradient-to-br from-brand-tint via-brand-tint to-brand/10">
+                      <StoreIcon className="size-16 text-brand/50" />
+                    </div>
+                  )}
+                  <div className="absolute right-3 top-3">
+                    <Badge tone={merchant.isOpen ? "success" : "neutral"}>
+                      {merchant.isOpen ? "Buka" : "Tutup"}
+                    </Badge>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-5">
+                    <p className="line-clamp-2 text-xl font-bold leading-tight text-white">
+                      {merchant.stallName}
+                    </p>
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                      <p className="truncate text-sm text-white/80">
+                        {merchant.category}
+                        {merchant.areaName ? ` · ${merchant.areaName}` : ""}
                       </p>
-                      <div className="mt-1.5 flex items-center justify-between gap-2">
-                        <p className="truncate text-sm text-white/80">
-                          {merchant.category}
-                          {merchant.areaName ? ` · ${merchant.areaName}` : ""}
-                        </p>
-                        <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-white/90">
-                          Lihat Menu
-                          <ChevronDownIcon className="size-3.5 -rotate-90" />
-                        </span>
-                      </div>
+                      <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-white/90">
+                        Lihat Menu
+                        <ChevronDownIcon className="size-3.5 -rotate-90" />
+                      </span>
                     </div>
                   </div>
-                </TiltCard>
-              </Link>
-            </Reveal>
+                </div>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

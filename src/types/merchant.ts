@@ -83,4 +83,6 @@ export type PublicMerchantListItem = {
   /** Area (dari `service_areas`) yang mencakup titik Lapak ini -- lihat `findNearestArea`. null = belum masuk area mana pun. */
   areaId: string | null;
   areaName: string | null;
+  /** Status buka/tutup saat ini — sama logikanya dengan `getMerchantOpenState`. */
+  isOpen: boolean;
 };

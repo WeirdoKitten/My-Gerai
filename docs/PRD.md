@@ -55,6 +55,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - [ ] Pedagang mengisi **info rekening/e-wallet pencairan** (tervalidasi) di profil — syarat agar Pencairan otomatis bisa jalan.
 - [ ] Pedagang opsional pasang **titik lokasi GPS** Lapak di profil (peta Leaflet + OpenStreetMap, klik/drag pin atau deteksi lokasi otomatis). Ditampilkan di landing page (section showcase "Gerai Terdaftar") supaya Pembeli tahu lokasi fisik Lapak. Lihat [BACKLOG.md](BACKLOG.md) Fase 8, [DATA-MODEL.md](DATA-MODEL.md#merchants-pedaganglapak).
 - [ ] Admin bisa mendefinisikan **Area Lapak** bernama (titik pusat + radius) di `/admin/areas`; sistem otomatis mengelompokkan tiap Lapak ke Area terdekat yang mencakup koordinatnya (tanpa Pedagang perlu mengetik nama area sendiri). Landing page menampilkan chip filter per Area (mis. "Baleendah (2)") — Lapak tanpa lokasi/area tetap tampil (tidak disembunyikan). Lihat [BACKLOG.md](BACKLOG.md) Fase 9, [DATA-MODEL.md](DATA-MODEL.md#service_areas-area-lapak--fase-9-2026-09-17).
+- [ ] Halaman publik **`/gerai`** menampilkan **semua** Lapak disetujui (landing `/` cuma showcase 12 Lapak terbaru) — supaya Pembeli bisa pesan dan bayar dulu dari sana, lalu tinggal datang ambil Pesanannya di Lapak tanpa antre di tempat. Filter per Area tetap ikut tersedia di halaman ini. Lihat [BACKLOG.md](BACKLOG.md) Fase 10.
 
 ## 5. Di Luar Lingkup MVP (Out of Scope — dicatat sebagai ide masa depan di [BACKLOG.md](BACKLOG.md))
 
