@@ -119,6 +119,9 @@ export async function getStallCatalog(
         photoUrl: merchant.photoUrl,
         isOpen,
         reopensAt: reopensAt ? reopensAt.toISOString() : null,
+        address: merchant.address,
+        latitude: merchant.latitude,
+        longitude: merchant.longitude,
       },
       products: merchantProducts.map((product) => ({
         id: product.id,

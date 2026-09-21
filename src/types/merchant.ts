@@ -19,6 +19,8 @@ export type MerchantProfileView = {
   /** Read-only di form profil (mengubah nomor HP = urusan auth, terpisah). */
   phone: string;
   payoutAccountInfo: string | null;
+  /** null = Pedagang belum isi alamat teks. Ditampilkan ke Pembeli di halaman menu. */
+  address: string | null;
   /** null = Pedagang belum pasang titik lokasi lewat map picker. */
   latitude: number | null;
   longitude: number | null;

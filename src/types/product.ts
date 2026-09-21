@@ -36,6 +36,11 @@ export type StallCatalogView = {
     isOpen: boolean;
     /** Kapan Lapak buka lagi (ISO string), cuma terisi kalau `isOpen` false & ada jadwal. */
     reopensAt: string | null;
+    /** Alamat fisik teks bebas, opsional — null = Pedagang belum isi. */
+    address: string | null;
+    /** Titik GPS Lapak, opsional — null = belum diisi. Dipakai tombol "Buka di Peta". */
+    latitude: number | null;
+    longitude: number | null;
   };
   products: BuyerProductView[];
 };

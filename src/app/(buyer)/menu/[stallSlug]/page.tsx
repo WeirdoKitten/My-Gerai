@@ -2,8 +2,15 @@ import { notFound } from "next/navigation";
 import { ClosedStallNotice } from "@/components/buyer/ClosedStallNotice";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
 import { ProductCard } from "@/components/buyer/ProductCard";
+import { buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { HistoryIcon, ImageOffIcon, StoreIcon } from "@/components/ui/icons";
+import {
+  HistoryIcon,
+  ImageOffIcon,
+  MapPinIcon,
+  StoreIcon,
+} from "@/components/ui/icons";
 import { getStallCatalog } from "@/server/products";
 
 export default async function StallMenuPage(
@@ -37,6 +44,32 @@ export default async function StallMenuPage(
           <p className="text-sm text-ink-muted">{catalog.merchant.category}</p>
         </div>
       </div>
+
+      {catalog.merchant.address || catalog.merchant.latitude != null ? (
+        <Card className="flex flex-wrap items-center gap-3">
+          {catalog.merchant.address ? (
+            <p className="min-w-0 flex-1 truncate text-sm text-ink-muted">
+              {catalog.merchant.address}
+            </p>
+          ) : null}
+          {catalog.merchant.latitude != null &&
+          catalog.merchant.longitude != null ? (
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${catalog.merchant.latitude},${catalog.merchant.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Buka di Peta"
+              title="Buka di Peta"
+              className={buttonClasses({
+                size: "md",
+                className: "w-11 shrink-0 px-0",
+              })}
+            >
+              <MapPinIcon className="size-6 shrink-0" />
+            </a>
+          ) : null}
+        </Card>
+      ) : null}
 
       {!catalog.merchant.isOpen ? (
         <ClosedStallNotice reopensAt={catalog.merchant.reopensAt} />

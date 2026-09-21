@@ -339,6 +339,28 @@
 - [x] Manual lewat Playwright (dev server sungguhan) di tiap putaran revisi: `/` desktop (1440px) + mobile (390px) dan `/gerai` desktop — nol error console; setelah efek hover/scroll dihapus, screenshot tidak perlu lagi discroll bertahap (konten langsung tampil semua, membuktikan tidak ada lagi ketergantungan `whileInView`). Badge Buka/Tutup diverifikasi tampil benar di kedua halaman.
 - [x] `pnpm build` & `pnpm test:e2e` (7) dijalankan ulang sebelum merge ke `main` — semua lulus, termasuk setelah fix bug `/gerai` yang sempat ke-static-generate (lihat bullet status Buka/Tutup di atas).
 
+## Alamat Fisik Lapak + Tombol Buka di Peta (halaman Menu Pembeli) ✅
+
+> User minta halaman menu (`/menu/[stallSlug]`) menampilkan alamat fisik Lapak (supaya Pembeli tidak bingung mencari tempatnya saat ambil pesanan) plus tombol yang membuka peta navigasi ke titik lokasinya. Titik GPS (`merchants.latitude`/`longitude`, Fase 8) sudah ada tapi cuma dipakai buat pengelompokan Area — belum pernah ditampilkan ke Pembeli. Belum ada kolom alamat teks sama sekali, jadi ditambah kolom baru. Plan mode dulu (`~/.claude/plans/polymorphic-spinning-sphinx.md`).
+>
+> **Update (revisi sebelum commit)**: User minta alamat teks & titik GPS disinkronkan (bukan dua input independen yang bisa divergen) plus desain blok di halaman menu dirapikan jadi satu kartu. Dikonfirmasi AskUserQuestion: alamat **auto-terisi dari reverse-geocode pin** (Nominatim), tetap bisa diedit manual.
+
+**Skema DB (migrasi `0011_classy_echo.sql`)**
+- [x] `merchants`: kolom baru `address` (`text`, nullable, tanpa default — baris lama otomatis `NULL`). Independen dari `latitude`/`longitude` (boleh isi salah satu saja, tidak ada refine saling terikat).
+
+**Kode**
+- [x] `updateMerchantProfileSchema` (Zod): tambah `address` opsional, max 200 karakter.
+- [x] `getMerchantProfile`/`updateMerchantProfile` (`src/server/merchants.ts`) + `MerchantProfileView` (`src/types/merchant.ts`) — sertakan `address`.
+- [x] `src/server/geocoding.ts` baru — `reverseGeocodeAddress(lat, lng)`, fetch server-side ke Nominatim (`User-Agent` custom, wajib server karena forbidden header di browser), rate limit `checkRateLimit` (20/menit per sesi Pedagang), timeout 5s, gagal apa pun → `null` (tidak pernah throw).
+- [x] `MerchantProfileForm.tsx` — field "Alamat Lapak (opsional)" (`Textarea`) ditaruh **setelah** "Lokasi Lapak (GPS)" (urutan dibalik dari draft awal — alamat sekarang turunan dari pin). `handleLocationChange` baru: tiap pin berubah → panggil `reverseGeocodeAddress` → auto-isi `address` (state `geocoding` mengubah hint field jadi "Mengambil nama alamat dari peta..."). "Hapus lokasi" sengaja **tidak** ikut mengosongkan alamat (bisa berisi editan manual Pedagang). Tetap bisa diedit manual kapan saja.
+- [x] `getStallCatalog` (`src/server/products.ts`) + `StallCatalogView.merchant` (`src/types/product.ts`) — tambah `address`, `latitude`, `longitude` (data yang sudah di-query, sebelumnya tidak diekspos ke Pembeli).
+- [x] `src/app/(buyer)/menu/[stallSlug]/page.tsx` — satu `Card` (`ui/Card.tsx`), teks alamat (`truncate`, satu baris + ellipsis biar Card tidak melar ke bawah) sebaris dengan tombol "Buka di Peta". Tombol **icon-only** (`<a>` di-style `buttonClasses({size:"sm", className:"w-9 px-0"})` — variant default `primary`, warna sama seperti tombol "Tambah"), `MapPinIcon` besar (`size-6`) tanpa label teks, `aria-label`/`title="Buka di Peta"` buat aksesibilitas. Bukan `ButtonLink` karena URL eksternal; href Google Maps mode navigasi (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`). Card tidak dirender sama sekali kalau keduanya kosong (Lapak lama).
+- [x] `docs/TEKNOLOGI.md` baris Peta — direvisi: forward-search alamat tetap tidak disediakan, reverse-geocoding (Nominatim) ditambahkan.
+
+**Verifikasi**
+- [x] `tsc --noEmit` / `pnpm lint` / `pnpm build` lulus. `pnpm test` (vitest, 113) tetap lulus — `reverseGeocodeAddress` murni I/O boundary (pola sama `midtrans-provider.ts`, tidak diunit-test terpisah).
+- [x] Manual nyata (dev server + Playwright ad-hoc): login Pedagang demo (`bakso-pak-budi`) → geser pin di `/dashboard/profil` → field alamat auto-terisi → edit manual → simpan → reload → editan tersimpan (bukan balik ke hasil auto). Buka `/menu/bakso-pak-budi` → satu Card alamat+tombol tampil rapi, href koordinat benar, klik membuka Google Maps ke titik yang tepat. Lapak tanpa alamat/lokasi → Card tidak tampil, nol error console.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

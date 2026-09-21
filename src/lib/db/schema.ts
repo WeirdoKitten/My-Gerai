@@ -109,6 +109,13 @@ export const merchants = pgTable("merchants", {
    */
   latitude: doublePrecision(),
   longitude: doublePrecision(),
+  /**
+   * Alamat fisik bebas-teks (opsional), ditampilkan ke Pembeli di halaman
+   * menu supaya tidak bingung mencari lapaknya. Beda dari `latitude`/
+   * `longitude` di atas (dipakai buat peta & pengelompokan Area) -- ini
+   * murni teks yang dibaca manusia (nama jalan/patokan).
+   */
+  address: text(),
   status: merchantStatusEnum().notNull().default("pending"),
   payoutAccountInfo: text(),
   /** Wajib diisi Admin saat reject — ditampilkan ke Pedagang saat mereka coba login. */

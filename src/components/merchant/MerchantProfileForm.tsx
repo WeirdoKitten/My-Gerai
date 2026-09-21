@@ -10,6 +10,7 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import type { Coordinates } from "@/lib/utils/geo";
+import { reverseGeocodeAddress } from "@/server/geocoding";
 import { updateMerchantProfile } from "@/server/merchants";
 import type { MerchantProfileView } from "@/types/merchant";
 
@@ -36,14 +37,34 @@ export function MerchantProfileForm({
   const [payoutAccountInfo, setPayoutAccountInfo] = useState(
     profile.payoutAccountInfo ?? "",
   );
+  const [address, setAddress] = useState(profile.address ?? "");
   const [location, setLocation] = useState<Coordinates | null>(
     profile.latitude != null && profile.longitude != null
       ? { latitude: profile.latitude, longitude: profile.longitude }
       : null,
   );
+  const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Sinkronkan alamat teks ke titik pin -- begitu Pedagang taruh/geser pin,
+   * alamat otomatis terisi lewat reverse-geocode (tetap bisa diedit manual
+   * sesudahnya). "Hapus lokasi" (coords null) SENGAJA tidak ikut mengosongkan
+   * alamat -- teksnya mungkin sudah diedit manual oleh Pedagang.
+   */
+  async function handleLocationChange(coords: Coordinates | null) {
+    setLocation(coords);
+    if (!coords) return;
+    setGeocoding(true);
+    const result = await reverseGeocodeAddress(
+      coords.latitude,
+      coords.longitude,
+    );
+    if (result) setAddress(result);
+    setGeocoding(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +77,7 @@ export function MerchantProfileForm({
       ownerName,
       category,
       payoutAccountInfo: payoutAccountInfo || undefined,
+      address: address || undefined,
       latitude: location?.latitude ?? null,
       longitude: location?.longitude ?? null,
     });
@@ -103,11 +125,27 @@ export function MerchantProfileForm({
         <span className="text-sm font-semibold text-ink">
           Lokasi Lapak (GPS)
         </span>
-        <LocationMapPicker value={location} onChange={setLocation} />
+        <LocationMapPicker value={location} onChange={handleLocationChange} />
         <span className="text-xs text-ink-muted">
-          Bantu Pembeli menemukan lapakmu di beranda MyGerai. Opsional.
+          Taruh/geser pin ke lokasi Lapak -- alamat di bawah otomatis
+          terisi. Opsional.
         </span>
       </div>
+      <Field
+        label="Alamat Lapak (opsional)"
+        hint={
+          geocoding
+            ? "Mengambil nama alamat dari peta..."
+            : "Otomatis terisi dari pin di atas -- bisa diedit manual, mis. tambah patokan."
+        }
+      >
+        <Textarea
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          maxLength={200}
+          placeholder="mis. Jl. Merdeka No. 5, dekat Alfamart"
+        />
+      </Field>
       <Field
         label="Info Rekening / E-wallet Pencairan"
         hint="Ke mana Admin mengirim uang saat pencairan. Opsional."

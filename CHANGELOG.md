@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-21 — Alamat fisik Lapak + tombol "Buka di Peta" di halaman menu Pembeli
+
+**Dampak:** [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom baru `merchants.address`), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (baris Peta — reverse-geocoding Nominatim), [docs/BACKLOG.md](docs/BACKLOG.md) (seksi baru, selesai). Kode baru: `src/server/geocoding.ts`. Kode ubah: `src/lib/db/schema.ts`, migrasi `drizzle/0011_classy_echo.sql`, `src/lib/validation/merchant.schema.ts`, `src/types/merchant.ts`, `src/types/product.ts`, `src/server/merchants.ts`, `src/server/products.ts`, `src/components/merchant/MerchantProfileForm.tsx`, `src/app/(buyer)/menu/[stallSlug]/page.tsx`.
+**Alasan:** Permintaan User — Pembeli yang sudah bayar QRIS bisa bingung mencari lokasi fisik Lapak saat mau ambil pesanan. Titik GPS Lapak sudah ada sejak Fase 8 (`merchants.latitude`/`longitude`) tapi cuma dipakai untuk pengelompokan Area di landing page, tidak pernah ditampilkan ke Pembeli. Belum ada kolom alamat teks sama sekali. Setelah preview awal, User minta dua revisi (dikonfirmasi AskUserQuestion): (1) alamat teks & titik GPS disinkronkan — bukan dua input independen yang bisa divergen — lewat auto reverse-geocode pin (tetap bisa diedit manual); (2) blok alamat+tombol di halaman menu dirapikan jadi satu kartu.
+**Ringkasan:**
+- Kolom baru `merchants.address` (`text`, nullable, opsional, independen dari `latitude`/`longitude`) — nilai awal **otomatis** dari reverse-geocode pin (`src/server/geocoding.ts`, Nominatim/OpenStreetMap, dipanggil server-side karena `User-Agent` custom tidak bisa di-set dari fetch browser), tapi tetap bisa ditimpa manual di field "Alamat Lapak" (`/dashboard/profil`, ditaruh setelah map picker — urutan mencerminkan alamat sebagai turunan pin). Gagal reverse-geocode (timeout/rate-limit) → `null` senyap, tidak pernah blocking simpan profil.
+- Halaman menu (`/menu/[stallSlug]`) sekarang menampilkan satu `Card` berisi alamat teks (ikon `MapPinIcon` dalam chip, meniru pola chip ikon Lapak di header) dan tombol "Buka di Peta" (kalau titik GPS diisi) — link Google Maps mode navigasi (`dir/?api=1&destination=lat,lng`), bukan komponen peta baru. Lapak lama tanpa data apa pun tidak menampilkan Card ini sama sekali.
+- **Diverifikasi nyata**: `tsc`/`biome`/`pnpm build`/`vitest` (113) lulus. Dev server + Playwright ad-hoc: geser pin di profil → alamat auto-terisi → edit manual → simpan → reload → editan tersimpan (bukan balik ke hasil auto); halaman menu menampilkan Card alamat+tombol dengan rapi, tombol peta membuka koordinat yang tepat; Lapak tanpa data lama tidak menampilkan Card apa pun.
+
 ## 2026-09-21 — Chip Area dibatasi 6 (Semua/Terdekat/3 Area/Lainnya) + "Terdekat" pakai geolocation lagi
 
 **Dampak:** Kode ubah: `src/components/buyer/MerchantShowcase.tsx` (dipakai landing `/` & `/gerai`).

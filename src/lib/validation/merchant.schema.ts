@@ -25,6 +25,7 @@ export const updateMerchantProfileSchema = z
     stallName: z.string().trim().min(1, "Nama Lapak wajib diisi.").max(100),
     ownerName: z.string().trim().min(1, "Nama Pedagang wajib diisi.").max(100),
     category: z.string().trim().min(1, "Kategori wajib diisi.").max(50),
+    address: z.string().trim().max(200, "Alamat maksimal 200 karakter.").optional(),
     payoutAccountInfo: z.string().trim().max(300).optional(),
     latitude: z
       .number()

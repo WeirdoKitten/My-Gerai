@@ -219,6 +219,7 @@ export async function getMerchantProfile(): Promise<MerchantProfileView | null> 
     category: merchant.category,
     phone: merchant.phone,
     payoutAccountInfo: merchant.payoutAccountInfo,
+    address: merchant.address,
     latitude: merchant.latitude,
     longitude: merchant.longitude,
   };
@@ -246,6 +247,7 @@ export async function updateMerchantProfile(
       ownerName: parsed.data.ownerName,
       category: parsed.data.category,
       payoutAccountInfo: parsed.data.payoutAccountInfo || null,
+      address: parsed.data.address || null,
       latitude: parsed.data.latitude ?? null,
       longitude: parsed.data.longitude ?? null,
     })
