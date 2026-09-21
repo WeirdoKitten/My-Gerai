@@ -2,7 +2,13 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
-## 2026-09-21 — Fix: Card lokasi di menu tampil kalau titik GPS ada tanpa alamat teks
+## 2026-09-21 — Ganti suara notifikasi Pesanan masuk (koin + jingle, 6 detik)
+
+**Dampak:** Aset ubah: `public/sounds/order-chime.wav`. Tidak ada perubahan kode (`src/lib/sound/sound-context.tsx` tetap mengambil path yang sama).
+**Alasan:** Permintaan User — chime lama (dua nada pendek 0.6 detik) diganti yang lebih menarik/kenceng. Dicoba beberapa gaya (koin game, koin realistis + spin-settle, jingle arpeggio, bel ganda, cha-ching kasir, marimba, chiptune retro, pop modern, fanfare, bel resepsionis) lewat sintesis lokal (bukan file pihak ketiga), User pilih gabungan **jingle arpeggio + koin game** (whoosh pembuka, arpeggio nada dirangkap clink koin, cha-ching, chord besar, hujan koin lembut di ekor), lalu diloop 2× jadi 6 detik.
+**Ringkasan:**
+- `order-chime.wav` baru: mono, 44.1kHz, 16-bit — sama spesifikasi format dengan file lama, jadi kode pemutar (`<audio>` di `SoundProvider`) tidak perlu berubah.
+- **Diverifikasi**: `tsc`/`vitest` (113) tetap lulus (tidak ada kode yang berubah), file diputar & didengar langsung sebelum dipasang.
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md). Kode ubah: `src/app/(buyer)/menu/[stallSlug]/page.tsx`.
 **Alasan:** Bug ditemukan User — Card lokasi dirender kalau `address` **atau** `latitude` terisi, jadi Lapak yang cuma punya titik GPS tanpa alamat teks (mis. reverse-geocode belum pernah jalan) menampilkan Card isi tombol "Buka di Peta" doang tanpa teks, keliatan janggal/kayak bug.
