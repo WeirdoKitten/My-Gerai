@@ -235,7 +235,7 @@ export default async function Home() {
             </div>
 
             <div className="mt-16 grid gap-6 lg:grid-cols-2 lg:gap-8">
-              <Card pad="lg" className="flex h-full flex-col">
+              <Card pad="lg" className="flex h-full flex-col pb-10">
                 <div className="border-b border-line pb-6">
                   <h3 className="text-2xl font-bold text-ink">
                     Untuk Pedagang
@@ -261,7 +261,7 @@ export default async function Home() {
                 </ul>
               </Card>
 
-              <Card pad="lg" className="flex h-full flex-col">
+              <Card pad="lg" className="flex h-full flex-col pb-10">
                 <div className="border-b border-line pb-6">
                   <h3 className="text-2xl font-bold text-ink">Untuk Pembeli</h3>
                   <p className="mt-1.5 text-sm text-ink-muted">
@@ -378,7 +378,7 @@ export default async function Home() {
           <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 lg:py-32">
             <div className="mx-auto max-w-xl text-center">
               <h2 className="text-3xl font-bold tracking-tight text-ink lg:text-5xl">
-                Ajak Pedagang Lain Gabung
+                <span className="text-brand-strong">Ajak</span> Pedagang Lain
               </h2>
               <p className="mt-4 text-base text-ink-muted lg:text-lg">
                 Cetak QR ini dan tempel di warung tetangga, pasar, atau
