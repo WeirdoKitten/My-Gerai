@@ -47,7 +47,7 @@ export default async function StallMenuPage(
 
       {catalog.merchant.address ? (
         <Card className="flex flex-wrap items-center gap-3">
-          <p className="min-w-0 flex-1 truncate text-sm text-ink-muted">
+          <p className="min-w-0 flex-1 text-sm text-ink-muted">
             {catalog.merchant.address}
           </p>
           {catalog.merchant.latitude != null &&
