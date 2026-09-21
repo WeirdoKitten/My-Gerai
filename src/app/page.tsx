@@ -343,12 +343,12 @@ export default async function Home() {
                     {/* Eyebrow + garis bawah — teks kecil centered, tanpa
                     kotak/border, cuma garis tipis pendek di bawahnya. */}
                     <div className="relative flex flex-col items-center gap-1.5">
-                      <span className="text-xs font-semibold text-brand-strong">
+                      <span className="text-base font-bold text-brand-strong">
                         {insight.label}
                       </span>
                       <span
                         aria-hidden="true"
-                        className="h-0.5 w-10 rounded-full bg-brand-strong"
+                        className="h-0.5 w-24 rounded-full bg-brand-strong"
                       />
                     </div>
                     <div className="relative flex max-w-[85%] flex-col gap-1.5">
