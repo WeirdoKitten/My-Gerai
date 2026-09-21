@@ -121,7 +121,7 @@ export default async function Home() {
               <h1 className="text-5xl font-extrabold leading-[0.98] tracking-tight text-ink sm:text-6xl lg:text-7xl">
                 Pesanan Masuk Sendiri,
                 <br />
-                <span className="text-brand-strong">Kamu Tinggal Masak.</span>
+                <span className="text-brand-strong">Kamu Tinggal Siapin.</span>
               </h1>
 
               <p className="mt-5 max-w-md text-base text-ink-muted lg:text-lg">
