@@ -1,4 +1,5 @@
 import { MerchantShowcase } from "@/components/buyer/MerchantShowcase";
+import { BackgroundPattern } from "@/components/landing/BackgroundPattern";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -19,6 +20,7 @@ export default async function GeraiPage() {
 
   return (
     <>
+      <BackgroundPattern />
       <SiteHeader />
 
       <main className="flex flex-1 flex-col">

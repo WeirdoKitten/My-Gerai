@@ -1,5 +1,6 @@
 import { MerchantShowcase } from "@/components/buyer/MerchantShowcase";
 import { AmbientBlobs } from "@/components/landing/AmbientBlobs";
+import { BackgroundPattern } from "@/components/landing/BackgroundPattern";
 import { PhoneMockup } from "@/components/landing/PhoneMockup";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
@@ -87,14 +88,17 @@ const BUYER_FEATURES = [
 
 const INSIGHT_EXAMPLES = [
   {
+    label: "Peringatan Stok",
     title: 'Stok "Bakso Urat" Menipis',
     text: "Laku sekitar 8 porsi sehari minggu ini. Siapkan tambahan sebelum kehabisan di tengah jualan.",
   },
   {
+    label: "Pola Jam Ramai",
     title: "Paling Ramai Saat Jam Makan Siang",
     text: "Sekitar 30% Pesanan masuk di jam segitu. Pastikan stok dan kembalian sudah siap.",
   },
   {
+    label: "Peluang Bundling",
     title: '"Bakso Urat" Sering Dibeli Bareng Es Teh',
     text: "Coba tawarkan sebagai paket hemat. Peluang bagus buat naikkan nilai tiap Pesanan.",
   },
@@ -110,6 +114,7 @@ export default async function Home() {
 
   return (
     <>
+      <BackgroundPattern />
       <SiteHeader />
 
       <main className="flex flex-1 flex-col">
@@ -327,7 +332,7 @@ export default async function Home() {
                   <Card
                     key={insight.title}
                     pad="lg"
-                    className="relative flex flex-col gap-1.5 overflow-hidden"
+                    className="relative flex flex-col gap-3 overflow-hidden"
                   >
                     <span
                       aria-hidden="true"
@@ -335,12 +340,25 @@ export default async function Home() {
                     >
                       0{index + 1}
                     </span>
-                    <p className="relative max-w-[85%] text-base font-semibold text-ink">
-                      {insight.title}
-                    </p>
-                    <p className="relative max-w-[85%] text-sm leading-relaxed text-ink-muted">
-                      {insight.text}
-                    </p>
+                    {/* Eyebrow + garis bawah — teks kecil centered, tanpa
+                    kotak/border, cuma garis tipis pendek di bawahnya. */}
+                    <div className="relative flex flex-col items-center gap-1.5">
+                      <span className="text-xs font-semibold text-brand-strong">
+                        {insight.label}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="h-0.5 w-10 rounded-full bg-brand-strong"
+                      />
+                    </div>
+                    <div className="relative flex max-w-[85%] flex-col gap-1.5">
+                      <p className="text-base font-semibold text-ink">
+                        {insight.title}
+                      </p>
+                      <p className="text-sm leading-relaxed text-ink-muted">
+                        {insight.text}
+                      </p>
+                    </div>
                   </Card>
                 ))}
               </div>
