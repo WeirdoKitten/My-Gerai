@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-21 — Chip Area dibatasi 6 (Semua/Terdekat/3 Area/Lainnya) + "Terdekat" pakai geolocation lagi
+
+**Dampak:** Kode ubah: `src/components/buyer/MerchantShowcase.tsx` (dipakai landing `/` & `/gerai`).
+**Alasan:** Permintaan User — chip Area bisa membludak kalau Admin bikin banyak Area (tidak ada batas sebelumnya). Sekaligus User minta chip "Terdekat" ditambahkan lagi. Ini **melengkapi**, bukan membalik, keputusan Fase 9 (ADR 2026-09-17: ganti sortir-jarak-otomatis jadi Area bernama Admin) — Area bernama tetap jadi mekanisme utama & default (`Semua` aktif duluan, tanpa izin lokasi apa pun); "Terdekat" murni **opsional**, cuma minta izin lokasi kalau Pembeli sendiri yang klik chip-nya (klik eksplisit, bukan auto-prompt — pola sama seperti `LocationMapPicker` Pedagang).
+**Ringkasan:**
+- Chip yang tampil langsung dibatasi tepat 6: `Semua` + `Terdekat` (kalau ada minimal 1 Lapak berkoordinat) + 3 Area bernama (dipilih dari yang jumlah Lapak-nya terbanyak, `DIRECT_AREA_CHIP_LIMIT`) + `Lainnya`.
+- `Lainnya` bukan lagi filter "Lapak tanpa Area" langsung — sekarang buka `Modal` (komponen `ui/Modal` yang sudah ada) berisi **semua** Area (termasuk yang sudah tampil sebagai chip langsung) + baris "Tanpa Area" kalau ada. Klik satu baris = filter + modal tertutup.
+- `Terdekat`: klik → `navigator.geolocation.getCurrentPosition` (sekali per sesi, lokasi di-cache di state) → Lapak berkoordinat diurutkan pakai `haversineDistanceKm` (`src/lib/utils/geo.ts`, fungsi lama Fase 8 yang ternyata belum dihapus) → jarak ditampilkan di kartu (`formatDistanceKm`) menggantikan nama Area untuk tampilan itu. Ditolak/gagal → pesan error kecil di bawah chip, tidak mengganggu filter lain. Lapak tanpa koordinat otomatis tidak ikut muncul saat mode ini aktif.
+- **Diverifikasi nyata**: 6 Lapak + 5 Area disuntik ke DB dev (1 Lapak sengaja tanpa koordinat) → chip row persis 6 slot, Area dengan Lapak terbanyak (gabungan data asli + uji) naik jadi salah satu dari 3 slot langsung → Modal "Lainnya" menampilkan sisa Area + "Tanpa Area" → klik "Terdekat" (geolocation di-mock Playwright dekat salah satu Lapak) → urutan benar dari 157 m naik ke 1,1 km, Lapak tanpa koordinat tidak muncul. Data uji dihapus lagi setelahnya. `tsc`/`biome`/`pnpm build`/`vitest` (113) lulus.
+
 ## 2026-09-21 — Rombak landing page + direktori publik "Semua Gerai" + status Buka/Tutup (token desain tetap sama)
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) §4 (baris "Landing `/`" diperluas + catatan "statis, tanpa efek hover/scroll") & §5 (pola kartu Gerai publik), [docs/PRD.md](docs/PRD.md) §4 (bullet direktori `/gerai`), [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 10, selesai). Kode baru: `src/app/gerai/page.tsx`, `src/components/landing/SiteHeader.tsx`, `SiteFooter.tsx`. Kode ubah: `src/app/page.tsx`, `src/components/landing/PhoneMockup.tsx`, `src/components/buyer/MerchantShowcase.tsx`, `src/server/merchants.ts`, `src/types/merchant.ts`. Kode dihapus: `src/components/landing/{Reveal,RevealText,TiltCard,Magnetic,CursorGlow,ScrollProgressBar}.tsx`.

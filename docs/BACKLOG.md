@@ -282,6 +282,8 @@
 ## Fase 9 — Area Lapak (pengelompokan otomatis oleh Admin) ✅
 
 > Penerus langsung Fase 8: User minta model pengelompokan area yang berbeda — **Admin** yang mendefinisikan Area bernama (titik pusat + radius, mis. "Baleendah"), lalu **sistem otomatis mengelompokkan** tiap Lapak ke Area yang mencakup koordinatnya, tanpa Pedagang perlu mengetik nama area dan tanpa Pembeli perlu memberi izin lokasi sama sekali. Dikonfirmasi User (AskUserQuestion, 2026-09-17): **mengganti total** UI sortir-jarak Fase 8 (bukan berdampingan); kalau Lapak masuk beberapa Area yang tumpang tindih, menang **Area yang titik pusatnya paling dekat**.
+>
+> **Update 2026-09-21**: chip "Terdekat" (geolocation) ditambahkan lagi sebagai **opsi tambahan** di samping Area bernama (lihat [CHANGELOG.md](../CHANGELOG.md)) — bukan pembalikan keputusan di atas. Area bernama tetap default & tidak butuh izin lokasi; "Terdekat" cuma minta izin kalau Pembeli sendiri yang klik chip-nya.
 
 **Skema DB (migrasi `0010_friendly_maestro.sql`)**
 - [x] Tabel baru `service_areas` (`name`, `centerLatitude`, `centerLongitude`, `radiusKm`, `createdAt`) — tanpa FK ke `merchants` (keanggotaan dihitung lazy).
