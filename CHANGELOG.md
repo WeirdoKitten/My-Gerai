@@ -2,6 +2,14 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-21 — Fix: Card lokasi di menu tampil kalau titik GPS ada tanpa alamat teks
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md). Kode ubah: `src/app/(buyer)/menu/[stallSlug]/page.tsx`.
+**Alasan:** Bug ditemukan User — Card lokasi dirender kalau `address` **atau** `latitude` terisi, jadi Lapak yang cuma punya titik GPS tanpa alamat teks (mis. reverse-geocode belum pernah jalan) menampilkan Card isi tombol "Buka di Peta" doang tanpa teks, keliatan janggal/kayak bug.
+**Ringkasan:**
+- Syarat render Card diperketat jadi **cuma `address` yang terisi** (tombol peta tetap ikut tampil di sebelahnya kalau titik GPS juga ada) — Card tidak pernah lagi muncul isi tombol sendirian tanpa konteks teks.
+- **Diverifikasi**: `tsc`/`biome`/`vitest` (113) lulus.
+
 ## 2026-09-21 — Alamat fisik Lapak + tombol "Buka di Peta" di halaman menu Pembeli
 
 **Dampak:** [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom baru `merchants.address`), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (baris Peta — reverse-geocoding Nominatim), [docs/BACKLOG.md](docs/BACKLOG.md) (seksi baru, selesai). Kode baru: `src/server/geocoding.ts`. Kode ubah: `src/lib/db/schema.ts`, migrasi `drizzle/0011_classy_echo.sql`, `src/lib/validation/merchant.schema.ts`, `src/types/merchant.ts`, `src/types/product.ts`, `src/server/merchants.ts`, `src/server/products.ts`, `src/components/merchant/MerchantProfileForm.tsx`, `src/app/(buyer)/menu/[stallSlug]/page.tsx`.
