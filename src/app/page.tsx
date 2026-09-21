@@ -206,14 +206,19 @@ export default async function Home() {
                   Klik salah satu buat intip menunya langsung, lihat sendiri
                   kenapa mereka pindah dari catatan manual ke MyGerai.
                 </p>
-                <div className="mt-6">
-                  <ButtonLink href="/gerai" variant="secondary" size="sm">
-                    Lihat Semua Gerai
-                  </ButtonLink>
-                </div>
               </div>
 
-              <MerchantShowcase merchants={approvedMerchants} />
+              <MerchantShowcase
+                merchants={approvedMerchants}
+                mobileLimit={3}
+                desktopLimit={6}
+              />
+
+              <div className="mt-10 flex justify-center">
+                <ButtonLink href="/gerai" variant="secondary" size="sm">
+                  Lihat Semua Gerai
+                </ButtonLink>
+              </div>
             </div>
           </section>
         ) : null}

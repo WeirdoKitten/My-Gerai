@@ -15,8 +15,14 @@ type AreaChip = { id: string; name: string; count: number };
 
 export function MerchantShowcase({
   merchants,
+  mobileLimit,
+  desktopLimit,
 }: {
   merchants: PublicMerchantListItem[];
+  /** Batasi jumlah kartu yang TAMPIL (bukan yang dikirim) di bawah breakpoint `lg` — dipakai landing supaya tidak padat. Kosongkan untuk tampilkan semua (`/gerai`). */
+  mobileLimit?: number;
+  /** Batasi jumlah kartu yang tampil di breakpoint `lg` ke atas. */
+  desktopLimit?: number;
 }) {
   const [selectedArea, setSelectedArea] = useState<AreaFilter>("all");
 
@@ -88,11 +94,18 @@ export function MerchantShowcase({
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleMerchants.map((merchant) => (
+          {visibleMerchants.map((merchant, index) => (
             <Link
               key={merchant.slug}
               href={`/menu/${merchant.slug}`}
-              className="block h-full"
+              className={cn(
+                "h-full",
+                desktopLimit !== undefined && index >= desktopLimit
+                  ? "hidden"
+                  : mobileLimit !== undefined && index >= mobileLimit
+                    ? "hidden lg:block"
+                    : "block",
+              )}
             >
               <Card
                 pad="none"
@@ -158,10 +171,10 @@ function AreaChipButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "cursor-pointer rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+        "cursor-pointer rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
         active
-          ? "bg-brand-strong text-white hover:bg-[#9A3412]"
-          : "bg-brand-tint text-brand-strong hover:bg-brand-tint/70",
+          ? "border-brand-strong bg-brand-strong text-white hover:border-[#9A3412] hover:bg-[#9A3412]"
+          : "border-line bg-surface text-ink-muted hover:border-brand-strong hover:bg-brand-tint hover:text-brand-strong",
       )}
     >
       {label}
