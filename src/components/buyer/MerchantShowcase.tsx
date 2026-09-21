@@ -160,7 +160,7 @@ function AreaChipButton({
       className={cn(
         "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
         active
-          ? "bg-brand-strong text-white"
+          ? "bg-brand-strong text-white hover:bg-[#9A3412]"
           : "bg-brand-tint text-brand-strong hover:bg-brand-tint/70",
       )}
     >

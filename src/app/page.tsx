@@ -214,15 +214,6 @@ export default async function Home() {
               </div>
 
               <MerchantShowcase merchants={approvedMerchants} />
-
-              <div className="mt-16 flex flex-col items-center gap-4 text-center">
-                <p className="text-base font-semibold text-ink lg:text-lg">
-                  Mau gerai kamu tampil di sini juga?
-                </p>
-                <ButtonLink href="/daftar" size="md">
-                  Daftarkan Lapak Sekarang
-                </ButtonLink>
-              </div>
             </div>
           </section>
         ) : null}
@@ -314,7 +305,7 @@ export default async function Home() {
             <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
               <div>
                 <h2 className="text-3xl font-bold tracking-tight text-ink lg:text-5xl">
-                  Ada Asisten yang Bantu Kamu
+                  <span className="text-brand-strong">Asisten</span> Bantu Kamu
                   <br />
                   <span className="text-brand-strong">Jualan lebih Pintar</span>
                 </h2>
