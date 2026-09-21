@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, inArray, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import QRCode from "qrcode";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
@@ -49,7 +49,7 @@ import type {
   BuyerOrderStatusView,
   CreateOrderResult,
   MerchantOrderHistoryItem,
-  MerchantOrderListItem,
+  MerchantOrderListResult,
   Order,
   SimulatePaymentResult,
   UpdateOrderStatusResult,
@@ -57,6 +57,14 @@ import type {
 
 /** Jumlah maksimum Pesanan yang ditampilkan di Riwayat (skala kaki lima — KISS). */
 const MERCHANT_HISTORY_LIMIT = 50;
+
+/**
+ * Jumlah maksimum Pesanan aktif yang ditampilkan sekaligus di dashboard
+ * (`/dashboard`) — mencegah dashboard berat (query + render + polling 5 detik)
+ * kalau Pesanan aktif menumpuk. Diurut FIFO, jadi yang tampil selalu yang
+ * paling lama menunggu & paling perlu dikerjakan duluan.
+ */
+const ACTIVE_ORDER_LIST_LIMIT = 100;
 
 /** Kode Pesanan unik per Lapak per hari (lokal), retry maks 5x kalau tabrakan. */
 async function generateUniqueOrderCode(merchantId: string): Promise<string> {
@@ -632,45 +640,55 @@ export async function markQrisPribadiOrderPaid(
 }
 
 /** Pesanan aktif (butuh aksi Pedagang) milik Lapak sendiri — identitas dari sesi login. */
-export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
+export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
   const session = await getMerchantSession();
-  if (!session) return [];
+  if (!session) return { orders: [], totalActive: 0 };
 
   // JOIN eksplisit (bukan db.query relational API — tidak ada relations()
   // dikonfigurasi di schema.ts) supaya bisa filter dari `payments.provider`
   // MILIK Pesanan itu sendiri (bukan `merchant.paymentMode` saat ini), supaya
   // Pesanan gateway lama tidak salah tampil tombol "Tandai Lunas" kalau Admin
   // sudah pindahkan mode Lapak.
-  const activeOrders = await db
-    .select({
-      id: orders.id,
-      orderCode: orders.orderCode,
-      status: orders.status,
-      buyerName: orders.buyerName,
-      buyerNote: orders.buyerNote,
-      createdAt: orders.createdAt,
-      paymentProvider: payments.provider,
-    })
-    .from(orders)
-    .innerJoin(payments, eq(payments.orderId, orders.id))
-    .where(
+  const activeOrderFilter = and(
+    eq(orders.merchantId, session.merchantId),
+    or(
+      inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
+      // Pesanan QRIS pribadi yang masih menunggu Pedagang menekan
+      // "Tandai Lunas".
       and(
-        eq(orders.merchantId, session.merchantId),
-        or(
-          inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
-          // Pesanan QRIS pribadi yang masih menunggu Pedagang menekan
-          // "Tandai Lunas".
-          and(
-            eq(orders.status, "menunggu_pembayaran"),
-            eq(payments.provider, "qris_pribadi"),
-          ),
-        ),
+        eq(orders.status, "menunggu_pembayaran"),
+        eq(payments.provider, "qris_pribadi"),
       ),
-    )
-    // Antrean FIFO: Pesanan terlama (paling lama menunggu) di atas supaya
-    // Pedagang mengerjakan sesuai urutan masuk; Pesanan baru menempel di bawah.
-    .orderBy(asc(orders.createdAt));
-  if (activeOrders.length === 0) return [];
+    ),
+  );
+
+  const [activeOrders, [{ totalActive }]] = await Promise.all([
+    db
+      .select({
+        id: orders.id,
+        orderCode: orders.orderCode,
+        status: orders.status,
+        buyerName: orders.buyerName,
+        buyerNote: orders.buyerNote,
+        createdAt: orders.createdAt,
+        paymentProvider: payments.provider,
+      })
+      .from(orders)
+      .innerJoin(payments, eq(payments.orderId, orders.id))
+      .where(activeOrderFilter)
+      // Antrean FIFO: Pesanan terlama (paling lama menunggu) di atas supaya
+      // Pedagang mengerjakan sesuai urutan masuk; Pesanan baru menempel di
+      // bawah. Dibatasi ACTIVE_ORDER_LIST_LIMIT — yang tampil selalu yang
+      // paling mendesak dikerjakan.
+      .orderBy(asc(orders.createdAt))
+      .limit(ACTIVE_ORDER_LIST_LIMIT),
+    db
+      .select({ totalActive: sql<number>`count(*)`.mapWith(Number) })
+      .from(orders)
+      .innerJoin(payments, eq(payments.orderId, orders.id))
+      .where(activeOrderFilter),
+  ]);
+  if (activeOrders.length === 0) return { orders: [], totalActive: 0 };
 
   const orderIds = activeOrders.map((order) => order.id);
   const items = await db.query.orderItems.findMany({
@@ -685,25 +703,28 @@ export async function listMerchantOrders(): Promise<MerchantOrderListItem[]> {
   const variantSelectionsByOrderItemId =
     await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
 
-  return activeOrders.map((order) => ({
-    id: order.id,
-    orderCode: order.orderCode,
-    status: order.status,
-    buyerName: order.buyerName,
-    buyerNote: order.buyerNote,
-    createdAt: order.createdAt,
-    items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
-      id: item.id,
-      productNameSnapshot: item.productNameSnapshot,
-      priceSnapshot: item.priceSnapshot,
-      qty: item.qty,
-      note: item.note,
-      variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
+  return {
+    orders: activeOrders.map((order) => ({
+      id: order.id,
+      orderCode: order.orderCode,
+      status: order.status,
+      buyerName: order.buyerName,
+      buyerNote: order.buyerNote,
+      createdAt: order.createdAt,
+      items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
+        id: item.id,
+        productNameSnapshot: item.productNameSnapshot,
+        priceSnapshot: item.priceSnapshot,
+        qty: item.qty,
+        note: item.note,
+        variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
+      })),
+      awaitingManualConfirmation:
+        order.status === "menunggu_pembayaran" &&
+        order.paymentProvider === "qris_pribadi",
     })),
-    awaitingManualConfirmation:
-      order.status === "menunggu_pembayaran" &&
-      order.paymentProvider === "qris_pribadi",
-  }));
+    totalActive,
+  };
 }
 
 /**

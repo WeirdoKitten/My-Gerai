@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -17,6 +17,10 @@ import {
   getClientIp,
   RATE_LIMIT_MESSAGE,
 } from "@/lib/rate-limit/limiter";
+import {
+  evaluateSchedule,
+  type OperatingHoursRow,
+} from "@/lib/schedule/evaluate";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveQrisPhoto } from "@/lib/upload/storage";
 import { findNearestArea } from "@/lib/utils/geo";
@@ -66,6 +70,8 @@ const MAX_QRIS_PHOTO_BYTES = 3 * 1024 * 1024;
 
 /** Batas jumlah Lapak ditampilkan di showcase landing page (skala kaki lima — KISS). */
 const PUBLIC_SHOWCASE_LIMIT = 12;
+/** Batas aman query direktori "Semua Gerai" (`/gerai`) — bukan pagination, cuma jaga-jaga (skala kaki lima). */
+const PUBLIC_DIRECTORY_LIMIT = 500;
 
 // Dihitung sekali saat modul dimuat — dipakai supaya waktu verifikasi login
 // tetap konsisten walau nomor HP tidak terdaftar (cegah timing side-channel
@@ -409,24 +415,45 @@ export async function getMerchantQrMenu(): Promise<QrMenuView | null> {
 }
 
 /**
- * Lapak yang sudah disetujui — showcase publik di landing page, TANPA sesi.
- * Terbaru gabung duluan, dibatasi {@link PUBLIC_SHOWCASE_LIMIT}. Field
+ * Lapak yang sudah disetujui, TANPA sesi. Terbaru gabung duluan. Field
  * dibatasi ketat (lihat `PublicMerchantListItem`) — tidak ada phone/alamat/
  * status internal, cuma yang aman dilihat siapa saja. Area (`areaId`/
  * `areaName`) dihitung lazy di sini lewat `findNearestArea` -- tidak
  * disimpan di `merchants`, jadi perubahan Area oleh Admin langsung berlaku.
  */
-export async function listApprovedMerchants(): Promise<
-  PublicMerchantListItem[]
-> {
+async function queryApprovedMerchants(
+  limit: number,
+): Promise<PublicMerchantListItem[]> {
   const [rows, areas] = await Promise.all([
     db.query.merchants.findMany({
       where: eq(merchants.status, "approved"),
       orderBy: (row, { desc }) => [desc(row.createdAt)],
-      limit: PUBLIC_SHOWCASE_LIMIT,
+      limit,
     }),
     listServiceAreas(),
   ]);
+
+  const merchantIds = rows.map((row) => row.id);
+  const hoursRows =
+    merchantIds.length > 0
+      ? await db.query.merchantOperatingHours.findMany({
+          where: inArray(merchantOperatingHours.merchantId, merchantIds),
+          columns: {
+            merchantId: true,
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+          },
+        })
+      : [];
+  const hoursByMerchant = new Map<string, OperatingHoursRow[]>();
+  for (const hour of hoursRows) {
+    const list = hoursByMerchant.get(hour.merchantId) ?? [];
+    list.push(hour);
+    hoursByMerchant.set(hour.merchantId, list);
+  }
+
+  const now = new Date();
 
   return rows.map((row) => {
     const area =
@@ -437,6 +464,20 @@ export async function listApprovedMerchants(): Promise<
           )
         : null;
 
+    // Sama seperti getMerchantOpenState (src/lib/schedule/is-merchant-open.ts),
+    // tapi dibatch di sini biar tidak query per-Lapak di daftar publik.
+    const { isOpenBySchedule, segmentStart } = evaluateSchedule(
+      hoursByMerchant.get(row.id) ?? [],
+      now,
+    );
+    const overrideActive =
+      !!row.manualOverride &&
+      !!row.manualOverrideSetAt &&
+      row.manualOverrideSetAt >= segmentStart;
+    const isOpen = overrideActive
+      ? row.manualOverride === "open"
+      : isOpenBySchedule;
+
     return {
       slug: row.slug,
       stallName: row.stallName,
@@ -446,8 +487,23 @@ export async function listApprovedMerchants(): Promise<
       longitude: row.longitude,
       areaId: area?.id ?? null,
       areaName: area?.name ?? null,
+      isOpen,
     };
   });
+}
+
+/** Showcase ringkas di landing page, dibatasi {@link PUBLIC_SHOWCASE_LIMIT}. */
+export async function listApprovedMerchants(): Promise<
+  PublicMerchantListItem[]
+> {
+  return queryApprovedMerchants(PUBLIC_SHOWCASE_LIMIT);
+}
+
+/** Direktori lengkap untuk halaman publik `/gerai` (lihat semua Gerai). */
+export async function listAllApprovedMerchants(): Promise<
+  PublicMerchantListItem[]
+> {
+  return queryApprovedMerchants(PUBLIC_DIRECTORY_LIMIT);
 }
 
 /** Semua Pedagang (untuk panel Admin) — otorisasi via sesi Admin. */

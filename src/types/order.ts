@@ -93,6 +93,16 @@ export type MerchantOrderListItem = {
   awaitingManualConfirmation: boolean;
 };
 
+/**
+ * Hasil `listMerchantOrders` — `orders` dibatasi (lihat ACTIVE_ORDER_LIST_LIMIT
+ * di src/server/orders.ts) supaya dashboard tidak berat kalau Pesanan aktif
+ * menumpuk; `totalActive` dipakai tampilkan "+N pesanan lain" kalau terpotong.
+ */
+export type MerchantOrderListResult = {
+  orders: MerchantOrderListItem[];
+  totalActive: number;
+};
+
 export type UpdateOrderStatusResult = { ok: boolean; message?: string };
 
 /**
