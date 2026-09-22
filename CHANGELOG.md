@@ -2,6 +2,14 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-22 — Chip Area dikurangi jadi 5 (bukan 6)
+
+**Dampak:** Kode ubah: `src/components/buyer/MerchantShowcase.tsx` (`DIRECT_AREA_CHIP_LIMIT` 3 → 2).
+**Alasan:** Revisi permintaan User — chip row dirasa kepanjangan di 6 (Semua/Terdekat/3 Area/Lainnya). Melengkapi keputusan 2026-09-21 (chip dibatasi 6), bukan membalik.
+**Ringkasan:**
+- Area bernama yang tampil langsung jadi 2 (dari 3), total chip row = Semua + Terdekat + 2 Area + Lainnya = 5.
+- **Diverifikasi nyata**: 3 Area + 3 Lapak (1 per Area) disuntik ke DB dev, Playwright hitung tombol chip → tepat 5 (`Semua (5)`, `Terdekat`, 2 Area teratas, `Lainnya`). Data uji dihapus lagi. `tsc`/`biome` lulus.
+
 ## 2026-09-22 — Foto sampul Lapak (kartu Gerai publik)
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (item "Foto Lapak" di Fase Foto Item, ditandai selesai). Kode baru: fungsi `saveMerchantPhoto` (`src/lib/upload/storage.ts`), `seedMerchantPhoto` (`src/lib/db/seed-photo.ts`), `uploadMerchantPhoto` (`src/server/merchants.ts`), `MERCHANT_PHOTO_URL_PATTERN` (`src/lib/validation/merchant.schema.ts`). Kode ubah: `src/types/merchant.ts`, `src/components/merchant/MerchantProfileForm.tsx`, `src/lib/db/seed.ts`/`seed-demo.ts` (2 Lapak demo dikasih foto).

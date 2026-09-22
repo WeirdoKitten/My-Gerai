@@ -17,8 +17,9 @@ type AreaFilter = "all" | "none" | "nearest" | string;
 
 type AreaChip = { id: string; name: string; count: number };
 
-/** Berapa Area bernama yang tampil langsung sebagai chip (sisanya lewat "Lainnya"). */
-const DIRECT_AREA_CHIP_LIMIT = 3;
+// Berapa Area bernama yang tampil langsung sebagai chip (sisanya lewat
+// "Lainnya"). Total chip row = Semua + Terdekat + ini + Lainnya = 5.
+const DIRECT_AREA_CHIP_LIMIT = 2;
 
 // Kartu Gerai per halaman saat `paginate` aktif (`/gerai`) -- batasi DOM/foto
 // yang di-render sekaligus. Mobile (grid 1 kolom, breakpoint `sm` = 640px,
@@ -164,8 +165,8 @@ export function MerchantShowcase({
           : selectedArea === "nearest"
             ? [] // lokasi belum didapat -- tunggu izin/hasil geolocation
             : searchedMerchants.filter(
-              (merchant) => merchant.areaId === selectedArea,
-            );
+                (merchant) => merchant.areaId === selectedArea,
+              );
     return { visibleMerchants: filtered, distanceBySlug: null };
   }, [searchedMerchants, selectedArea, userLocation]);
 
