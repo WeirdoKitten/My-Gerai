@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-22 — Cari nama Gerai + pagination 9/halaman di `/gerai`
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) §3 (`Input.tsx` — prop `leftIcon`/`onClear`). Kode ubah: `src/components/buyer/MerchantShowcase.tsx`, `src/components/ui/Input.tsx`, `src/components/ui/icons.tsx` (tambah `SearchIcon`/`XIcon`), `src/app/gerai/page.tsx`.
+**Alasan:** Permintaan User — `/gerai` bakal susah dicari & berat di-render kalau Gerai makin banyak. Dibahas dua opsi pagination (server-side vs client-side); dipilih **client-side** karena cari mesti tetap jalan lintas semua Gerai (bukan cuma isi 1 halaman), dan skala data proyek ini kecil (server sudah dipagari `PUBLIC_DIRECTORY_LIMIT=500`). Sempat dimulai versi cari yang cocok ke nama+kategori+Area, lalu User minta dipersempit jadi **nama Gerai saja**.
+**Ringkasan:**
+- Kotak cari (`searchable` prop, cuma dipasang di `/gerai` — tidak di landing yang sudah dikurasi terbatas) — filter `stallName` saja, client-side, live per keystroke (tanpa debounce, dataset kecil jadi tidak perlu). Angka di tiap chip Area & tombol "Terdekat" ikut menyempit sesuai hasil cari (cari jalan duluan, baru Area/jarak menyaring di atasnya).
+- Pagination (`paginate` prop) 9 kartu/halaman, tombol Sebelumnya/Berikutnya. Reset ke halaman 1 tiap cari/Area/lokasi berubah — lewat pola "reset state saat render" (bandingkan key filter, bukan `useEffect`) supaya lolos lint `useExhaustiveDependencies` tanpa kedipan render.
+- `Input.tsx` diperluas prop `leftIcon`/`onClear` (reusable, bukan hack padding di halaman pemanggil — DESAIN-SISTEM.md §7 melarang salin kelas Input mentah ke halaman).
+- **Diverifikasi nyata**: 15 Lapak dummy disuntik ke DB dev, alur dicoba di browser sungguhan (Playwright) — 9+6 kartu lintas 2 halaman, cari "bakso" ketemu tepat 2 dari 15, cari tanpa hasil menampilkan pesan yang sesuai, tombol hapus mengembalikan daftar penuh + halaman 1. `tsc --noEmit`/`biome check` lulus. Data uji dihapus lagi setelahnya.
+
 ## 2026-09-21 — Ganti suara notifikasi Pesanan masuk (koin + jingle, 6 detik)
 
 **Dampak:** Aset ubah: `public/sounds/order-chime.wav`. Tidak ada perubahan kode (`src/lib/sound/sound-context.tsx` tetap mengambil path yang sama).

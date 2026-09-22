@@ -37,7 +37,7 @@ export default async function GeraiPage() {
             </div>
 
             {merchants.length > 0 ? (
-              <MerchantShowcase merchants={merchants} />
+              <MerchantShowcase merchants={merchants} searchable paginate />
             ) : (
               <EmptyState
                 icon={<StoreIcon className="size-10" />}

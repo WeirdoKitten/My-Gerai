@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ChevronDownIcon, StoreIcon } from "@/components/ui/icons";
+import { Input } from "@/components/ui/Input";
+import { ChevronDownIcon, SearchIcon, StoreIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils/cn";
 import { formatDistanceKm, haversineDistanceKm } from "@/lib/utils/geo";
@@ -18,17 +20,27 @@ type AreaChip = { id: string; name: string; count: number };
 /** Berapa Area bernama yang tampil langsung sebagai chip (sisanya lewat "Lainnya"). */
 const DIRECT_AREA_CHIP_LIMIT = 3;
 
+/** Kartu Gerai per halaman saat `paginate` aktif (`/gerai`) -- batasi DOM/foto yang di-render sekaligus. */
+const PAGE_SIZE = 9;
+
 export function MerchantShowcase({
   merchants,
   mobileLimit,
   desktopLimit,
+  searchable,
+  paginate,
 }: {
   merchants: PublicMerchantListItem[];
   /** Batasi jumlah kartu yang TAMPIL (bukan yang dikirim) di bawah breakpoint `lg` — dipakai landing supaya tidak padat. Kosongkan untuk tampilkan semua (`/gerai`). */
   mobileLimit?: number;
   /** Batasi jumlah kartu yang tampil di breakpoint `lg` ke atas. */
   desktopLimit?: number;
+  /** Tampilkan kotak cari nama Gerai di atas chip Area — dipakai `/gerai` (daftar penuh), tidak di landing (kurasi terbatas). */
+  searchable?: boolean;
+  /** Pecah hasil jadi halaman `PAGE_SIZE` kartu, dengan tombol Sebelumnya/Berikutnya -- dipakai `/gerai` supaya tidak render semua kartu+foto sekaligus saat Gerai sudah banyak. */
+  paginate?: boolean;
 }) {
+  const [query, setQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState<AreaFilter>("all");
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
@@ -37,6 +49,29 @@ export function MerchantShowcase({
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [areaModalOpen, setAreaModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const normalizedQuery = query.trim().toLowerCase();
+
+  // Filter berubah -> mulai lagi dari halaman 1 (kalau tidak, bisa nyangkut
+  // di halaman kosong setelah hasil pencarian/Area mengecil). Reset di saat
+  // render (bukan useEffect) supaya tidak ada kedipan render lama sebelum
+  // efek jalan -- pola resmi React untuk "reset state saat input berubah".
+  const pageResetKey = `${normalizedQuery}|${selectedArea}|${userLocation?.latitude ?? ""},${userLocation?.longitude ?? ""}`;
+  const [lastPageResetKey, setLastPageResetKey] = useState(pageResetKey);
+  if (paginate && pageResetKey !== lastPageResetKey) {
+    setLastPageResetKey(pageResetKey);
+    setCurrentPage(1);
+  }
+
+  // Cari duluan (nama Gerai saja), baru chip Area & "Terdekat" bekerja di
+  // atas hasil itu -- supaya jumlah di tiap chip ikut merefleksikan pencarian.
+  const searchedMerchants = useMemo(() => {
+    if (!normalizedQuery) return merchants;
+    return merchants.filter((merchant) =>
+      merchant.stallName.toLowerCase().includes(normalizedQuery),
+    );
+  }, [merchants, normalizedQuery]);
 
   // Chip cuma muncul kalau Admin sudah bikin minimal 1 Area (lihat
   // /admin/areas) dan minimal 1 Lapak match ke area itu -- kalau belum ada
@@ -44,7 +79,7 @@ export function MerchantShowcase({
   const { areaChips, unassignedCount } = useMemo(() => {
     const byArea = new Map<string, AreaChip>();
     let unassigned = 0;
-    for (const merchant of merchants) {
+    for (const merchant of searchedMerchants) {
       if (merchant.areaId && merchant.areaName) {
         const existing = byArea.get(merchant.areaId);
         if (existing) existing.count += 1;
@@ -64,7 +99,7 @@ export function MerchantShowcase({
       ),
       unassignedCount: unassigned,
     };
-  }, [merchants]);
+  }, [searchedMerchants]);
 
   const directAreaChips = useMemo(
     () =>
@@ -81,13 +116,14 @@ export function MerchantShowcase({
     !directAreaChips.some((area) => area.id === selectedArea);
 
   const hasAnyCoordinates = useMemo(
-    () => merchants.some((m) => m.latitude != null && m.longitude != null),
-    [merchants],
+    () =>
+      searchedMerchants.some((m) => m.latitude != null && m.longitude != null),
+    [searchedMerchants],
   );
 
   const { visibleMerchants, distanceBySlug } = useMemo(() => {
     if (selectedArea === "nearest" && userLocation) {
-      const withDistance = merchants
+      const withDistance = searchedMerchants
         .filter((m) => m.latitude != null && m.longitude != null)
         .map((m) => ({
           merchant: m,
@@ -106,14 +142,24 @@ export function MerchantShowcase({
     }
     const filtered =
       selectedArea === "all"
-        ? merchants
+        ? searchedMerchants
         : selectedArea === "none"
-          ? merchants.filter((merchant) => !merchant.areaId)
+          ? searchedMerchants.filter((merchant) => !merchant.areaId)
           : selectedArea === "nearest"
             ? [] // lokasi belum didapat -- tunggu izin/hasil geolocation
-            : merchants.filter((merchant) => merchant.areaId === selectedArea);
+            : searchedMerchants.filter(
+                (merchant) => merchant.areaId === selectedArea,
+              );
     return { visibleMerchants: filtered, distanceBySlug: null };
-  }, [merchants, selectedArea, userLocation]);
+  }, [searchedMerchants, selectedArea, userLocation]);
+
+  const totalPages = paginate
+    ? Math.max(1, Math.ceil(visibleMerchants.length / PAGE_SIZE))
+    : 1;
+  const pageSafe = Math.min(currentPage, totalPages);
+  const pagedMerchants = paginate
+    ? visibleMerchants.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE)
+    : visibleMerchants;
 
   function handleNearestClick() {
     if (userLocation) {
@@ -147,11 +193,26 @@ export function MerchantShowcase({
 
   return (
     <div className="mt-16">
+      {searchable ? (
+        <div className="mx-auto mb-6 w-full max-w-md">
+          <Input
+            type="text"
+            inputMode="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery("")}
+            leftIcon={<SearchIcon className="size-4" />}
+            placeholder="Cari nama Gerai..."
+            aria-label="Cari Gerai"
+          />
+        </div>
+      ) : null}
+
       {areaChips.length > 0 || hasAnyCoordinates ? (
         <div className="mb-6 flex flex-col items-center gap-2">
           <div className="flex flex-wrap items-center justify-center gap-1.5">
             <AreaChipButton
-              label={`Semua (${merchants.length})`}
+              label={`Semua (${searchedMerchants.length})`}
               active={selectedArea === "all"}
               onClick={() => setSelectedArea("all")}
             />
@@ -233,11 +294,13 @@ export function MerchantShowcase({
         <p className="text-center text-sm text-ink-muted">
           {selectedArea === "nearest" && !userLocation
             ? "Menunggu izin lokasi..."
-            : "Tidak ada Lapak di area ini."}
+            : normalizedQuery
+              ? `Tidak ada Gerai yang cocok dengan "${query.trim()}".`
+              : "Tidak ada Lapak di area ini."}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleMerchants.map((merchant, index) => (
+          {pagedMerchants.map((merchant, index) => (
             <Link
               key={merchant.slug}
               href={`/menu/${merchant.slug}`}
@@ -300,6 +363,30 @@ export function MerchantShowcase({
           ))}
         </div>
       )}
+
+      {paginate && totalPages > 1 ? (
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={pageSafe <= 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          >
+            Sebelumnya
+          </Button>
+          <span className="text-sm text-ink-muted tabular-nums">
+            Halaman {pageSafe} dari {totalPages}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={pageSafe >= totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Berikutnya
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

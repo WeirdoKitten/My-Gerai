@@ -238,3 +238,20 @@ export function MapPinIcon({ className }: IconProps) {
     </Icon>
   );
 }
+
+export function SearchIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.35-4.35" />
+    </Icon>
+  );
+}
+
+export function XIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </Icon>
+  );
+}

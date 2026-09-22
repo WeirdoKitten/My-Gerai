@@ -89,6 +89,7 @@ Props: `variant`, `size`, `fullWidth` (→ `w-full`), `loading` (tampilkan `Spin
 ### `Input.tsx` / `Textarea.tsx`
 `h-11 w-full rounded-control border border-line bg-surface px-3.5 text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand`
 (Textarea: ganti `h-11` → `min-h-24 py-2.5`.) State error: tambahkan `border-danger`.
+Prop opsional `leftIcon`/`onClear` (2026-09-22, kotak cari `/gerai`) — ikon di kiri (`pl-10`) + tombol hapus × di kanan (`pr-10`) saat `value` terisi, dibungkus otomatis di `<div className="relative">`. Dipakai lewat komponen, jangan salin ulang wrapper-nya ke halaman.
 
 ### `Field.tsx`
 Bungkus label + kontrol:
