@@ -18,6 +18,8 @@ export type MerchantProfileView = {
   category: string;
   /** Read-only di form profil (mengubah nomor HP = urusan auth, terpisah). */
   phone: string;
+  /** null = belum ada foto sampul Lapak -> kartu Gerai publik tampil placeholder. */
+  photoUrl: string | null;
   payoutAccountInfo: string | null;
   /** null = Pedagang belum isi alamat teks. Ditampilkan ke Pembeli di halaman menu. */
   address: string | null;
@@ -39,6 +41,10 @@ export type MerchantPaymentSettingsView = {
   qrisPhotoUrl: string | null;
   storefrontLocked: boolean;
 };
+
+export type UploadMerchantPhotoResult =
+  | { ok: true; url: string }
+  | { ok: false; message: string };
 
 export type UploadQrisPhotoResult =
   | { ok: true; url: string }

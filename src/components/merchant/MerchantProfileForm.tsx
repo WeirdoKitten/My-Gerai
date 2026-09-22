@@ -2,16 +2,18 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { Textarea } from "@/components/ui/Textarea";
+import { resizeImage } from "@/lib/upload/resize-image";
 import type { Coordinates } from "@/lib/utils/geo";
 import { reverseGeocodeAddress } from "@/server/geocoding";
-import { updateMerchantProfile } from "@/server/merchants";
+import { updateMerchantProfile, uploadMerchantPhoto } from "@/server/merchants";
 import type { MerchantProfileView } from "@/types/merchant";
 
 // Leaflet butuh `window` -- wajib dimatikan SSR-nya di Next.js App Router.
@@ -34,6 +36,12 @@ export function MerchantProfileForm({
   const [stallName, setStallName] = useState(profile.stallName);
   const [ownerName, setOwnerName] = useState(profile.ownerName);
   const [category, setCategory] = useState(profile.category);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(
+    profile.photoUrl ?? null,
+  );
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [payoutAccountInfo, setPayoutAccountInfo] = useState(
     profile.payoutAccountInfo ?? "",
   );
@@ -66,6 +74,30 @@ export function MerchantProfileForm({
     setGeocoding(false);
   }
 
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    setPhotoError(null);
+    try {
+      const resized = await resizeImage(file);
+      const formData = new FormData();
+      formData.append("file", resized, "foto.jpg");
+      const result = await uploadMerchantPhoto(formData);
+      if (!result.ok) {
+        setPhotoError(result.message);
+        return;
+      }
+      setPhotoUrl(result.url);
+    } catch {
+      setPhotoError("Gagal memproses foto. Coba foto lain.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -76,6 +108,7 @@ export function MerchantProfileForm({
       stallName,
       ownerName,
       category,
+      photoUrl,
       payoutAccountInfo: payoutAccountInfo || undefined,
       address: address || undefined,
       latitude: location?.latitude ?? null,
@@ -118,6 +151,51 @@ export function MerchantProfileForm({
           maxLength={50}
         />
       </Field>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold text-ink">
+          Foto Sampul Lapak (opsional)
+        </span>
+        <div className="flex items-center gap-3">
+          <PhotoThumb src={photoUrl} alt="Pratinjau foto Lapak" />
+          <div className="flex flex-col gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              loading={uploadingPhoto}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadingPhoto
+                ? "Mengunggah..."
+                : photoUrl
+                  ? "Ganti Foto"
+                  : "Tambah Foto"}
+            </Button>
+            {photoUrl ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setPhotoUrl(null)}
+              >
+                Hapus Foto
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handlePhotoChange}
+        />
+        <span className="text-xs text-ink-muted">
+          Tampil di kartu Gerai (landing & "Semua Gerai") -- belum ada foto =
+          tampil ikon toko polos.
+        </span>
+        {photoError ? <Alert tone="error">{photoError}</Alert> : null}
+      </div>
       {/* Bukan <Field> (selalu render <label>) -- di dalamnya ada peta + dua
           tombol sekaligus, jadi <label> akan salah kaprah "melabeli"
           tombol-tombol itu dengan nama aksesibilitas gabungan seluruh field. */}
@@ -127,8 +205,8 @@ export function MerchantProfileForm({
         </span>
         <LocationMapPicker value={location} onChange={handleLocationChange} />
         <span className="text-xs text-ink-muted">
-          Taruh/geser pin ke lokasi Lapak -- alamat di bawah otomatis
-          terisi. Opsional.
+          Taruh/geser pin ke lokasi Lapak -- alamat di bawah otomatis terisi.
+          Opsional.
         </span>
       </div>
       <Field
@@ -162,7 +240,12 @@ export function MerchantProfileForm({
       </Field>
       {error ? <Alert tone="error">{error}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
-      <Button type="submit" fullWidth loading={submitting}>
+      <Button
+        type="submit"
+        fullWidth
+        loading={submitting}
+        disabled={uploadingPhoto}
+      >
         {submitting ? "Menyimpan..." : "Simpan Profil"}
       </Button>
     </Card>

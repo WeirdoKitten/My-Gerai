@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   type ImageExt,
+  saveMerchantPhoto,
   saveProductPhoto,
   saveQrisPhoto,
 } from "../upload/storage";
@@ -28,4 +29,18 @@ export async function seedQrisPhoto(filename: string): Promise<string> {
     path.join(process.cwd(), "public", "img", "qris", filename),
   );
   return saveQrisPhoto(bytes, ext);
+}
+
+/**
+ * Sama seperti {@link seedProductPhoto}, tapi untuk foto sampul Lapak (kartu
+ * Gerai publik di landing & `/gerai`) — reuse folder `public/img/menu/` yang
+ * sama, tidak ada aset terpisah khusus "foto Lapak", foto Item yang
+ * representatif juga cocok jadi foto sampul.
+ */
+export async function seedMerchantPhoto(filename: string): Promise<string> {
+  const ext = path.extname(filename).slice(1) as ImageExt;
+  const bytes = await readFile(
+    path.join(process.cwd(), "public", "img", "menu", filename),
+  );
+  return saveMerchantPhoto(bytes, ext);
 }

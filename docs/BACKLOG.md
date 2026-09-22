@@ -93,7 +93,7 @@
 - [x] `simulatePaymentSuccess`: kurangi stok `GREATEST(stock-qty,0)` dalam transaksi transisi `dibayar` (guard WHERE cegah pengurangan ganda). Diverifikasi: pesan 2x → stok 6→4; Item tak terbatas tetap `null`; over-order ditolak.
 - [x] Seeder isi stok contoh (Bakso Halus 10, Mie Ayam Bakso 6). E2E (`order-flow`, `rate-limit`) diperbaiki untuk markup baru — 3/3 lulus. Ground truth: DATA-MODEL, PRD, ARSITEKTUR-SISTEM (ADR), CODING-STYLE, CHANGELOG.
 
-## Fase Foto Item — Upload foto dari HP ✅ (foto Lapak menyusul)
+## Fase Foto Item — Upload foto dari HP ✅
 
 > Dimau User (AskUserQuestion 2026-09-07). Plan mode dulu (`~/.claude/plans/wild-rolling-turtle.md`), lihat CHANGELOG 2026-09-08.
 
@@ -104,7 +104,7 @@
 - [x] `/security-review` dijalankan — tidak ada temuan HIGH/MEDIUM; 1 hardening kecil (`X-Content-Type-Options: nosniff`) diterapkan. Unit test `tests/unit/upload.test.ts` (magic-bytes + regex path).
 - [x] Diverifikasi nyata: dev (upload via Playwright, file di `.uploads/`, edit Item tidak hilang, hapus foto) + `docker run` dengan named volume (tulis sebagai `nextjs`, sajikan, traversal→404, persist setelah restart). `tsc`/`lint`/`build`/`pnpm test` (31) lulus.
 - [ ] **Langkah Dokploy (User)**: `mygerai-app` → Advanced → Volumes → Volume Mount (named, mis. `mygerai_uploads`) → Mount Path `/app/uploads`. **Wajib sebelum deploy versi ini**, kalau tidak foto hilang tiap redeploy.
-- [ ] Foto Lapak (`merchants.photo_url`) — mekanisme sama, belum dikerjakan.
+- [x] Foto Lapak (`merchants.photo_url`) — mekanisme sama persis (upload di `MerchantProfileForm`/`/dashboard/profil`, `uploadMerchantPhoto`, `saveMerchantPhoto` ke `UPLOADS_DIR/merchants/`), tampil di kartu Gerai publik (landing & `/gerai`) menggantikan placeholder ikon toko. Lihat CHANGELOG 2026-09-22.
 
 ## Riwayat Pesanan Pedagang ✅
 

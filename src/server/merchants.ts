@@ -22,7 +22,11 @@ import {
   type OperatingHoursRow,
 } from "@/lib/schedule/evaluate";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
-import { detectImage, saveQrisPhoto } from "@/lib/upload/storage";
+import {
+  detectImage,
+  saveMerchantPhoto,
+  saveQrisPhoto,
+} from "@/lib/upload/storage";
 import { findNearestArea } from "@/lib/utils/geo";
 import { buildMenuQrPoster } from "@/lib/utils/qr-poster";
 import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
@@ -63,10 +67,12 @@ import type {
   SetOperatingHoursResult,
   ToggleMerchantOpenResult,
   UpdateMerchantProfileResult,
+  UploadMerchantPhotoResult,
   UploadQrisPhotoResult,
 } from "@/types/merchant";
 
 const MAX_QRIS_PHOTO_BYTES = 3 * 1024 * 1024;
+const MAX_MERCHANT_PHOTO_BYTES = 3 * 1024 * 1024;
 
 /** Batas jumlah Lapak ditampilkan di showcase landing page (skala kaki lima — KISS). */
 const PUBLIC_SHOWCASE_LIMIT = 12;
@@ -218,6 +224,7 @@ export async function getMerchantProfile(): Promise<MerchantProfileView | null> 
     ownerName: merchant.ownerName,
     category: merchant.category,
     phone: merchant.phone,
+    photoUrl: merchant.photoUrl,
     payoutAccountInfo: merchant.payoutAccountInfo,
     address: merchant.address,
     latitude: merchant.latitude,
@@ -246,6 +253,7 @@ export async function updateMerchantProfile(
       stallName: parsed.data.stallName,
       ownerName: parsed.data.ownerName,
       category: parsed.data.category,
+      photoUrl: parsed.data.photoUrl ?? null,
       payoutAccountInfo: parsed.data.payoutAccountInfo || null,
       address: parsed.data.address || null,
       latitude: parsed.data.latitude ?? null,
@@ -362,6 +370,49 @@ export async function setMerchantOperatingHours(
   });
 
   return { ok: true, message: "Jadwal operasional disimpan." };
+}
+
+/**
+ * Unggah foto sampul Lapak (kartu Gerai publik di landing & `/gerai`).
+ * Dipanggil dari `MerchantProfileForm` sebelum submit — sama pola seperti
+ * `uploadProductPhoto`: mengembalikan `photo_url` yang ditahan di klien dulu,
+ * ikut dikirim ke `updateMerchantProfile` saat form disimpan (BUKAN langsung
+ * ditulis ke DB di sini, beda dari `uploadQrisPhoto` yang tidak punya field
+ * lain untuk digabung).
+ */
+export async function uploadMerchantPhoto(
+  formData: FormData,
+): Promise<UploadMerchantPhotoResult> {
+  const session = await getMerchantSession();
+  if (!session)
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  if (
+    !checkRateLimit(
+      `upload-merchant-photo:${session.merchantId}`,
+      30,
+      10 * 60_000,
+    )
+  ) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof Blob) || file.size === 0) {
+    return { ok: false, message: "Tidak ada file foto." };
+  }
+  if (file.size > MAX_MERCHANT_PHOTO_BYTES) {
+    return { ok: false, message: "Ukuran foto maksimal 3 MB." };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const ext = detectImage(bytes);
+  if (!ext) {
+    return { ok: false, message: "Format foto harus JPG, PNG, atau WebP." };
+  }
+
+  const url = await saveMerchantPhoto(bytes, ext);
+  return { ok: true, url };
 }
 
 /**

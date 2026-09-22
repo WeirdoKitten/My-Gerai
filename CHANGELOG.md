@@ -2,6 +2,26 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-22 — Foto sampul Lapak (kartu Gerai publik)
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (item "Foto Lapak" di Fase Foto Item, ditandai selesai). Kode baru: fungsi `saveMerchantPhoto` (`src/lib/upload/storage.ts`), `seedMerchantPhoto` (`src/lib/db/seed-photo.ts`), `uploadMerchantPhoto` (`src/server/merchants.ts`), `MERCHANT_PHOTO_URL_PATTERN` (`src/lib/validation/merchant.schema.ts`). Kode ubah: `src/types/merchant.ts`, `src/components/merchant/MerchantProfileForm.tsx`, `src/lib/db/seed.ts`/`seed-demo.ts` (2 Lapak demo dikasih foto).
+**Alasan:** Permintaan User — kartu Gerai di landing & `/gerai` selalu tampil placeholder ikon toko karena kolom `merchants.photo_url` (sudah ada sejak awal) tidak pernah punya UI untuk diisi. Sudah tercatat sebagai item pending di BACKLOG.md ("foto Lapak menyusul") sejak Fase Foto Item — sekarang dikerjakan, mekanismenya dicontek 1:1 dari upload foto Item yang sudah ada.
+**Ringkasan:**
+- Foto ditahan di klien dulu (state `photoUrl`, hasil `uploadMerchantPhoto`) dan ikut dikirim saat submit `updateMerchantProfile` — pola sama seperti `ProductForm`, BEDA dari `uploadQrisPhoto` (yang langsung tersimpan begitu upload, karena halamannya cuma punya 1 field itu).
+- Server: auth sesi Pedagang, rate-limit 30/10 menit, batas 3 MB, validasi magic-bytes (JPG/PNG/WebP), simpan ke `UPLOADS_DIR/merchants/<uuid>.<ext>` (folder baru, di bawah volume Docker yang sama — tidak perlu langkah Dokploy tambahan, sudah ikut ter-mount lewat volume `mygerai_uploads` yang sama).
+- Field baru "Foto Sampul Lapak (opsional)" di `/dashboard/profil`, sebelum blok lokasi GPS — thumbnail + tombol Tambah/Ganti/Hapus Foto, sama persis pola visualnya dengan foto Item.
+- 2 Lapak demo (`bakso-pak-budi`, `nasi-goreng-raja-rasa`) dikasih foto sampul di `seed.ts`/`seed-demo.ts` (reuse foto Item yang representatif, `bakso.jpg`/`nasi-goreng-biasa.jpg` — tidak ada aset terpisah khusus foto Lapak) supaya data demo tidak placeholder juga.
+- **Diverifikasi nyata**: `tsc --noEmit`/`biome check` lulus. Alur penuh dicoba di browser sungguhan (Playwright) — login Pedagang demo → upload foto asli → simpan profil → kartu Lapak itu di `/gerai` langsung tampil foto sungguhan (bukan ikon toko), Lapak lain yang belum punya foto tetap placeholder. `pnpm db:seed` dijalankan ulang, kedua Lapak demo tampil dengan foto tanpa langkah manual.
+
+## 2026-09-22 — Pagination `/gerai` responsif (6 kartu di mobile, 9 di layar lebih lebar) + hapus placeholder kotak cari
+
+**Dampak:** Kode ubah: `src/components/buyer/MerchantShowcase.tsx`.
+**Alasan:** Permintaan User — di mobile, 9 kartu per halaman kepanjangan buat di-scroll; breakpoint dipatok sama seperti breakpoint grid kartu (`sm` = 640px, sudah dipakai `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`). Placeholder teks di kotak cari juga diminta dihapus.
+**Ringkasan:**
+- Ukuran halaman jadi dinamis (`pageSize` state, bukan konstanta tetap) — dipantau lewat `window.matchMedia("(max-width: 639px)")` (bereaksi ke resize/orientation, bukan cuma sekali baca lebar layar saat mount).
+- Placeholder `<Input>` kotak cari dihapus (`aria-label` tetap ada untuk aksesibilitas, cuma teks placeholder-nya yang hilang).
+- **Diverifikasi nyata**: 9 Lapak (2 asli + 7 dummy) di DB dev, dicek Playwright dua viewport — 375px (mobile) → 6 kartu + "Halaman 1 dari 2"; 1024px (desktop) → 9 kartu, pager tersembunyi (pas 1 halaman). Data uji dihapus lagi. `tsc`/`biome` lulus.
+
 ## 2026-09-22 — Cari nama Gerai + pagination 9/halaman di `/gerai`
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) §3 (`Input.tsx` — prop `leftIcon`/`onClear`). Kode ubah: `src/components/buyer/MerchantShowcase.tsx`, `src/components/ui/Input.tsx`, `src/components/ui/icons.tsx` (tambah `SearchIcon`/`XIcon`), `src/app/gerai/page.tsx`.

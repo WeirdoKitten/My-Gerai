@@ -1,7 +1,11 @@
 import { hashPassword } from "../auth/password";
 import { client, db } from "./client";
 import { admins, merchants, platformConfig, products } from "./schema";
-import { seedProductPhoto, seedQrisPhoto } from "./seed-photo";
+import {
+  seedMerchantPhoto,
+  seedProductPhoto,
+  seedQrisPhoto,
+} from "./seed-photo";
 
 /**
  * Seed data DEMO untuk server (staging / demo publik) — versi AMAN dari
@@ -44,6 +48,7 @@ async function main(): Promise<void> {
       phone: "082222222222",
       passwordHash,
       status: "approved",
+      photoUrl: await seedMerchantPhoto("bakso.jpg"),
     })
     .onConflictDoNothing({ target: merchants.slug })
     .returning();
@@ -106,6 +111,7 @@ async function main(): Promise<void> {
       status: "approved",
       paymentMode: "qris_pribadi",
       qrisPhotoUrl: await seedQrisPhoto("nasi-goreng-raja-rasa.jpg"),
+      photoUrl: await seedMerchantPhoto("nasi-goreng-biasa.jpg"),
     })
     .onConflictDoNothing({ target: merchants.slug })
     .returning();

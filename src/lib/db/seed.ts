@@ -14,7 +14,11 @@ import {
   products,
   sessions,
 } from "./schema";
-import { seedProductPhoto, seedQrisPhoto } from "./seed-photo";
+import {
+  seedMerchantPhoto,
+  seedProductPhoto,
+  seedQrisPhoto,
+} from "./seed-photo";
 
 const SEED_PASSWORD = "password";
 
@@ -56,6 +60,7 @@ async function main() {
       phone: "082222222222",
       passwordHash,
       status: "approved",
+      photoUrl: await seedMerchantPhoto("bakso.jpg"),
     })
     .returning();
 
@@ -115,6 +120,7 @@ async function main() {
       status: "approved",
       paymentMode: "qris_pribadi",
       qrisPhotoUrl: await seedQrisPhoto("nasi-goreng-raja-rasa.jpg"),
+      photoUrl: await seedMerchantPhoto("nasi-goreng-biasa.jpg"),
     })
     .returning();
 

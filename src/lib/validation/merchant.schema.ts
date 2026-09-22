@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+/** Pola `photo_url` Lapak yang sah — hanya file hasil upload kita sendiri (bukan URL sembarang). */
+export const MERCHANT_PHOTO_URL_PATTERN =
+  /^\/uploads\/merchants\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+
 export const registerMerchantSchema = z.object({
   stallName: z.string().trim().min(1, "Nama Lapak wajib diisi.").max(100),
   ownerName: z.string().trim().min(1, "Nama Pedagang wajib diisi.").max(100),
@@ -25,7 +29,15 @@ export const updateMerchantProfileSchema = z
     stallName: z.string().trim().min(1, "Nama Lapak wajib diisi.").max(100),
     ownerName: z.string().trim().min(1, "Nama Pedagang wajib diisi.").max(100),
     category: z.string().trim().min(1, "Kategori wajib diisi.").max(50),
-    address: z.string().trim().max(200, "Alamat maksimal 200 karakter.").optional(),
+    photoUrl: z
+      .string()
+      .regex(MERCHANT_PHOTO_URL_PATTERN, "Foto tidak valid.")
+      .nullish(),
+    address: z
+      .string()
+      .trim()
+      .max(200, "Alamat maksimal 200 karakter.")
+      .optional(),
     payoutAccountInfo: z.string().trim().max(300).optional(),
     latitude: z
       .number()

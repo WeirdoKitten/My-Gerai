@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,8 +20,13 @@ type AreaChip = { id: string; name: string; count: number };
 /** Berapa Area bernama yang tampil langsung sebagai chip (sisanya lewat "Lainnya"). */
 const DIRECT_AREA_CHIP_LIMIT = 3;
 
-/** Kartu Gerai per halaman saat `paginate` aktif (`/gerai`) -- batasi DOM/foto yang di-render sekaligus. */
-const PAGE_SIZE = 9;
+// Kartu Gerai per halaman saat `paginate` aktif (`/gerai`) -- batasi DOM/foto
+// yang di-render sekaligus. Mobile (grid 1 kolom, breakpoint `sm` = 640px,
+// sama seperti grid kartu di bawah) lebih sedikit supaya tidak scroll panjang;
+// >= `sm` (grid 2-3 kolom) tetap 9 (habis rata di grid 3 kolom `lg`).
+const MOBILE_PAGE_SIZE = 6;
+const DESKTOP_PAGE_SIZE = 9;
+const MOBILE_BREAKPOINT_QUERY = "(max-width: 639px)";
 
 export function MerchantShowcase({
   merchants,
@@ -37,7 +42,7 @@ export function MerchantShowcase({
   desktopLimit?: number;
   /** Tampilkan kotak cari nama Gerai di atas chip Area — dipakai `/gerai` (daftar penuh), tidak di landing (kurasi terbatas). */
   searchable?: boolean;
-  /** Pecah hasil jadi halaman `PAGE_SIZE` kartu, dengan tombol Sebelumnya/Berikutnya -- dipakai `/gerai` supaya tidak render semua kartu+foto sekaligus saat Gerai sudah banyak. */
+  /** Pecah hasil jadi halaman (6 kartu di mobile, 9 di `sm` ke atas), dengan tombol Sebelumnya/Berikutnya -- dipakai `/gerai` supaya tidak render semua kartu+foto sekaligus saat Gerai sudah banyak. */
   paginate?: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -50,6 +55,17 @@ export function MerchantShowcase({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [areaModalOpen, setAreaModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DESKTOP_PAGE_SIZE);
+
+  useEffect(() => {
+    if (!paginate) return;
+    const mq = window.matchMedia(MOBILE_BREAKPOINT_QUERY);
+    const update = () =>
+      setPageSize(mq.matches ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [paginate]);
 
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -148,17 +164,17 @@ export function MerchantShowcase({
           : selectedArea === "nearest"
             ? [] // lokasi belum didapat -- tunggu izin/hasil geolocation
             : searchedMerchants.filter(
-                (merchant) => merchant.areaId === selectedArea,
-              );
+              (merchant) => merchant.areaId === selectedArea,
+            );
     return { visibleMerchants: filtered, distanceBySlug: null };
   }, [searchedMerchants, selectedArea, userLocation]);
 
   const totalPages = paginate
-    ? Math.max(1, Math.ceil(visibleMerchants.length / PAGE_SIZE))
+    ? Math.max(1, Math.ceil(visibleMerchants.length / pageSize))
     : 1;
   const pageSafe = Math.min(currentPage, totalPages);
   const pagedMerchants = paginate
-    ? visibleMerchants.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE)
+    ? visibleMerchants.slice((pageSafe - 1) * pageSize, pageSafe * pageSize)
     : visibleMerchants;
 
   function handleNearestClick() {
@@ -192,7 +208,7 @@ export function MerchantShowcase({
   }
 
   return (
-    <div className="mt-16">
+    <div className="mt-10">
       {searchable ? (
         <div className="mx-auto mb-6 w-full max-w-md">
           <Input
@@ -202,7 +218,6 @@ export function MerchantShowcase({
             onChange={(event) => setQuery(event.target.value)}
             onClear={() => setQuery("")}
             leftIcon={<SearchIcon className="size-4" />}
-            placeholder="Cari nama Gerai..."
             aria-label="Cari Gerai"
           />
         </div>

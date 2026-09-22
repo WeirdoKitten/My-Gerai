@@ -13,6 +13,7 @@ export const UPLOADS_DIR =
 
 const PRODUCT_PHOTO_DIR = path.join(UPLOADS_DIR, "products");
 const QRIS_PHOTO_DIR = path.join(UPLOADS_DIR, "qris");
+const MERCHANT_PHOTO_DIR = path.join(UPLOADS_DIR, "merchants");
 
 export type ImageExt = "jpg" | "png" | "webp";
 
@@ -63,4 +64,15 @@ export async function saveQrisPhoto(
   await mkdir(QRIS_PHOTO_DIR, { recursive: true });
   await writeFile(path.join(QRIS_PHOTO_DIR, name), bytes);
   return `/uploads/qris/${name}`;
+}
+
+/** Tulis foto sampul Lapak (kartu Gerai publik) ke storage, kembalikan `photo_url` relatif. */
+export async function saveMerchantPhoto(
+  bytes: Buffer,
+  ext: ImageExt,
+): Promise<string> {
+  const name = `${randomUUID()}.${ext}`;
+  await mkdir(MERCHANT_PHOTO_DIR, { recursive: true });
+  await writeFile(path.join(MERCHANT_PHOTO_DIR, name), bytes);
+  return `/uploads/merchants/${name}`;
 }
