@@ -43,6 +43,30 @@ test.describe
     });
 
     test("Pedagang menerima dan menyelesaikan Pesanan", async ({ page }) => {
+      // Printer thermal Bluetooth tiruan — Web Bluetooth tidak bisa dipakai
+      // di Playwright; byte ESC/POS yang dikirim ditampung di window.
+      await page.addInitScript(() => {
+        const printed: number[] = [];
+        Object.assign(window, { __printed: printed });
+        const characteristic = {
+          properties: { write: true, writeWithoutResponse: false },
+          writeValueWithResponse: async (value: Uint8Array) => {
+            printed.push(...value);
+          },
+          writeValueWithoutResponse: async () => {},
+        };
+        const server = {
+          connected: true,
+          connect: async () => server,
+          getPrimaryServices: async () => [
+            { getCharacteristics: async () => [characteristic] },
+          ],
+        };
+        Object.defineProperty(navigator, "bluetooth", {
+          value: { requestDevice: async () => ({ gatt: server }) },
+        });
+      });
+
       await page.goto("/login");
       await page.getByLabel("Nomor HP").fill(MERCHANT_PHONE);
       await page.getByLabel("Password").fill(MERCHANT_PASSWORD);
@@ -53,6 +77,27 @@ test.describe
         .getByText(orderCode, { exact: true })
         .locator("xpath=ancestor::*[contains(@class,'rounded-card')][1]");
       await expect(card).toBeVisible();
+
+      // Pratinjau struk tampil tanpa printer; cetak dari dalam Modal.
+      await card.getByRole("button", { name: "Lihat Struk" }).click();
+      const preview = page.getByRole("img", { name: "Pratinjau struk" });
+      await expect(preview).toContainText("BAKSO PAK BUDI");
+      await expect(preview).toContainText("dapat dikembalikan");
+      await page.getByRole("button", { name: "Cetak ke Printer" }).click();
+      await expect(page.getByText(`Struk ${orderCode} dicetak`)).toBeVisible();
+      const receiptText = await page.evaluate(() =>
+        String.fromCharCode(
+          ...(window as unknown as { __printed: number[] }).__printed,
+        ),
+      );
+      expect(receiptText).toContain("BAKSO PAK BUDI");
+      expect(receiptText).toContain(orderCode);
+      expect(receiptText).toContain("Pembeli E2E");
+      expect(receiptText).toContain("Biaya Layanan");
+      expect(receiptText).toMatch(/TOTAL\s+Rp[\d.]+/);
+      expect(receiptText).toContain("dapat dikembalikan");
+
+      await page.getByRole("button", { name: "Tutup" }).click();
 
       // Regresi bug nyata Fase 3: tombol dulu macet di "Memproses..." setelah
       // update sukses (lupa reset state `submitting`) — lihat CHANGELOG.md.

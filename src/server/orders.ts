@@ -38,6 +38,7 @@ import {
   nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
   type OrderStatus,
+  PAID_ORDER_STATUSES,
 } from "@/lib/utils/order-status";
 import {
   type CreateOrderInput,
@@ -48,6 +49,7 @@ import type {
   AdminOrderListItem,
   BuyerOrderStatusView,
   CreateOrderResult,
+  GetOrderReceiptResult,
   MerchantOrderHistoryItem,
   MerchantOrderListResult,
   Order,
@@ -781,6 +783,83 @@ export async function listMerchantOrderHistory(): Promise<
       note: item.note,
     })),
   }));
+}
+
+/**
+ * Data struk cetak satu Pesanan milik Lapak sendiri — hanya Pesanan yang sudah
+ * lunas (PAID_ORDER_STATUSES). Filter kepemilikan di klausa WHERE, identitas
+ * Lapak dari sesi login (tidak pernah dari parameter).
+ */
+export async function getOrderReceipt(
+  orderId: string,
+): Promise<GetOrderReceiptResult> {
+  if (!z.uuid().safeParse(orderId).success) {
+    return { ok: false, message: "Pesanan tidak ditemukan." };
+  }
+  const session = await getMerchantSession();
+  if (!session) {
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+  }
+
+  const [row] = await db
+    .select({
+      order: orders,
+      stallName: merchants.stallName,
+      stallAddress: merchants.address,
+      paymentProvider: payments.provider,
+    })
+    .from(orders)
+    .innerJoin(merchants, eq(merchants.id, orders.merchantId))
+    .innerJoin(payments, eq(payments.orderId, orders.id))
+    .where(
+      and(
+        eq(orders.id, orderId),
+        eq(orders.merchantId, session.merchantId),
+        inArray(orders.status, [...PAID_ORDER_STATUSES]),
+      ),
+    )
+    .limit(1);
+  if (!row) {
+    return {
+      ok: false,
+      message: "Struk hanya untuk Pesanan yang sudah lunas.",
+    };
+  }
+
+  const { order } = row;
+  const items = await db.query.orderItems.findMany({
+    where: eq(orderItems.orderId, order.id),
+  });
+  const variantSelectionsByOrderItemId =
+    await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
+
+  // Sama dengan `amountToPay` di getOrderStatus: QRIS pribadi tidak memungut
+  // Biaya Layanan dari Pembeli (ditagih mingguan ke Pedagang).
+  const serviceFeePaid =
+    row.paymentProvider === "qris_pribadi" ? 0 : order.platformFeeSnapshot;
+
+  return {
+    ok: true,
+    receipt: {
+      stallName: row.stallName,
+      stallAddress: row.stallAddress,
+      orderCode: order.orderCode,
+      buyerName: order.buyerName,
+      buyerNote: order.buyerNote,
+      paidAt: order.paidAt ?? order.createdAt,
+      items: items.map((item) => ({
+        id: item.id,
+        productNameSnapshot: item.productNameSnapshot,
+        priceSnapshot: item.priceSnapshot,
+        qty: item.qty,
+        note: item.note,
+        variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
+      })),
+      subtotal: order.subtotal,
+      serviceFeePaid,
+      amountPaid: order.subtotal + serviceFeePaid,
+    },
+  };
 }
 
 export async function updateOrderStatus(

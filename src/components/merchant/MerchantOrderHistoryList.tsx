@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
 import { orderGrandTotal } from "@/lib/utils/order-calc";
 import type { MerchantOrderHistoryItem } from "@/types/order";
+import { ReceiptButton } from "./ReceiptButton";
 
 export function MerchantOrderHistoryList({
   orders,
@@ -90,6 +91,9 @@ function MerchantOrderHistoryCard({
           Pembeli bayar {formatRupiah(orderGrandTotal(order))} · Biaya Layanan{" "}
           {formatRupiah(order.platformFeeSnapshot)}
         </p>
+      ) : null}
+      {order.status === "selesai" ? (
+        <ReceiptButton orderId={order.id} orderCode={order.orderCode} />
       ) : null}
     </Card>
   );

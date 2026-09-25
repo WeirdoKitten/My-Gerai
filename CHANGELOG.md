@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-25 — Cetak struk Pesanan ke printer thermal Bluetooth (Pedagang)
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (seksi baru), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (baris "Cetak struk"), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md) (`lib/printer/`, `utils/receipt.ts`). Kode baru: `getOrderReceipt` (`src/server/orders.ts`), `OrderReceiptView`/`GetOrderReceiptResult` (`src/types/order.ts`), `src/lib/utils/receipt.ts`, `src/lib/printer/bluetooth-printer.ts`, `src/components/merchant/ReceiptButton.tsx`, `PrinterIcon`. Kode ubah: `MerchantOrderCard.tsx`, `MerchantOrderHistoryList.tsx`, `tests/e2e/order-flow.spec.ts`. Tanpa perubahan skema DB, tanpa dependency baru.
+**Alasan:** Permintaan User — Pedagang menyerahkan Pesanan bersama struk cetak (seperti di minimarket). Dikonfirmasi lewat AskUserQuestion: HP + printer thermal Bluetooth mini (Web Bluetooth + ESC/POS), tombol manual per Pesanan (bukan auto-print).
+**Ringkasan:**
+- Satu tombol "Lihat Struk" di kartu Pesanan aktif yang sudah lunas dan di Riwayat (status `selesai`) → Modal pratinjau struk (bisa dipakai tanpa printer) + "Cetak ke Printer". Pilih printer sekali, tersambung ulang otomatis selama tab terbuka.
+- Isi struk 58mm (32 kolom): nama + alamat Lapak, No. Pesanan, nama Pembeli, waktu bayar (WIB), Item + varian + catatan, Subtotal, Biaya Layanan, TOTAL, "Dibayar via QRIS", footer "Terima kasih telah berbelanja / Barang yang sudah dibeli tidak dapat dikembalikan". Pesanan QRIS pribadi: tanpa baris Biaya Layanan, TOTAL = subtotal (sesuai yang benar-benar dibayar Pembeli).
+- Batasan: hanya browser Chromium (Chrome Android/desktop) dan printer BLE — printer Bluetooth Classic saja tidak bisa.
+- **Diverifikasi nyata**: unit test (10, dibuktikan menangkap bug), E2E dengan printer Bluetooth tiruan memeriksa isi byte yang terkirim, `tsc`/`build` lulus. **Belum** dicoba ke printer fisik (menunggu User).
+
 ## 2026-09-22 — Chip Area dikurangi jadi 5 (bukan 6)
 
 **Dampak:** Kode ubah: `src/components/buyer/MerchantShowcase.tsx` (`DIRECT_AREA_CHIP_LIMIT` 3 → 2).

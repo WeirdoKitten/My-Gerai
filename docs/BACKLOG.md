@@ -361,6 +361,19 @@
 - [x] `tsc --noEmit` / `pnpm lint` / `pnpm build` lulus. `pnpm test` (vitest, 113) tetap lulus — `reverseGeocodeAddress` murni I/O boundary (pola sama `midtrans-provider.ts`, tidak diunit-test terpisah).
 - [x] Manual nyata (dev server + Playwright ad-hoc): login Pedagang demo (`bakso-pak-budi`) → geser pin di `/dashboard/profil` → field alamat auto-terisi → edit manual → simpan → reload → editan tersimpan (bukan balik ke hasil auto). Buka `/menu/bakso-pak-budi` → satu Card alamat+tombol tampil rapi, href koordinat benar, klik membuka Google Maps ke titik yang tepat. Lapak tanpa alamat/lokasi → Card tidak tampil, nol error console.
 
+## Cetak Struk Pesanan ke Printer Thermal Bluetooth (Pedagang)
+
+> User (2026-09-25): Pedagang menyerahkan Pesanan ke Pembeli bersama struk cetak, "kaya di Indomaret". Dikonfirmasi AskUserQuestion: perangkat **HP + printer thermal Bluetooth mini** (Web Bluetooth + ESC/POS dari Chrome Android, tanpa dialog cetak browser), pemicu **tombol manual per Pesanan** (bukan auto-print). Sebelumnya belum ada fitur cetak apa pun selain unduh PNG QR Menu.
+
+- [x] Rencana disetujui User (isi struk, kertas 58mm, batasan: hanya Chrome Android/desktop + printer BLE). Footer diganti User: "Terima kasih telah berbelanja / Barang yang sudah dibeli tidak dapat dikembalikan".
+- [x] `getOrderReceipt(orderId)` (`src/server/orders.ts`) — sesi Pedagang, filter kepemilikan + status lunas (`PAID_ORDER_STATUSES`) di WHERE. QRIS pribadi: Biaya Layanan tidak dicetak, TOTAL = subtotal (sama dengan `amountToPay` Pembeli).
+- [x] `src/lib/utils/receipt.ts` — `buildReceiptLines` (32 kolom, word-wrap, angka rata kanan, ASCII) + `encodeEscPos`. Unit test `tests/unit/receipt.test.ts` (10 test; dibuktikan menangkap bug: sabotase cek Biaya Layanan & wrap → 2 gagal → revert).
+- [x] `src/lib/printer/bluetooth-printer.ts` — pilih printer sekali, sambung ulang otomatis selama tab terbuka, kirim per 100 byte; gagal sambung → lupakan printer supaya bisa pilih ulang.
+- [x] `ReceiptButton` — satu tombol "Lihat Struk" di `MerchantOrderCard` (status `dibayar`/`diproses`/`siap_diambil`) dan kartu Riwayat (status `selesai`) → Modal **pratinjau struk** (baris sama persis dengan hasil ESC/POS, font monospace 32 kolom) + tombol "Cetak ke Printer" di dalamnya. Revisi User: pratinjau supaya bisa dicoba tanpa printer, tetap satu tombol di kartu (bukan dua). Browser tanpa Web Bluetooth → pesan "pakai Chrome di Android"; Bluetooth mati/tidak ada → pesan jelas (bukan diam seperti saat dialog dibatalkan).
+- [x] E2E `order-flow.spec.ts`: printer Bluetooth tiruan (`addInitScript`) → klik "Lihat Struk" → pratinjau tampil → "Cetak ke Printer" → byte ESC/POS berisi nama Lapak, kode Pesanan, nama Pembeli, TOTAL, footer. `tsc`/`build`/vitest (123)/E2E (7) lulus.
+- [ ] Verifikasi dengan printer sungguhan (oleh User — tidak bisa disimulasikan penuh di dev).
+- [x] Update TEKNOLOGI/ARSITEKTUR-FOLDER + CHANGELOG.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

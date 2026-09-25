@@ -95,9 +95,10 @@
 │   │   ├── billing/                           # (Fase 7) period.ts (resolusi periode tagihan epoch-relative), service-fee.ts (isMerchantOrderingLocked lazy-computed + runWeeklyServiceFeeBilling) — BUKAN Server Action, sama alasan payment/settle.ts
 │   │   ├── rate-limit/                        # limiter.ts (Fase 5, tidak ada di rencana awal) — fixed-window in-memory
 │   │   ├── realtime/                          # (target) belum dipakai — status Pesanan/dashboard masih polling langsung di komponen
+│   │   ├── printer/                           # bluetooth-printer.ts (2026-09-25) — kirim byte ESC/POS ke printer thermal BLE via Web Bluetooth (client-only)
 │   │   ├── report/                            # insights.ts (mesin aturan asisten — fungsi pure, TANPA LLM), period.ts (resolusi periode + kunci tanggal WIB)
 │   │   ├── validation/                        # Skema Zod — + service-fee-invoice.schema.ts (Fase 7)
-│   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan)
+│   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan), receipt.ts (susun + encode ESC/POS struk 58mm, 2026-09-25)
 │   └── types/                                 # Tipe TypeScript bersama — + service-fee-invoice.ts (Fase 7)
 ├── drizzle/                                   # File migrasi database
 ├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi

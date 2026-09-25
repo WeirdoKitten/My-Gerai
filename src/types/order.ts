@@ -124,6 +124,29 @@ export type MerchantOrderHistoryItem = {
   items: MerchantOrderItemView[];
 };
 
+/**
+ * Data struk cetak satu Pesanan lunas milik Lapak sendiri (`getOrderReceipt`).
+ * Hanya berisi yang tercetak di kertas — tanpa field internal.
+ */
+export type OrderReceiptView = {
+  stallName: string;
+  stallAddress: string | null;
+  orderCode: string;
+  buyerName: string;
+  buyerNote: string | null;
+  paidAt: Date;
+  items: MerchantOrderItemView[];
+  subtotal: number;
+  /** `0` untuk QRIS pribadi — Biaya Layanan tidak dipungut dari Pembeli di mode itu. */
+  serviceFeePaid: number;
+  /** Yang benar-benar dibayar Pembeli = `subtotal + serviceFeePaid`. */
+  amountPaid: number;
+};
+
+export type GetOrderReceiptResult =
+  | { ok: true; receipt: OrderReceiptView }
+  | { ok: false; message: string };
+
 /** Bentuk hasil daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi). */
 export type AdminOrderListItem = {
   id: string;

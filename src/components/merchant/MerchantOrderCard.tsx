@@ -14,6 +14,7 @@ import {
 } from "@/lib/utils/order-status";
 import { markQrisPribadiOrderPaid, updateOrderStatus } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
+import { ReceiptButton } from "./ReceiptButton";
 
 export function MerchantOrderCard({
   order,
@@ -111,16 +112,21 @@ export function MerchantOrderCard({
             {submitting ? "Memproses..." : "Tandai Lunas"}
           </Button>
         </>
-      ) : actionLabel ? (
-        <Button
-          type="button"
-          fullWidth
-          loading={submitting}
-          onClick={handleAdvance}
-        >
-          {submitting ? "Memproses..." : actionLabel}
-        </Button>
-      ) : null}
+      ) : (
+        <>
+          <ReceiptButton orderId={order.id} orderCode={order.orderCode} />
+          {actionLabel ? (
+            <Button
+              type="button"
+              fullWidth
+              loading={submitting}
+              onClick={handleAdvance}
+            >
+              {submitting ? "Memproses..." : actionLabel}
+            </Button>
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }
