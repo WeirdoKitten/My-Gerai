@@ -106,9 +106,10 @@ const INSIGHT_EXAMPLES = [
 
 export default async function Home() {
   const appUrl = process.env.APP_URL || "http://localhost:3000";
-  const registerUrl = `${appUrl}/daftar`;
-  const [registerQrImageUrl, approvedMerchants] = await Promise.all([
-    buildRegistrationQrPoster(registerUrl),
+  // QR "Ajak Pedagang Lain" ke landing utama (bukan langsung /daftar) supaya
+  // calon Pedagang lihat penjelasan MyGerai dulu sebelum mendaftar.
+  const [landingQrImageUrl, approvedMerchants] = await Promise.all([
+    buildRegistrationQrPoster(`${appUrl}/`),
     listApprovedMerchants(),
   ]);
 
@@ -413,14 +414,14 @@ export default async function Home() {
             <div className="mx-auto mt-12 flex max-w-xs flex-col items-center gap-5">
               {/* biome-ignore lint/performance/noImgElement: data URI, next/image tidak berlaku */}
               <img
-                src={registerQrImageUrl}
-                alt="Poster QR Pendaftaran Pedagang MyGerai"
+                src={landingQrImageUrl}
+                alt="Poster QR MyGerai"
                 className="w-full drop-shadow-xl"
               />
               <DownloadQrPosterButton
-                svgDataUrl={registerQrImageUrl}
-                filename="qr-daftar-pedagang.png"
-                label="Unduh QR Pendaftaran"
+                svgDataUrl={landingQrImageUrl}
+                filename="qr-mygerai.png"
+                label="Unduh QR MyGerai"
               />
             </div>
           </div>
