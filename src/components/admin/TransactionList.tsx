@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/Card";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { formatRupiah } from "@/lib/utils/money";
 import { orderGrandTotal } from "@/lib/utils/order-calc";
+import { DELIVERY_FAILURE_REASON_LABEL_ID } from "@/lib/utils/order-status";
 import type { AdminOrderListItem } from "@/types/order";
 
 export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
@@ -26,6 +27,14 @@ export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
               <span className="truncate">{order.buyerName}</span>
               <OrderStatusBadge status={order.status} />
             </div>
+            {order.deliveryFailureReason ? (
+              <p className="mt-0.5 truncate text-xs text-danger">
+                {DELIVERY_FAILURE_REASON_LABEL_ID[order.deliveryFailureReason]}
+                {order.deliveryFailureNote
+                  ? ` — ${order.deliveryFailureNote}`
+                  : ""}
+              </p>
+            ) : null}
           </div>
           <div className="shrink-0 text-right">
             <p className="font-semibold tabular-nums text-ink">
@@ -34,6 +43,9 @@ export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
             <p className="text-xs tabular-nums text-ink-muted">
               Item {formatRupiah(order.subtotal)} · Fee{" "}
               {formatRupiah(order.platformFeeSnapshot)}
+              {order.fulfillmentMethod === "antar"
+                ? ` · Ongkir ${formatRupiah(order.deliveryFeeSnapshot)}`
+                : ""}
             </p>
           </div>
         </Card>

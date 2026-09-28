@@ -26,15 +26,19 @@ import {
 import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
+import { formatDistanceKm, haversineDistanceKm } from "@/lib/utils/geo";
 import {
   calculateOrderTotals,
   type OrderCalcItem,
+  orderAmountToPay,
   orderGrandTotal,
 } from "@/lib/utils/order-calc";
 import { generateOrderCode } from "@/lib/utils/order-code";
 import {
+  type DeliveryFailureReason,
   FINAL_ORDER_STATUSES,
   isOrderExpired,
+  minutesUntilDeliveryFailAllowed,
   nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
   type OrderStatus,
@@ -43,6 +47,7 @@ import {
 import {
   type CreateOrderInput,
   createOrderSchema,
+  trackOrderSchema,
 } from "@/lib/validation/checkout.schema";
 import { getActivePlatformConfig } from "@/server/config";
 import type {
@@ -50,10 +55,12 @@ import type {
   BuyerOrderStatusView,
   CreateOrderResult,
   GetOrderReceiptResult,
+  MerchantOrderDeliveryView,
   MerchantOrderHistoryItem,
   MerchantOrderListResult,
   Order,
   SimulatePaymentResult,
+  TrackOrderResult,
   UpdateOrderStatusResult,
 } from "@/types/order";
 
@@ -159,6 +166,34 @@ async function fetchVariantGroupsForOrder(
   return groupsByProductId;
 }
 
+/**
+ * Info antar untuk Pedagang pemilik Pesanan. Pemanggil WAJIB sudah memfilter
+ * kepemilikan lewat sesi — isinya data pribadi Pembeli (HP, alamat, pin).
+ */
+function toMerchantDeliveryView(
+  order: Order,
+): MerchantOrderDeliveryView | null {
+  if (
+    order.fulfillmentMethod !== "antar" ||
+    order.buyerPhone === null ||
+    order.deliveryLatitude === null ||
+    order.deliveryLongitude === null
+  ) {
+    return null;
+  }
+  return {
+    buyerPhone: order.buyerPhone,
+    address: order.deliveryAddress ?? "",
+    landmark: order.deliveryLandmark,
+    latitude: order.deliveryLatitude,
+    longitude: order.deliveryLongitude,
+    distanceKm: order.deliveryDistanceKm,
+    startedAt: order.deliveryStartedAt,
+    failureReason: order.deliveryFailureReason,
+    failureNote: order.deliveryFailureNote,
+  };
+}
+
 type OrderItemVariantSelection = {
   groupNameSnapshot: string;
   optionNameSnapshot: string;
@@ -210,7 +245,8 @@ export async function createOrder(
       message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
     };
   }
-  const { merchantSlug, buyerName, items } = parsed.data;
+  const checkout = parsed.data;
+  const { merchantSlug, buyerName, items } = checkout;
 
   const merchant = await db.query.merchants.findFirst({
     where: and(
@@ -242,6 +278,53 @@ export async function createOrder(
   const { isOpen } = await getMerchantOpenState(merchant.id);
   if (!isOpen) {
     return { ok: false, message: "Lapak sedang tutup, coba lagi nanti." };
+  }
+
+  // Pesanan Antar (Fase 11): Ongkir & jarak SELALU dihitung di sini dari
+  // pengaturan Lapak + koordinat — tidak ada field harga/ongkir dari klien.
+  let delivery: {
+    buyerPhone: string;
+    deliveryAddress: string;
+    deliveryLandmark: string | null;
+    deliveryLatitude: number;
+    deliveryLongitude: number;
+    deliveryDistanceKm: number;
+    deliveryFee: number;
+  } | null = null;
+  if (checkout.fulfillmentMethod === "antar") {
+    if (
+      !merchant.deliveryEnabled ||
+      merchant.deliveryFee === null ||
+      merchant.latitude === null ||
+      merchant.longitude === null
+    ) {
+      return {
+        ok: false,
+        message: "Lapak ini sedang tidak menerima pesanan antar.",
+      };
+    }
+    const distanceKm = haversineDistanceKm(
+      { latitude: merchant.latitude, longitude: merchant.longitude },
+      {
+        latitude: checkout.deliveryLatitude,
+        longitude: checkout.deliveryLongitude,
+      },
+    );
+    if (distanceKm > merchant.deliveryRadiusKm) {
+      return {
+        ok: false,
+        message: `Alamat di luar jangkauan antar Lapak (maks. ${formatDistanceKm(merchant.deliveryRadiusKm)}).`,
+      };
+    }
+    delivery = {
+      buyerPhone: checkout.buyerPhone,
+      deliveryAddress: checkout.deliveryAddress,
+      deliveryLandmark: checkout.deliveryLandmark || null,
+      deliveryLatitude: checkout.deliveryLatitude,
+      deliveryLongitude: checkout.deliveryLongitude,
+      deliveryDistanceKm: distanceKm,
+      deliveryFee: merchant.deliveryFee,
+    };
   }
 
   const productIds = items.map((item) => item.productId);
@@ -349,8 +432,21 @@ export async function createOrder(
     });
   }
 
-  const { subtotal, platformFeeSnapshot, totalForMerchant, grandTotal } =
-    calculateOrderTotals(calcItems, platformFeeAmount);
+  const {
+    subtotal,
+    platformFeeSnapshot,
+    deliveryFeeSnapshot,
+    totalForMerchant,
+    grandTotal,
+  } = calculateOrderTotals(
+    calcItems,
+    platformFeeAmount,
+    delivery?.deliveryFee ?? 0,
+  );
+  const amountForQrisPribadi = orderAmountToPay(
+    { subtotal, platformFeeSnapshot, deliveryFeeSnapshot },
+    true,
+  );
   const expiresAt = new Date(Date.now() + orderExpiryMinutes * 60_000);
   const orderCode = await generateUniqueOrderCode(merchant.id);
 
@@ -369,12 +465,12 @@ export async function createOrder(
 
   if (merchant.paymentMode === "qris_pribadi") {
     // Tidak ada panggilan gateway sama sekali — Pembeli bayar LANGSUNG ke
-    // QRIS statis milik Pedagang, cuma sebesar `subtotal` (Biaya Layanan
+    // QRIS statis milik Pedagang, sebesar `subtotal + Ongkir` (Biaya Layanan
     // ditagih belakangan lewat tagihan mingguan, lihat src/lib/billing/).
     paymentRow = {
       provider: "qris_pribadi",
       referenceId: orderId, // tidak ada referensi eksternal gateway
-      grossAmount: subtotal,
+      grossAmount: amountForQrisPribadi,
       qrString: null, // dirender dari merchant.qrisPhotoUrl saat baca (getOrderStatus)
       expiresAt,
     };
@@ -383,7 +479,8 @@ export async function createOrder(
     try {
       const payment = await provider.createPayment({
         orderId,
-        // Pembeli membayar harga Item + Biaya Layanan (ADR 2026-09-09).
+        // Pembeli membayar harga Item + Biaya Layanan (ADR 2026-09-09)
+        // + Ongkir untuk Pesanan Antar (ADR 2026-09-28).
         grossAmount: grandTotal,
         expiryMinutes: orderExpiryMinutes,
       });
@@ -414,6 +511,18 @@ export async function createOrder(
       platformFeeSnapshot,
       totalForMerchant,
       expiresAt,
+      fulfillmentMethod: checkout.fulfillmentMethod,
+      deliveryFeeSnapshot,
+      ...(delivery
+        ? {
+            buyerPhone: delivery.buyerPhone,
+            deliveryAddress: delivery.deliveryAddress,
+            deliveryLandmark: delivery.deliveryLandmark,
+            deliveryLatitude: delivery.deliveryLatitude,
+            deliveryLongitude: delivery.deliveryLongitude,
+            deliveryDistanceKm: delivery.deliveryDistanceKm,
+          }
+        : {}),
     });
 
     await tx
@@ -515,10 +624,24 @@ export async function getOrderStatus(
     stallName: merchant?.stallName ?? "",
     subtotal: current.subtotal,
     platformFeeSnapshot: current.platformFeeSnapshot,
+    deliveryFeeSnapshot: current.deliveryFeeSnapshot,
     totalForMerchant: current.totalForMerchant,
     grandTotal: orderGrandTotal(current),
-    amountToPay: isQrisPribadi ? current.subtotal : orderGrandTotal(current),
+    amountToPay: orderAmountToPay(current, isQrisPribadi),
     isQrisPribadi,
+    fulfillmentMethod: current.fulfillmentMethod,
+    // Sengaja tanpa nomor Pedagang (nomor login tidak boleh tampil publik)
+    // dan tanpa nomor HP/koordinat Pembeli (tidak dibutuhkan di halaman ini).
+    delivery:
+      current.fulfillmentMethod === "antar"
+        ? {
+            address: current.deliveryAddress ?? "",
+            landmark: current.deliveryLandmark,
+            estimate: merchant?.deliveryEstimate ?? null,
+            failureReason: current.deliveryFailureReason,
+            failureNote: current.deliveryFailureNote,
+          }
+        : null,
     createdAt: current.createdAt,
     expiresAt: current.expiresAt,
     paidAt: current.paidAt,
@@ -654,7 +777,12 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
   const activeOrderFilter = and(
     eq(orders.merchantId, session.merchantId),
     or(
-      inArray(orders.status, ["dibayar", "diproses", "siap_diambil"]),
+      inArray(orders.status, [
+        "dibayar",
+        "diproses",
+        "siap_diambil",
+        "sedang_diantar",
+      ]),
       // Pesanan QRIS pribadi yang masih menunggu Pedagang menekan
       // "Tandai Lunas".
       and(
@@ -666,15 +794,7 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
 
   const [activeOrders, [{ totalActive }]] = await Promise.all([
     db
-      .select({
-        id: orders.id,
-        orderCode: orders.orderCode,
-        status: orders.status,
-        buyerName: orders.buyerName,
-        buyerNote: orders.buyerNote,
-        createdAt: orders.createdAt,
-        paymentProvider: payments.provider,
-      })
+      .select({ order: orders, paymentProvider: payments.provider })
       .from(orders)
       .innerJoin(payments, eq(payments.orderId, orders.id))
       .where(activeOrderFilter)
@@ -692,7 +812,7 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
   ]);
   if (activeOrders.length === 0) return { orders: [], totalActive: 0 };
 
-  const orderIds = activeOrders.map((order) => order.id);
+  const orderIds = activeOrders.map(({ order }) => order.id);
   const items = await db.query.orderItems.findMany({
     where: inArray(orderItems.orderId, orderIds),
   });
@@ -706,13 +826,16 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
     await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
 
   return {
-    orders: activeOrders.map((order) => ({
+    orders: activeOrders.map(({ order, paymentProvider }) => ({
       id: order.id,
       orderCode: order.orderCode,
       status: order.status,
       buyerName: order.buyerName,
       buyerNote: order.buyerNote,
       createdAt: order.createdAt,
+      fulfillmentMethod: order.fulfillmentMethod,
+      deliveryFeeSnapshot: order.deliveryFeeSnapshot,
+      delivery: toMerchantDeliveryView(order),
       items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
         id: item.id,
         productNameSnapshot: item.productNameSnapshot,
@@ -723,7 +846,7 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
       })),
       awaitingManualConfirmation:
         order.status === "menunggu_pembayaran" &&
-        order.paymentProvider === "qris_pribadi",
+        paymentProvider === "qris_pribadi",
     })),
     totalActive,
   };
@@ -770,10 +893,13 @@ export async function listMerchantOrderHistory(): Promise<
     buyerName: order.buyerName,
     subtotal: order.subtotal,
     platformFeeSnapshot: order.platformFeeSnapshot,
+    deliveryFeeSnapshot: order.deliveryFeeSnapshot,
     totalForMerchant: order.totalForMerchant,
     createdAt: order.createdAt,
     paidAt: order.paidAt,
     completedAt: order.completedAt,
+    fulfillmentMethod: order.fulfillmentMethod,
+    delivery: toMerchantDeliveryView(order),
     items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
       id: item.id,
       productNameSnapshot: item.productNameSnapshot,
@@ -835,8 +961,9 @@ export async function getOrderReceipt(
 
   // Sama dengan `amountToPay` di getOrderStatus: QRIS pribadi tidak memungut
   // Biaya Layanan dari Pembeli (ditagih mingguan ke Pedagang).
-  const serviceFeePaid =
-    row.paymentProvider === "qris_pribadi" ? 0 : order.platformFeeSnapshot;
+  const isQrisPribadi = row.paymentProvider === "qris_pribadi";
+  const serviceFeePaid = isQrisPribadi ? 0 : order.platformFeeSnapshot;
+  const delivery = toMerchantDeliveryView(order);
 
   return {
     ok: true,
@@ -857,7 +984,15 @@ export async function getOrderReceipt(
       })),
       subtotal: order.subtotal,
       serviceFeePaid,
-      amountPaid: order.subtotal + serviceFeePaid,
+      deliveryFee: order.deliveryFeeSnapshot,
+      amountPaid: orderAmountToPay(order, isQrisPribadi),
+      delivery: delivery
+        ? {
+            buyerPhone: delivery.buyerPhone,
+            address: delivery.address,
+            landmark: delivery.landmark,
+          }
+        : null,
     },
   };
 }
@@ -890,7 +1025,9 @@ export async function updateOrderStatus(
     return { ok: false, message: "Pesanan tidak ditemukan." };
   }
 
-  if (nextMerchantStatus(order.status) !== nextStatus) {
+  if (
+    nextMerchantStatus(order.status, order.fulfillmentMethod) !== nextStatus
+  ) {
     return { ok: false, message: "Perubahan status tidak valid." };
   }
 
@@ -899,6 +1036,9 @@ export async function updateOrderStatus(
     .set({
       status: nextStatus,
       ...(nextStatus === "selesai" ? { completedAt: new Date() } : {}),
+      ...(nextStatus === "sedang_diantar"
+        ? { deliveryStartedAt: new Date() }
+        : {}),
     })
     .where(
       and(
@@ -916,6 +1056,142 @@ export async function updateOrderStatus(
     };
   }
   return { ok: true };
+}
+
+const markDeliveryFailedSchema = z
+  .object({
+    orderId: z.uuid(),
+    reason: z.enum([
+      "tidak_bisa_dihubungi",
+      "alamat_tidak_ditemukan",
+      "lainnya",
+    ] satisfies DeliveryFailureReason[]),
+    note: z.string().trim().max(200, "Catatan maksimal 200 karakter."),
+  })
+  .refine((value) => value.reason !== "lainnya" || value.note.length > 0, {
+    message: "Tulis catatan singkat untuk alasan lainnya.",
+  });
+
+/**
+ * Tandai Pesanan Antar `gagal_diantar` (status akhir). Tanpa refund — dana
+ * tetap hak Pedagang (ADR 2026-09-28), jadi dijaga dua syarat di server:
+ * alasan wajib, dan baru boleh setelah DELIVERY_FAIL_MIN_MINUTES sejak
+ * Pesanan masuk `sedang_diantar`. Kepemilikan difilter dari sesi di WHERE.
+ */
+export async function markDeliveryFailed(
+  orderId: string,
+  reason: DeliveryFailureReason,
+  note: string,
+): Promise<UpdateOrderStatusResult> {
+  const parsed = markDeliveryFailedSchema.safeParse({ orderId, reason, note });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
+    };
+  }
+  const session = await getMerchantSession();
+  if (!session) {
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+  }
+
+  const order = await db.query.orders.findFirst({
+    where: and(
+      eq(orders.id, parsed.data.orderId),
+      eq(orders.merchantId, session.merchantId),
+    ),
+  });
+  if (!order) {
+    return { ok: false, message: "Pesanan tidak ditemukan." };
+  }
+  if (order.status !== "sedang_diantar") {
+    return {
+      ok: false,
+      message: "Hanya Pesanan yang sedang diantar yang bisa ditandai gagal.",
+    };
+  }
+  const waitMinutes = minutesUntilDeliveryFailAllowed(order.deliveryStartedAt);
+  if (waitMinutes > 0) {
+    return {
+      ok: false,
+      message: `Tombol ini baru bisa dipakai ${waitMinutes} menit lagi.`,
+    };
+  }
+
+  const [updated] = await db
+    .update(orders)
+    .set({
+      status: "gagal_diantar",
+      completedAt: new Date(),
+      deliveryFailureReason: parsed.data.reason,
+      deliveryFailureNote: parsed.data.note || null,
+    })
+    .where(
+      and(
+        eq(orders.id, order.id),
+        eq(orders.merchantId, session.merchantId),
+        eq(orders.status, "sedang_diantar"), // optimistic lock
+      ),
+    )
+    .returning();
+
+  if (!updated) {
+    return {
+      ok: false,
+      message: "Status Pesanan sudah berubah, silakan refresh.",
+    };
+  }
+  return { ok: true };
+}
+
+/** Jendela waktu pencarian Lacak Pesanan — Kode Pesanan cuma unik per hari per Lapak. */
+const TRACK_ORDER_LOOKBACK_DAYS = 7;
+
+/**
+ * Lacak Pesanan tanpa link (Fase 11): Kode Pesanan + No. HP harus cocok. Tanpa
+ * sesi, jadi dijaga rate-limit per IP dan pesan gagal yang SAMA untuk semua
+ * kasus (kode salah / HP salah / tidak ada) supaya tidak bisa dipakai menebak.
+ * Hanya mengembalikan `orderId` — halaman status yang menampilkan isinya.
+ * Pesanan Ambil sendiri tidak punya nomor HP, jadi memang tidak bisa dilacak.
+ */
+export async function findOrderForTracking(
+  orderCode: string,
+  buyerPhone: string,
+): Promise<TrackOrderResult> {
+  const notFound = {
+    ok: false as const,
+    message: "Pesanan tidak ditemukan. Periksa lagi Kode Pesanan & nomor HP.",
+  };
+
+  const ip = await getClientIp();
+  if (!checkRateLimit(`track-order:ip:${ip}`, 10, 10 * 60_000)) {
+    return {
+      ok: false,
+      message: "Terlalu banyak percobaan. Silakan coba lagi sebentar lagi.",
+    };
+  }
+
+  const parsed = trackOrderSchema.safeParse({ orderCode, buyerPhone });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? notFound.message,
+    };
+  }
+
+  const since = new Date(
+    Date.now() - TRACK_ORDER_LOOKBACK_DAYS * 24 * 60 * 60_000,
+  );
+  const order = await db.query.orders.findFirst({
+    where: and(
+      eq(orders.orderCode, parsed.data.orderCode),
+      eq(orders.buyerPhone, parsed.data.buyerPhone),
+      gte(orders.createdAt, since),
+    ),
+    orderBy: (row, { desc }) => [desc(row.createdAt)],
+    columns: { id: true },
+  });
+  return order ? { ok: true, orderId: order.id } : notFound;
 }
 
 /** Daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi) — otorisasi via sesi Admin. */
@@ -942,8 +1218,12 @@ export async function listOrdersForAdmin(): Promise<AdminOrderListItem[]> {
     status: order.status,
     subtotal: order.subtotal,
     platformFeeSnapshot: order.platformFeeSnapshot,
+    deliveryFeeSnapshot: order.deliveryFeeSnapshot,
     totalForMerchant: order.totalForMerchant,
     createdAt: order.createdAt,
     paidAt: order.paidAt,
+    fulfillmentMethod: order.fulfillmentMethod,
+    deliveryFailureReason: order.deliveryFailureReason,
+    deliveryFailureNote: order.deliveryFailureNote,
   }));
 }

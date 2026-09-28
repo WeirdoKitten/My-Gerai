@@ -25,8 +25,9 @@
 │   ├── app/
 │   │   ├── (buyer)/
 │   │   │   ├── menu/[stallSlug]/page.tsx      # Katalog Item sebuah Lapak
-│   │   │   ├── checkout/page.tsx              # Form Nama + ringkasan Keranjang
-│   │   │   └── pesanan/[orderId]/page.tsx     # Status Pesanan + QR pembayaran
+│   │   │   ├── checkout/page.tsx              # Form Nama + ringkasan Keranjang (+ mode Ambil sendiri/Diantar, Fase 11 — CheckoutView)
+│   │   │   ├── pesanan/[orderId]/page.tsx     # Status Pesanan + QR pembayaran
+│   │   │   └── lacak/page.tsx                 # (Fase 11) Lacak Pesanan: "Pesanan di perangkat ini" (localStorage) + cari Kode + No. HP
 │   │   ├── (merchant)/
 │   │   │   ├── login/page.tsx
 │   │   │   ├── daftar/page.tsx                # Onboarding Pedagang baru
@@ -38,7 +39,8 @@
 │   │   │       ├── produk/page.tsx            # Kelola Item
 │   │   │       ├── qr/page.tsx                # QR Menu (cetak/unduh) — via ikon QR di header
 │   │   │       ├── profil/page.tsx            # Profil Lapak (nama/kategori/info rekening) — via ikon Profil di header
-│   │   │       └── pembayaran/page.tsx        # (Fase 7) Metode pembayaran (read-only) + unggah foto QRIS + tagihan Biaya Layanan — via ikon Wallet di header
+│   │   │       ├── pembayaran/page.tsx        # (Fase 7) Metode pembayaran (read-only) + unggah foto QRIS + tagihan Biaya Layanan — via ikon Wallet di header
+│   │   │       └── pengantaran/page.tsx       # (Fase 11) Pengaturan Pesanan Antar (toggle, Ongkir, jangkauan, estimasi) — link dari Profil
 │   │   ├── (admin)/
 │   │   │   └── admin/
 │   │   │       ├── login/page.tsx             # DI LUAR (dashboard) — self-redirect kalau sudah login
@@ -58,8 +60,8 @@
 │   │   ├── ui/                                # Primitif desain sistem: Button, ButtonLink, Input, Textarea, Field, Card, Badge, OrderStatusBadge, Alert, QuantityStepper, PageHeader, EmptyState, Spinner, Wordmark, Modal, Toast, CopyButton, icons — lihat DESAIN-SISTEM.md
 │   │   ├── AuthShell.tsx                      # Kerangka halaman login/daftar (wordmark + kartu di tengah)
 │   │   ├── DashboardShell.tsx / DashboardNav.tsx / LogoutButton.tsx  # Kerangka + nav tab dashboard Pedagang & Admin (header sticky); Keluar pakai konfirmasi Modal
-│   │   ├── buyer/
-│   │   ├── merchant/
+│   │   ├── buyer/                             # + CheckoutView/TrackOrderView (Fase 11)
+│   │   ├── merchant/                          # + DeliveryInfo/DeliveryFailedButton/DeliverySettingsForm (Fase 11)
 │   │   └── admin/                             # LoginAdminForm, MerchantApprovalList/Row, MerchantStatusBadge, PlatformConfigForm/History, PayoutsManager, MerchantPaymentModeControl/MerchantAccrualTable/ServiceFeeInvoiceManager/HistoryList (Fase 7), dst
 │   ├── server/                                # Server Actions, dikelompokkan per domain bisnis (bukan per peran)
 │   │   ├── orders.ts
@@ -90,6 +92,7 @@
 │   │   │   ├── mock-provider.ts
 │   │   │   └── iris-provider.ts               # Midtrans Iris (validateBankAccount, createPayout, handleCallback)
 │   │   ├── cart/                              # Keranjang sisi klien (Context + localStorage) — juga fetch paymentMode Lapak aktif (Fase 7)
+│   │   ├── buyer/                             # (Fase 11) storage.ts — profil Pembeli (isi otomatis checkout) & daftar Pesanan terakhir di localStorage, murni kenyamanan
 │   │   ├── upload/                            # storage.ts (tulis file Item/QRIS ke UPLOADS_DIR + validasi magic-bytes), resize-image.ts (resize di klien)
 │   │   ├── auth/                              # Hash password (scrypt) & sesi login: session.ts (Pedagang), admin-session.ts (Admin, Fase 4), cron.ts (verifyCronSecret, Fase 7 — dipakai bersama cron disburse & bill-service-fee)
 │   │   ├── billing/                           # (Fase 7) period.ts (resolusi periode tagihan epoch-relative), service-fee.ts (isMerchantOrderingLocked lazy-computed + runWeeklyServiceFeeBilling) — BUKAN Server Action, sama alasan payment/settle.ts
@@ -98,7 +101,7 @@
 │   │   ├── printer/                           # bluetooth-printer.ts (2026-09-25) — kirim byte ESC/POS ke printer thermal BLE via Web Bluetooth (client-only)
 │   │   ├── report/                            # insights.ts (mesin aturan asisten — fungsi pure, TANPA LLM), period.ts (resolusi periode + kunci tanggal WIB)
 │   │   ├── validation/                        # Skema Zod — + service-fee-invoice.schema.ts (Fase 7)
-│   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan), receipt.ts (susun + encode ESC/POS struk 58mm, 2026-09-25)
+│   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan), receipt.ts (susun + encode ESC/POS struk 58mm, 2026-09-25), phone.ts (normalisasi HP Indonesia ke 62..., Fase 11)
 │   └── types/                                 # Tipe TypeScript bersama — + service-fee-invoice.ts (Fase 7)
 ├── drizzle/                                   # File migrasi database
 ├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi

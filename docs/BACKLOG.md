@@ -374,6 +374,48 @@
 - [ ] Verifikasi dengan printer sungguhan (oleh User — tidak bisa disimulasikan penuh di dev).
 - [x] Update TEKNOLOGI/ARSITEKTUR-FOLDER + CHANGELOG.
 
+## Fase 11 — Pengantaran oleh Pedagang (Pesanan Antar + Ongkir)
+
+> Permintaan client lewat User (2026-09-28): Pedagang bisa mengantar Pesanan ke alamat Pembeli, bukan cuma ambil di Lapak. Pengantaran dilakukan **Pedagang sendiri** (tanpa ojol/pihak ketiga). Keputusan dikonfirmasi User di chat 2026-09-28 — dicatat di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-28. Rencana implementasi disusun di Plan mode sebelum coding.
+
+**Keputusan yang sudah dikunci:**
+- Pembeli **tetap tanpa login**. Akses status tetap lewat `/pesanan/[orderId]`; localStorage cuma untuk kenyamanan (isi otomatis Nama/HP/alamat, link "Pesanan saya").
+- Checkout punya pilihan **Ambil sendiri** (tetap cuma Nama, seperti sekarang) / **Diantar**.
+- Mode Diantar wajib: Nama + **No. HP/WA** + alamat teks + **pin peta** + patokan (opsional). Disimpan di server per Pesanan, **tidak dihapus otomatis**, hanya terlihat Pedagang pemilik Pesanan + Admin. Ada notice singkat di checkout ("Alamat & nomor HP dipakai untuk pengantaran").
+- **Ongkir tarif tetap per Lapak** (diatur Pedagang), **100% untuk Pedagang**, snapshot per Pesanan, dihitung ulang di server (tidak pernah dari klien). Pembeli bayar `subtotal + Biaya Layanan + Ongkir`; `total_for_merchant = subtotal + Ongkir`.
+- **Radius maksimal** per Lapak (diatur Pedagang, default 3 km), dicek di server dari koordinat Lapak vs pin Pembeli (garis lurus/haversine). Lapak tanpa titik GPS tidak bisa mengaktifkan mode antar.
+- Toggle **"Terima antar"** on/off di dashboard Pedagang (mode Ambil sendiri tetap jalan).
+- Estimasi waktu antar = **teks statis per Lapak** (mis. "±30–60 menit").
+- Status baru: `sedang_diantar` (dari `diproses`) dan `gagal_diantar` (status akhir). Alur antar: `dibayar` → `diproses` → `sedang_diantar` → `selesai` / `gagal_diantar`.
+- `selesai` & `gagal_diantar` ditandai **Pedagang**. "Gagal diantar" wajib pilih alasan (tidak bisa dihubungi / alamat tidak ditemukan / lainnya + catatan), baru bisa ditekan **±15 menit** setelah `sedang_diantar`. Alasan terlihat Admin.
+- **Tanpa refund.** Dana `gagal_diantar` tetap hak Pedagang.
+- **Pencairan tidak berubah**: Saldo tetap dihitung sejak `dibayar` (antar maupun ambil sendiri); formula Saldo cukup ditambah `sedang_diantar` & `gagal_diantar`.
+- **Lacak tanpa link**: halaman "Lacak Pesanan" (Kode Pesanan + No. HP harus cocok, rate-limit), tombol "Kirim link status via WA" (`wa.me`) di dashboard Pedagang, tombol salin/bagikan link di halaman status.
+- Dashboard & struk Pedagang menampilkan alamat, HP, tombol "Buka di Maps" & "Chat WA" (`wa.me`, tanpa API berbayar).
+- **Tanpa tombol "Chat WA Pedagang" untuk Pembeli** (keputusan User di Plan mode): nomor HP Pedagang = username login, tidak boleh tampil publik. Hanya Pedagang yang menghubungi Pembeli.
+- Pengaturan antar di halaman terpisah `/dashboard/pengantaran` (link dari Profil, pola sama dengan Jadwal/Pembayaran).
+- QRIS Pribadi (Fase 7): Pembeli bayar `subtotal + Ongkir` langsung ke QRIS statis Pedagang (Biaya Layanan tetap jadi piutang tagihan mingguan).
+
+**Task:**
+- [x] Keputusan produk dikonfirmasi User + ground truth diperbarui (PRD, ADR, DATA-MODEL, GLOSSARY, CHANGELOG).
+- [x] Rencana implementasi (Plan mode) disetujui User.
+- [x] Migrasi DB `0012` (aditif): enum `order_fulfillment_method` & `delivery_failure_reason`, status `sedang_diantar`/`gagal_diantar`, kolom antar di `orders` & `merchants`.
+- [x] Pengaturan antar di `/dashboard/pengantaran` (toggle, Ongkir, jangkauan, estimasi). Tidak bisa diaktifkan tanpa titik GPS; menghapus titik GPS di Profil otomatis mematikan mode antar.
+- [x] Checkout Pembeli: pilihan mode, form HP/alamat/patokan + peta (Leaflet dimuat hanya saat Diantar; tanpa reverse-geocode untuk Pembeli), peringatan jarak, rincian Ongkir, isi otomatis dari localStorage (`src/lib/buyer/storage.ts`).
+- [x] `createOrder`: discriminated union Zod, Ongkir & jarak dihitung ulang di server, snapshot.
+- [x] Nominal Midtrans / QRIS Pribadi ikut Ongkir (`orderAmountToPay`); `PAID_ORDER_STATUSES` ditambah status baru (Saldo, laporan, tagihan ikut otomatis).
+- [x] Dashboard Pedagang: badge "Diantar", `DeliveryInfo` (alamat/HP/jarak/Ongkir + Maps/Chat WA/Kirim link status), Mulai Antar → Tandai Sudah Diterima, `DeliveryFailedButton` (jeda 15 menit + alasan wajib, dicek ulang di server).
+- [x] Halaman status Pembeli: blok "Diantar ke", pesan `sedang_diantar`/`gagal_diantar`, Ongkir, tombol Bagikan/Salin link, link ke Lacak Pesanan.
+- [x] Halaman `/lacak`: "Pesanan di perangkat ini" + cari Kode + HP (rate-limit 10/10 menit per IP, pesan gagal generik, 7 hari terakhir).
+- [x] Struk thermal: blok DIANTAR (HP, alamat, patokan) + baris Ongkir.
+- [x] Riwayat & Admin: `gagal_diantar` dihitung lunas, Ongkir & alasan gagal ditampilkan. Laporan Penjualan tetap dari `subtotal` (Ongkir tidak masuk omzet Item).
+- [x] Test: unit (+13 test, total 155) + E2E `delivery-flow.spec.ts` (5 test; dibuktikan menangkap bug: sabotase cek radius server → gagal). Suite lama tetap lulus (12/12), `tsc`/`build` lulus.
+- [x] `/security-review`: tidak ada temuan.
+- [x] Update DATA-MODEL, ARSITEKTUR-FOLDER, DESAIN-SISTEM, CHANGELOG.
+- [ ] Verifikasi manual oleh User (HP sungguhan + printer).
+
+**Ditunda (ide masa depan):** ongkir per km (model B), gratis ongkir di atas minimal belanja.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.
@@ -385,3 +427,5 @@
 - [ ] Notifikasi WhatsApp ke Pedagang saat ada Pesanan baru.
 - [x] ~~Laporan analitik penjualan (harian/mingguan) untuk Pedagang~~ — **selesai 2026-09-09** (versi ringan + asisten aturan, lihat seksi "Laporan Penjualan + Asisten Rekomendasi"). Sisa: laporan **Admin** lintas-Lapak, analitik mendalam, ekspor, asisten LLM — masih ide masa depan.
 - [ ] PWA "Add to Home Screen" untuk halaman Pembeli.
+- [ ] Ongkir per km (jarak garis lurus × faktor koreksi, dibulatkan) — lanjutan Fase 11, saat ini tarif tetap.
+- [ ] Gratis ongkir di atas minimal belanja (Fase 11).

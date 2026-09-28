@@ -42,6 +42,10 @@ erDiagram
         string manual_override "open|closed, nullable (2026-09-14). Override manual status buka/tutup — lihat MERCHANT_OPERATING_HOURS & getMerchantOpenState."
         timestamp manual_override_set_at "nullable; kapan override dipasang, dipakai cek masih berlaku atau sudah basi (lewat batas jadwal berikutnya)"
         text address "alamat fisik bebas-teks, nullable (2026-09-21). Ditampilkan ke Pembeli di halaman menu, beda dari latitude/longitude yang dipakai peta & pengelompokan Area."
+        boolean delivery_enabled "default false; Terima Pesanan Antar (Fase 11). Butuh latitude/longitude + delivery_fee"
+        int delivery_fee "nullable; Ongkir tarif tetap (Fase 11)"
+        float delivery_radius_km "default 3; jangkauan antar maksimal (Fase 11)"
+        text delivery_estimate "nullable; teks estimasi waktu antar (Fase 11)"
         timestamp created_at
     }
 
@@ -90,10 +94,21 @@ erDiagram
         string order_code "Kode Pesanan, mis. B231"
         string buyer_name "Nama Pembeli"
         text buyer_note
-        string status "menunggu_pembayaran|dibayar|diproses|siap_diambil|selesai|dibatalkan|kedaluwarsa"
+        string status "menunggu_pembayaran|dibayar|diproses|siap_diambil|selesai|dibatalkan|kedaluwarsa|sedang_diantar|gagal_diantar"
         int subtotal "harga Item x qty (pendapatan Pedagang, diterima penuh)"
         int platform_fee_snapshot "snapshot Biaya Layanan saat itu (dibebankan ke Pembeli)"
-        int total_for_merchant "= subtotal (Biaya Layanan tidak dipotong sejak ADR 2026-09-09)"
+        int total_for_merchant "= subtotal + delivery_fee_snapshot (Biaya Layanan tidak dipotong sejak ADR 2026-09-09; Ongkir 100% Pedagang sejak ADR 2026-09-28)"
+        string fulfillment_method "ambil_sendiri|antar, default ambil_sendiri (Fase 11)"
+        string buyer_phone "nullable; HP Pembeli ternormalisasi 62..., wajib untuk antar (Fase 11)"
+        text delivery_address "nullable (Fase 11)"
+        text delivery_landmark "nullable; patokan (Fase 11)"
+        float delivery_latitude "nullable (Fase 11)"
+        float delivery_longitude "nullable (Fase 11)"
+        int delivery_fee_snapshot "default 0; snapshot Ongkir (Fase 11)"
+        float delivery_distance_km "nullable; jarak garis lurus saat Pesanan dibuat (Fase 11)"
+        timestamp delivery_started_at "nullable; saat masuk sedang_diantar (Fase 11)"
+        string delivery_failure_reason "tidak_bisa_dihubungi|alamat_tidak_ditemukan|lainnya, nullable (Fase 11)"
+        text delivery_failure_note "nullable (Fase 11)"
         timestamp created_at
         timestamp paid_at
         timestamp expires_at
@@ -236,6 +251,7 @@ erDiagram
 - `expires_at` dihitung saat Pesanan dibuat = `created_at + order_expiry_minutes` (dari `platform_config`). Sebuah job/cron (atau pengecekan lazy saat halaman dibuka) mengubah status jadi `kedaluwarsa` jika lewat waktu & masih `menunggu_pembayaran`.
 - `subtotal` = jumlah `harga Item × qty` = **pendapatan Pedagang** (diterima penuh; `total_for_merchant = subtotal`).
 - **`grand_total` = `subtotal + platform_fee_snapshot`** = **yang dibayar Pembeli** (sejak [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09 — Biaya Layanan dibebankan ke Pembeli). **Bukan kolom** — turunan dari dua kolom snapshot yang sudah immutable, jadi tak perlu disimpan/migrasi. Nilai inilah yang dikirim ke payment gateway & disalin ke `payments.gross_amount`. MDR QRIS **tidak** ditambahkan ke sini (dilarang di-surcharge ke Pembeli — PBI 23/6/PBI/2021 Ps. 52); MDR ditanggung Aplikator di luar pembukuan per-Pesanan.
+- **Pengantaran (Fase 11, migrasi `0012`):** `fulfillment_method` = `ambil_sendiri` (default, Pesanan lama) | `antar`. Mode `antar` mengisi `buyer_phone` (ternormalisasi `62...`), `delivery_address`, `delivery_landmark`, `delivery_latitude/longitude`, `delivery_fee_snapshot` (dari `merchants.delivery_fee` saat Pesanan dibuat) & `delivery_distance_km` — Ongkir dan jarak **selalu dihitung server**, ditolak kalau jarak > `merchants.delivery_radius_km`. Rumus: `grand_total = subtotal + platform_fee_snapshot + delivery_fee_snapshot`, `total_for_merchant = subtotal + delivery_fee_snapshot`; QRIS pribadi: Pembeli bayar `subtotal + delivery_fee_snapshot` (`orderAmountToPay`). Alur status antar: `dibayar → diproses → sedang_diantar (isi delivery_started_at) → selesai | gagal_diantar` (akhir; `delivery_failure_reason` wajib, `note` wajib kalau `lainnya`, baru boleh ≥15 menit setelah `delivery_started_at`). Data HP/alamat **tidak dihapus otomatis**; hanya terbaca sesi Pedagang pemilik Pesanan (`toMerchantDeliveryView`), Admin, dan halaman status by UUID (tanpa HP/koordinat). Lacak Pesanan mencocokkan `order_code` + `buyer_phone`. Lihat [BACKLOG.md](BACKLOG.md) Fase 11, [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-28.
 - `payout_id` (nullable, Fase 6): NULL selama dana Pesanan belum masuk Pencairan. Diisi oleh job Pencairan otomatis saat baris `payouts` dibuat. Order dengan `payout_id` terisi **tidak** ikut dihitung lagi di Saldo Pedagang. Kalau Pencairan gagal → di-*unlink* kembali ke NULL.
 
 ### `order_items`
@@ -260,7 +276,7 @@ erDiagram
 - `amount` = `SUM(total_for_merchant)` dari Pesanan yang di-*link* (`orders.payout_id` di-set ke baris ini dalam transaksi yang sama). `transfer_fee` (dari respons Iris) **ditanggung Pedagang** → `net_amount = amount − transfer_fee` yang benar-benar diterima Pedagang.
 - `beneficiary_*` = **snapshot** rekening tujuan saat Pencairan dibuat (kalau Pedagang ganti rekening kemudian, riwayat Pencairan lama tetap menunjukkan ke mana dulu uang dikirim).
 - `status`: `pending` (baris dibuat, belum dikirim ke Iris) → `processing` (dikirim) → `completed` (callback Iris sukses, isi `settled_at`) / `failed` (isi `failure_reason`; Pesanan yang tadinya di-link di-*unlink* `payout_id = NULL` supaya ikut batch berikutnya). Enum lama `selesai` **diganti** `completed`+`processing`+`failed` (migrasi enum).
-- **Saldo Pedagang** (istilah di [GLOSSARY.md](GLOSSARY.md)) — nilai turunan, sekarang: `SUM(orders.total_for_merchant WHERE status IN (dibayar, diproses, siap_diambil, selesai) AND payout_id IS NULL)` per Lapak = bagian yang **belum** masuk Pencairan mana pun. Tidak lagi pakai `SUM(orders) − SUM(payouts)` (rawan salah kalau ada payout `failed`/`processing`). Tidak perlu kolom saldo tersendiri.
+- **Saldo Pedagang** (istilah di [GLOSSARY.md](GLOSSARY.md)) — nilai turunan, sekarang: `SUM(orders.total_for_merchant WHERE status IN (dibayar, diproses, siap_diambil, selesai) AND payout_id IS NULL)` (Fase 11: ditambah `sedang_diantar` & `gagal_diantar` — tanpa refund, dana tetap hak Pedagang) per Lapak = bagian yang **belum** masuk Pencairan mana pun. Tidak lagi pakai `SUM(orders) − SUM(payouts)` (rawan salah kalau ada payout `failed`/`processing`). Tidak perlu kolom saldo tersendiri.
 
 ### `service_fee_invoices` (Tagihan Biaya Layanan — Fase 7)
 - Tagihan **pascabayar mingguan** untuk Lapak `qris_pribadi`: uang Pesanan langsung ke Pedagang, jadi Biaya Layanan tidak bisa dipotong otomatis seperti model Agregator — ditagih belakangan lewat sini. Dibuat oleh job `POST /api/cron/bill-service-fee` (`src/lib/billing/service-fee.ts`), **bukan** dicatat manual Admin (walau Admin bisa override, lihat di bawah).

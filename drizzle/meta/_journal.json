@@ -85,6 +85,13 @@
       "when": 1789981226314,
       "tag": "0011_classy_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790550066210,
+      "tag": "0012_fresh_chronomancer",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
 import { orderGrandTotal } from "@/lib/utils/order-calc";
 import type { MerchantOrderHistoryItem } from "@/types/order";
+import { DeliveryInfo } from "./DeliveryInfo";
 import { ReceiptButton } from "./ReceiptButton";
 
 export function MerchantOrderHistoryList({
@@ -38,6 +39,8 @@ function MerchantOrderHistoryCard({
   order: MerchantOrderHistoryItem;
 }) {
   const timestamp = order.completedAt ?? order.paidAt ?? order.createdAt;
+  // `gagal_diantar` tetap lunas (tanpa refund) — dana tetap hak Pedagang.
+  const isPaid = order.status === "selesai" || order.status === "gagal_diantar";
 
   return (
     <Card className="flex flex-col gap-3">
@@ -50,6 +53,15 @@ function MerchantOrderHistoryCard({
       <p className="text-sm text-ink-muted">
         Atas nama {order.buyerName} · {formatDateTime(timestamp)}
       </p>
+      {order.delivery ? (
+        <DeliveryInfo
+          orderId={order.id}
+          orderCode={order.orderCode}
+          delivery={order.delivery}
+          deliveryFee={order.deliveryFeeSnapshot}
+          showActions={false}
+        />
+      ) : null}
       <ul className="flex flex-col gap-1 border-t border-line pt-3">
         {order.items.map((item) => (
           <li key={item.id} className="flex flex-col gap-0.5 text-sm">
@@ -76,23 +88,22 @@ function MerchantOrderHistoryCard({
       </ul>
       <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
         <span className="text-sm text-ink-muted">
-          {order.status === "selesai" ? "Bagianmu" : "Nilai Pesanan"}
+          {isPaid ? "Bagianmu" : "Nilai Pesanan"}
         </span>
         <span className="text-base font-bold tabular-nums text-ink">
-          {formatRupiah(
-            order.status === "selesai"
-              ? order.totalForMerchant
-              : order.subtotal,
-          )}
+          {formatRupiah(isPaid ? order.totalForMerchant : order.subtotal)}
         </span>
       </div>
-      {order.status === "selesai" ? (
+      {isPaid ? (
         <p className="-mt-1 text-right text-xs tabular-nums text-ink-muted">
           Pembeli bayar {formatRupiah(orderGrandTotal(order))} · Biaya Layanan{" "}
           {formatRupiah(order.platformFeeSnapshot)}
+          {order.deliveryFeeSnapshot > 0
+            ? ` · Ongkir ${formatRupiah(order.deliveryFeeSnapshot)}`
+            : ""}
         </p>
       ) : null}
-      {order.status === "selesai" ? (
+      {isPaid ? (
         <ReceiptButton orderId={order.id} orderCode={order.orderCode} />
       ) : null}
     </Card>

@@ -1,14 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CopyButton } from "@/components/ui/CopyButton";
-import { DownloadIcon } from "@/components/ui/icons";
+import { DownloadIcon, MapPinIcon } from "@/components/ui/icons";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
+import { rememberRecentOrder } from "@/lib/buyer/storage";
 import { formatRupiah } from "@/lib/utils/money";
-import { FINAL_ORDER_STATUSES } from "@/lib/utils/order-status";
+import {
+  DELIVERY_FAILURE_REASON_LABEL_ID,
+  FINAL_ORDER_STATUSES,
+} from "@/lib/utils/order-status";
 import { getOrderStatus, simulatePaymentSuccess } from "@/server/orders";
 import type { BuyerOrderStatusView } from "@/types/order";
 
@@ -32,6 +37,17 @@ export function OrderStatusView({
   const [simulateError, setSimulateError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const orderIdRef = useRef(initialOrder.id);
+
+  // Simpan di "Pesanan Saya" (localStorage) supaya link status tidak hilang
+  // kalau tab tertutup — lihat halaman /lacak.
+  useEffect(() => {
+    rememberRecentOrder({
+      orderId: initialOrder.id,
+      orderCode: initialOrder.orderCode,
+      stallName: initialOrder.stallName,
+      createdAt: new Date(initialOrder.createdAt).toISOString(),
+    });
+  }, [initialOrder]);
 
   useEffect(() => {
     if (FINAL_ORDER_STATUSES.includes(order.status)) return;
@@ -147,7 +163,49 @@ export function OrderStatusView({
           {order.orderCode}
         </p>
         <OrderStatusBadge status={order.status} />
+        <ShareStatusLink orderCode={order.orderCode} />
       </Card>
+
+      {order.delivery ? (
+        <Card className="flex flex-col gap-2">
+          <div className="flex items-start gap-2">
+            <MapPinIcon className="mt-0.5 size-4 shrink-0 text-brand-strong" />
+            <div className="flex flex-col gap-0.5 text-sm">
+              <p className="font-semibold text-ink">Diantar ke</p>
+              <p className="text-ink">{order.delivery.address}</p>
+              {order.delivery.landmark ? (
+                <p className="text-ink-muted">
+                  Patokan: {order.delivery.landmark}
+                </p>
+              ) : null}
+              {order.delivery.estimate &&
+              !FINAL_ORDER_STATUSES.includes(order.status) ? (
+                <p className="text-ink-muted">
+                  Estimasi {order.delivery.estimate} setelah diproses.
+                </p>
+              ) : null}
+            </div>
+          </div>
+          {order.status === "sedang_diantar" ? (
+            <Alert tone="info">
+              Pesananmu sedang diantar. Siapkan Kode Pesanan untuk ditunjukkan
+              ke Pedagang.
+            </Alert>
+          ) : null}
+          {order.status === "gagal_diantar" ? (
+            <Alert tone="error">
+              Pengantaran gagal
+              {order.delivery.failureReason
+                ? `: ${DELIVERY_FAILURE_REASON_LABEL_ID[order.delivery.failureReason]}`
+                : ""}
+              {order.delivery.failureNote
+                ? ` — ${order.delivery.failureNote}`
+                : ""}
+              . Pedagang akan menghubungimu lewat nomor HP yang kamu isi.
+            </Alert>
+          ) : null}
+        </Card>
+      ) : null}
 
       {order.sandboxQrUrl ? (
         <Card className="flex items-center gap-2">
@@ -199,6 +257,14 @@ export function OrderStatusView({
               </span>
             </div>
           )}
+          {order.deliveryFeeSnapshot > 0 ? (
+            <div className="flex justify-between text-sm text-ink-muted">
+              <span>Ongkir</span>
+              <span className="tabular-nums">
+                {formatRupiah(order.deliveryFeeSnapshot)}
+              </span>
+            </div>
+          ) : null}
           <div className="mt-1 flex justify-between border-t border-line pt-2 font-bold text-ink">
             <span>Total Dibayar</span>
             <span className="tabular-nums">
@@ -207,6 +273,57 @@ export function OrderStatusView({
           </div>
         </div>
       </Card>
+
+      <p className="text-center text-xs text-ink-muted">
+        Kehilangan link ini nanti? Buka{" "}
+        <Link href="/lacak" className="font-semibold text-brand-strong">
+          Lacak Pesanan
+        </Link>
+        .
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Bagikan/salin link halaman status — Pembeli tanpa akun, jadi link inilah
+ * "kunci" Pesanannya. `navigator.share` di HP (bisa kirim ke WA sendiri),
+ * fallback salin ke clipboard.
+ */
+function ShareStatusLink({ orderCode }: { orderCode: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleShare() {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Pesanan ${orderCode}`,
+          text: `Status Pesanan ${orderCode}`,
+          url,
+        });
+        return;
+      } catch {
+        // Dibatalkan Pembeli atau gagal — lanjut ke salin link.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard tidak tersedia — tidak ada yang bisa dilakukan.
+    }
+  }
+
+  return (
+    <div className="mt-1 flex flex-col items-center gap-1">
+      <Button type="button" variant="secondary" size="sm" onClick={handleShare}>
+        {copied ? "Link tersalin" : "Bagikan / Salin Link Pesanan"}
+      </Button>
+      <p className="text-xs text-ink-muted">
+        Simpan Kode Pesanan & link ini untuk memantau pesananmu.
+      </p>
     </div>
   );
 }

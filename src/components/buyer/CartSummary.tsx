@@ -8,8 +8,11 @@ import { formatRupiah } from "@/lib/utils/money";
 
 export function CartSummary({
   platformFeeAmount,
+  deliveryFee = 0,
 }: {
   platformFeeAmount: number;
+  /** Ongkir Pesanan Antar yang sedang dipilih (0 = Ambil sendiri). */
+  deliveryFee?: number;
 }) {
   const { items, subtotalDisplay, paymentMode, updateQty, removeItem } =
     useCart();
@@ -17,9 +20,9 @@ export function CartSummary({
   // QRIS pribadi: Pembeli bayar LANGSUNG ke Pedagang, cuma sebesar subtotal —
   // Biaya Layanan tidak bisa di-on-top di QRIS statis, ditagih belakangan ke
   // Pedagang lewat tagihan mingguan (lihat src/lib/billing/).
-  const total = isQrisPribadi
-    ? subtotalDisplay
-    : subtotalDisplay + platformFeeAmount;
+  const total =
+    (isQrisPribadi ? subtotalDisplay : subtotalDisplay + platformFeeAmount) +
+    deliveryFee;
 
   return (
     <Card pad="none">
@@ -87,6 +90,14 @@ export function CartSummary({
             </span>
           </div>
         )}
+        {deliveryFee > 0 ? (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-ink-muted">Ongkir</span>
+            <span className="tabular-nums text-ink">
+              {formatRupiah(deliveryFee)}
+            </span>
+          </div>
+        ) : null}
         <div className="mt-1 flex items-center justify-between border-t border-line pt-2">
           <span className="font-semibold text-ink">Total</span>
           <span className="font-bold tabular-nums text-ink">

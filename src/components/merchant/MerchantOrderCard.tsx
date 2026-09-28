@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
@@ -14,6 +15,8 @@ import {
 } from "@/lib/utils/order-status";
 import { markQrisPribadiOrderPaid, updateOrderStatus } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
+import { DeliveryFailedButton } from "./DeliveryFailedButton";
+import { DeliveryInfo } from "./DeliveryInfo";
 import { ReceiptButton } from "./ReceiptButton";
 
 export function MerchantOrderCard({
@@ -27,8 +30,10 @@ export function MerchantOrderCard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const upcoming = nextMerchantStatus(order.status);
-  const actionLabel = upcoming ? MERCHANT_ACTION_LABEL_ID[order.status] : null;
+  const upcoming = nextMerchantStatus(order.status, order.fulfillmentMethod);
+  const actionLabel = upcoming
+    ? MERCHANT_ACTION_LABEL_ID[order.fulfillmentMethod][order.status]
+    : null;
 
   async function handleAdvance() {
     if (!upcoming) return;
@@ -69,9 +74,22 @@ export function MerchantOrderCard({
         <p className="text-lg font-bold tracking-wide tabular-nums text-ink">
           {order.orderCode}
         </p>
-        <OrderStatusBadge status={order.status} />
+        <div className="flex items-center gap-1.5">
+          {order.fulfillmentMethod === "antar" ? (
+            <Badge tone="primary">Diantar</Badge>
+          ) : null}
+          <OrderStatusBadge status={order.status} />
+        </div>
       </div>
       <p className="text-sm text-ink-muted">Atas nama {order.buyerName}</p>
+      {order.delivery ? (
+        <DeliveryInfo
+          orderId={order.id}
+          orderCode={order.orderCode}
+          delivery={order.delivery}
+          deliveryFee={order.deliveryFeeSnapshot}
+        />
+      ) : null}
       <ul className="flex flex-col gap-1 border-t border-line pt-3">
         {order.items.map((item) => (
           <li key={item.id} className="flex flex-col gap-0.5 text-sm">
@@ -124,6 +142,16 @@ export function MerchantOrderCard({
             >
               {submitting ? "Memproses..." : actionLabel}
             </Button>
+          ) : null}
+          {order.status === "sedang_diantar" && order.delivery ? (
+            <DeliveryFailedButton
+              orderId={order.id}
+              deliveryStartedAt={order.delivery.startedAt}
+              onDone={() => {
+                showToast(`Pesanan ${order.orderCode} ditandai gagal diantar`);
+                onUpdated();
+              }}
+            />
           ) : null}
         </>
       )}

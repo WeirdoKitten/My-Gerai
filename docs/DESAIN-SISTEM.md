@@ -129,6 +129,8 @@ Peta status → tone (pakai label dari `ORDER_STATUS_LABEL_ID` yang sudah ada):
 | `selesai` | `neutral` |
 | `dibatalkan` | `danger` |
 | `kedaluwarsa` | `neutral` |
+| `sedang_diantar` | `primary` |
+| `gagal_diantar` | `danger` |
 
 ### `Alert.tsx`
 `rounded-control px-3.5 py-3 text-sm` + tone: `error` (`bg-danger-bg text-danger`), `success` (`bg-success-bg text-success`), `info` (`bg-info-bg text-info`), `warning` (`bg-warning-bg text-warning`). Ganti semua `<p class="text-sm text-red-600">` yang tersebar sekarang dengan ini.

@@ -15,7 +15,10 @@
 | **Keranjang** | Kumpulan Item yang dipilih Pembeli sebelum checkout. Tersimpan sementara di sisi browser Pembeli (belum jadi Pesanan resmi). |
 | **Pesanan** | Transaksi resmi yang tercipta saat Pembeli checkout. Setara "order". Punya **Kode Pesanan** dan **Status Pesanan**. |
 | **Kode Pesanan** | Kode pendek unik (mis. `B231`) yang ditampilkan ke Pembeli untuk ditunjukkan/disebutkan ke Pedagang saat mengambil Pesanan. |
-| **Status Pesanan** | Salah satu dari: `menunggu_pembayaran`, `dibayar`, `diproses`, `siap_diambil`, `selesai`, `dibatalkan`, `kedaluwarsa`. Detail lihat [DATA-MODEL.md](DATA-MODEL.md). |
+| **Status Pesanan** | Salah satu dari: `menunggu_pembayaran`, `dibayar`, `diproses`, `siap_diambil`, `selesai`, `dibatalkan`, `kedaluwarsa` (+ `sedang_diantar`, `gagal_diantar` untuk Pesanan Antar, Fase 11). Detail lihat [DATA-MODEL.md](DATA-MODEL.md). |
+| **Pesanan Antar** / **Ambil Sendiri** | Dua mode Pesanan (Fase 11). **Ambil Sendiri** = Pembeli datang ke Lapak (alur lama, cukup Nama). **Pesanan Antar** = Pedagang sendiri mengantar ke alamat Pembeli (wajib No. HP/WA + alamat + pin, dalam radius Lapak). Bukan integrasi ojol. |
+| **Ongkir** | Ongkos kirim Pesanan Antar. Tarif tetap per Lapak (diatur Pedagang), **100% untuk Pedagang**, ditambahkan ke tagihan Pembeli, di-snapshot per Pesanan. Beda dari **Biaya Layanan** (untuk Aplikator) dan **MDR**. |
+| **Lacak Pesanan** | Halaman untuk Pembeli yang kehilangan link status: isi **Kode Pesanan + No. HP** (harus cocok) → diarahkan ke halaman status Pesanan. Tetap tanpa login (Fase 11). |
 | **Jam Operasional** | Jadwal mingguan opsional (per hari, boleh beda jam) yang menentukan status **Buka/Tutup** Lapak otomatis — diatur Pedagang di `/dashboard/jadwal`. Lapak tanpa Jam Operasional dianggap selalu Buka. |
 | **Status Buka/Tutup** | Status Lapak saat ini, dihitung dari **Jam Operasional** + **Override Manual** (mana pun yang berlaku). Ditandai lewat toggle di header dashboard Pedagang. Saat Tutup, Pembeli tetap bisa lihat menu tapi **Checkout dikunci**. |
 | **Override Manual** | Penimpaan sementara Status Buka/Tutup oleh Pedagang lewat toggle (mis. tutup dadakan karena bahan habis), meski **Jam Operasional** bilang harusnya sebaliknya. Otomatis lepas begitu masuk batas Jam Operasional berikutnya — atau Pedagang bisa lepas manual lewat "Ikuti Jadwal Lagi". |

@@ -3,7 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MerchantProfileForm } from "@/components/merchant/MerchantProfileForm";
 import { SoundSettingRow } from "@/components/merchant/SoundSettingRow";
-import { ArrowRightIcon, ClockIcon, WalletIcon } from "@/components/ui/icons";
+import {
+  ArrowRightIcon,
+  ClockIcon,
+  MapPinIcon,
+  WalletIcon,
+} from "@/components/ui/icons";
 import { getMerchantProfile } from "@/server/merchants";
 import { hasAnyProduct } from "@/server/products";
 
@@ -48,6 +53,11 @@ export default async function MerchantProfilePage() {
         href="/dashboard/pembayaran"
         icon={<WalletIcon className="size-4 text-ink-muted" />}
         label="Metode Pembayaran"
+      />
+      <SettingsLinkRow
+        href="/dashboard/pengantaran"
+        icon={<MapPinIcon className="size-4 text-ink-muted" />}
+        label="Pengantaran"
       />
       <SoundSettingRow />
       <MerchantProfileForm profile={profile} />

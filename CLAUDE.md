@@ -6,7 +6,7 @@ Dokumen ini otomatis dibaca setiap sesi Claude Code di proyek ini. Tujuannya: **
 
 **MyGerai** (nama kerja, lihat [docs/PRD.md](docs/PRD.md#nama-produk)) adalah sistem pemesanan berbasis QR + QRIS untuk pedagang kecil pinggir jalan/pasar (bakso, batagor, cakue, baju, dll) — versi sangat disederhanakan dari **[ESB Order](https://www.esb.id/id/solusi/produk/order)**. Alur inti: **Pembeli scan QR → pilih Item → bayar QRIS → Pesanan masuk ke Pedagang setelah lunas.** Pembeli **tanpa akun**, cukup isi Nama.
 
-Status saat ini: **Fase 0–5 + Fase Tampilan + Profil/Stok/Foto Item selesai** (alur Pembeli, Pedagang, Admin, desain sistem, pengujian). **Sedang dikerjakan:** Fase 6 — payment nyata Midtrans + Pencairan otomatis "Model B" (branch `feat/payment-midtrans-model-b`). Lihat [docs/BACKLOG.md](docs/BACKLOG.md) & [CHANGELOG.md](CHANGELOG.md).
+Status saat ini: **Fase 0–5 + Fase Tampilan + Profil/Stok/Foto Item selesai** (alur Pembeli, Pedagang, Admin, desain sistem, pengujian). **Sedang dikerjakan:** Fase 6 — payment nyata Midtrans + Pencairan otomatis "Model B" (branch `feat/payment-midtrans-model-b`), dan Fase 11 — Pengantaran oleh Pedagang + Ongkir (branch `feat/pengantaran-pedagang`, kode selesai, menunggu uji manual User). Lihat [docs/BACKLOG.md](docs/BACKLOG.md) & [CHANGELOG.md](CHANGELOG.md).
 
 ## Ground Truth — WAJIB Dibaca Sebelum Kerja
 

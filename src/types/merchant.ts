@@ -30,6 +30,21 @@ export type MerchantProfileView = {
 
 export type UpdateMerchantProfileResult = { ok: boolean; message?: string };
 
+/** Pengaturan Pesanan Antar Lapak sendiri (Fase 11), dibaca di `/dashboard/profil`. */
+export type MerchantDeliverySettingsView = {
+  deliveryEnabled: boolean;
+  deliveryFee: number | null;
+  deliveryRadiusKm: number;
+  deliveryEstimate: string | null;
+  /** Mode antar hanya bisa diaktifkan kalau titik GPS Lapak sudah diisi. */
+  hasLocation: boolean;
+};
+
+export type UpdateMerchantDeliverySettingsResult = {
+  ok: boolean;
+  message?: string;
+};
+
 /**
  * Pengaturan pembayaran Lapak sendiri (`/dashboard/pembayaran`). `paymentMode`
  * read-only di sisi Pedagang — cuma Admin yang boleh mengubahnya (lihat

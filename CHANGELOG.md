@@ -2,6 +2,26 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-28 — Implementasi Pengantaran oleh Pedagang + Ongkir (Fase 11)
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 11 dicentang), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom final `orders`/`merchants`), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md) (`/lacak`, `/dashboard/pengantaran`, `lib/buyer/`, `utils/phone.ts`), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (tone badge status baru), [docs/PRD.md](docs/PRD.md) (koreksi: tanpa WA Pedagang untuk Pembeli). Migrasi `drizzle/0012_fresh_chronomancer.sql` (aditif, aman untuk Pesanan lama). Tanpa dependency baru.
+**Alasan:** Implementasi keputusan produk di entri di bawah. Keputusan tambahan User saat Plan mode: **tidak ada tombol "Chat WA Pedagang"** untuk Pembeli — nomor HP Pedagang adalah username login, tidak boleh tampil publik.
+**Ringkasan:**
+- Checkout punya pilihan Ambil sendiri / Diantar (hanya muncul kalau Lapak mengaktifkan antar). Mode Diantar: HP, alamat, patokan, pin peta. Leaflet dimuat hanya saat Diantar dipilih. Ongkir & jarak dihitung ulang di server; di luar jangkauan ditolak.
+- Dashboard Pedagang: info antar + link Maps / Chat WA / Kirim link status, alur Mulai Antar → Tandai Sudah Diterima, tombol Gagal Diantar (jeda 15 menit + alasan wajib, dicek server). Pengaturan antar di `/dashboard/pengantaran`.
+- Halaman status Pembeli: info antar, pesan sedang diantar/gagal, tombol Bagikan/Salin link. Halaman `/lacak` untuk Pembeli yang kehilangan link (Kode + HP, rate-limit). localStorage dipakai untuk isi otomatis & daftar Pesanan terakhir.
+- Struk thermal, Riwayat, Admin ikut menampilkan Ongkir & alasan gagal. Saldo/laporan/tagihan otomatis menghitung status baru lewat `PAID_ORDER_STATUSES`.
+- **Diverifikasi nyata**: unit test 155 lulus (+13 baru), E2E 12/12 lulus (5 baru di `delivery-flow.spec.ts`; dibuktikan menangkap bug lewat sabotase cek radius server), `tsc`/`build` lulus, screenshot mobile dicek, `/security-review` tanpa temuan. **Belum** dicoba User di HP sungguhan.
+
+## 2026-09-28 — Keputusan produk: Pengantaran oleh Pedagang + Ongkir (Fase 11, belum diimplementasi)
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (seksi Fase 11 + 2 ide masa depan), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-09-28), [docs/PRD.md](docs/PRD.md) (§4, §7, §8), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (catatan rencana `orders`/`merchants`, formula Saldo), [docs/GLOSSARY.md](docs/GLOSSARY.md) (Pesanan Antar/Ambil Sendiri, Ongkir, Lacak Pesanan, status baru). Belum ada perubahan kode/skema.
+**Alasan:** Permintaan client lewat User — Pedagang ingin bisa mengantar Pesanan ke alamat Pembeli. Keputusan dibahas dan dikonfirmasi User di chat.
+**Ringkasan:**
+- Pembeli **tetap tanpa login**. Mode Diantar menambah No. HP/WA (wajib) + alamat + pin peta per Pesanan; localStorage hanya untuk isi otomatis dan link "Pesanan saya". Pelacakan tanpa link lewat Kode Pesanan + No. HP.
+- Pedagang mengantar sendiri (tanpa ojol). Ongkir **tarif tetap per Lapak**, 100% untuk Pedagang, snapshot per Pesanan. Radius maksimal & toggle "Terima antar" per Lapak.
+- Status baru `sedang_diantar` & `gagal_diantar` (alasan wajib, jeda ±15 menit). **Tanpa refund**. Pencairan tetap dihitung sejak `dibayar`. Data HP/alamat tidak dihapus otomatis.
+
 ## 2026-09-25 — Cetak struk Pesanan ke printer thermal Bluetooth (Pedagang)
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (seksi baru), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (baris "Cetak struk"), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md) (`lib/printer/`, `utils/receipt.ts`). Kode baru: `getOrderReceipt` (`src/server/orders.ts`), `OrderReceiptView`/`GetOrderReceiptResult` (`src/types/order.ts`), `src/lib/utils/receipt.ts`, `src/lib/printer/bluetooth-printer.ts`, `src/components/merchant/ReceiptButton.tsx`, `PrinterIcon`. Kode ubah: `MerchantOrderCard.tsx`, `MerchantOrderHistoryList.tsx`, `tests/e2e/order-flow.spec.ts`. Tanpa perubahan skema DB, tanpa dependency baru.

@@ -12,6 +12,8 @@ const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   selesai: "neutral",
   dibatalkan: "danger",
   kedaluwarsa: "neutral",
+  sedang_diantar: "primary",
+  gagal_diantar: "danger",
 };
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {

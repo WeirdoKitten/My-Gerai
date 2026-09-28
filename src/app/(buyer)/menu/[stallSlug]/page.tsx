@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClosedStallNotice } from "@/components/buyer/ClosedStallNotice";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
@@ -90,6 +91,13 @@ export default async function StallMenuPage(
           ))}
         </div>
       )}
+
+      <p className="text-center text-sm text-ink-muted">
+        Sudah pernah pesan?{" "}
+        <Link href="/lacak" className="font-semibold text-brand-strong">
+          Lacak Pesanan
+        </Link>
+      </p>
 
       <FloatingCartBar />
     </div>

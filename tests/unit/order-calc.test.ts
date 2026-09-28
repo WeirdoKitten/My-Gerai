@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { calculateOrderTotals, orderGrandTotal } from "@/lib/utils/order-calc";
+import {
+  calculateOrderTotals,
+  orderAmountToPay,
+  orderGrandTotal,
+} from "@/lib/utils/order-calc";
 
 describe("calculateOrderTotals", () => {
   it("Pedagang terima subtotal penuh, Pembeli bayar subtotal + Biaya Layanan", () => {
@@ -13,6 +17,7 @@ describe("calculateOrderTotals", () => {
     expect(result).toEqual({
       subtotal: 35000,
       platformFeeSnapshot: 1000,
+      deliveryFeeSnapshot: 0,
       totalForMerchant: 35000,
       grandTotal: 36000,
     });
@@ -23,6 +28,7 @@ describe("calculateOrderTotals", () => {
     expect(result).toEqual({
       subtotal: 10000,
       platformFeeSnapshot: 1000,
+      deliveryFeeSnapshot: 0,
       totalForMerchant: 10000,
       grandTotal: 11000,
     });
@@ -46,6 +52,7 @@ describe("calculateOrderTotals", () => {
     expect(result).toEqual({
       subtotal: 0,
       platformFeeSnapshot: 1000,
+      deliveryFeeSnapshot: 0,
       totalForMerchant: 0,
       grandTotal: 1000,
     });
@@ -56,16 +63,66 @@ describe("calculateOrderTotals", () => {
     expect(result).toEqual({
       subtotal: 0,
       platformFeeSnapshot: 1000,
+      deliveryFeeSnapshot: 0,
       totalForMerchant: 0,
       grandTotal: 1000,
     });
   });
 });
 
+describe("calculateOrderTotals — Pesanan Antar (Ongkir)", () => {
+  it("Ongkir masuk tagihan Pembeli & 100% ke Pedagang", () => {
+    const result = calculateOrderTotals([{ price: 10000, qty: 2 }], 1000, 5000);
+    expect(result).toEqual({
+      subtotal: 20000,
+      platformFeeSnapshot: 1000,
+      deliveryFeeSnapshot: 5000,
+      totalForMerchant: 25000,
+      grandTotal: 26000,
+    });
+  });
+
+  it("tanpa argumen Ongkir = Ambil sendiri (Ongkir 0)", () => {
+    const result = calculateOrderTotals([{ price: 10000, qty: 1 }], 1000);
+    expect(result.deliveryFeeSnapshot).toBe(0);
+    expect(result.totalForMerchant).toBe(10000);
+  });
+});
+
 describe("orderGrandTotal", () => {
   it("menjumlahkan subtotal + platformFeeSnapshot dari Pesanan tersimpan", () => {
     expect(
-      orderGrandTotal({ subtotal: 27000, platformFeeSnapshot: 1000 }),
+      orderGrandTotal({
+        subtotal: 27000,
+        platformFeeSnapshot: 1000,
+        deliveryFeeSnapshot: 0,
+      }),
     ).toBe(28000);
+  });
+
+  it("ikut menjumlahkan Ongkir", () => {
+    expect(
+      orderGrandTotal({
+        subtotal: 27000,
+        platformFeeSnapshot: 1000,
+        deliveryFeeSnapshot: 5000,
+      }),
+    ).toBe(33000);
+  });
+});
+
+describe("orderAmountToPay", () => {
+  const order = {
+    subtotal: 20000,
+    platformFeeSnapshot: 1000,
+    deliveryFeeSnapshot: 5000,
+  };
+
+  it("gateway: Pembeli bayar subtotal + Biaya Layanan + Ongkir", () => {
+    expect(orderAmountToPay(order, false)).toBe(26000);
+  });
+
+  it("QRIS pribadi: Biaya Layanan tidak dipungut, Ongkir tetap dibayar", () => {
+    expect(orderAmountToPay(order, true)).toBe(25000);
   });
 });
