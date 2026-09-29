@@ -60,6 +60,21 @@ export type MerchantPaymentModeView = {
   paymentMode: "gateway" | "qris_pribadi";
 } | null;
 
+/**
+ * Pengaturan Pesanan Antar Lapak, dilihat Pembeli (tanpa sesi) di checkout
+ * (Fase 11). `null` = Lapak tidak menerima antar saat ini (nonaktif, belum
+ * ada titik GPS/Ongkir, atau Lapak tidak ada). Titik GPS Lapak memang sudah
+ * publik (tombol "Buka di Peta" di halaman menu) — dipakai untuk menghitung
+ * jarak di browser sebagai peringatan dini; server tetap menghitung ulang.
+ */
+export type StallDeliveryView = {
+  fee: number;
+  radiusKm: number;
+  estimate: string | null;
+  stallLatitude: number;
+  stallLongitude: number;
+} | null;
+
 /** Item milik Lapak sendiri, ditampilkan di dashboard Pedagang (kelola Item). */
 export type MerchantProductView = {
   id: string;

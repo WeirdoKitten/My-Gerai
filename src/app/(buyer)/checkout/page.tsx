@@ -1,6 +1,5 @@
-import { CartSummary } from "@/components/buyer/CartSummary";
-import { CheckoutForm } from "@/components/buyer/CheckoutForm";
 import { CheckoutGate } from "@/components/buyer/CheckoutGate";
+import { CheckoutView } from "@/components/buyer/CheckoutView";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getActivePlatformConfig } from "@/server/config";
 
@@ -16,11 +15,10 @@ export default async function CheckoutPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Checkout"
-        subtitle="Periksa pesananmu, lalu isi nama."
+        subtitle="Periksa pesananmu, lalu isi data pemesan."
       />
       <CheckoutGate>
-        <CartSummary platformFeeAmount={platformFeeAmount} />
-        <CheckoutForm platformFeeAmount={platformFeeAmount} />
+        <CheckoutView platformFeeAmount={platformFeeAmount} />
       </CheckoutGate>
     </div>
   );

@@ -34,7 +34,8 @@ test.describe
       await expect(page.getByText("Total Dibayar")).toBeVisible();
 
       orderCode = (await page.locator("p.text-3xl").innerText()).trim();
-      expect(orderCode).toMatch(/^[A-Z0-9]{4}$/);
+      // Kode Pesanan: 8 karakter acak.
+      expect(orderCode).toMatch(/^[A-Z0-9]{8}$/);
 
       await page
         .getByRole("button", { name: "Simulasikan Pembayaran Berhasil" })

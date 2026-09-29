@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "orders_order_code_v2_idx" ON "orders" USING btree ("order_code") WHERE length("orders"."order_code") = 7;

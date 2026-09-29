@@ -92,7 +92,7 @@ test.describe.serial("alur QRIS pribadi + tagihan Biaya Layanan", () => {
     ).toHaveCount(0);
 
     orderCode = (await page.locator("p.text-3xl").innerText()).trim();
-    expect(orderCode).toMatch(/^[A-Z0-9]{4}$/);
+    expect(orderCode).toMatch(/^[A-Z0-9]{8}$/);
   });
 
   test("Pedagang menandai Pesanan QRIS pribadi lunas", async ({ page }) => {

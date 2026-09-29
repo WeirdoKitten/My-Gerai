@@ -142,9 +142,19 @@ function SummaryGrid({
         value={formatRupiah(summary.avgOrderValue)}
       />
       <Stat
+        label="Ongkir"
+        value={formatRupiah(summary.deliveryFeeTotal)}
+        hint="Dari pesanan antar, masuk penuh ke kamu"
+        className="col-span-2"
+      />
+      <Stat
         label="Ditagih ke Pembeli"
         value={formatRupiah(summary.buyerTotal)}
-        hint={`termasuk Biaya Layanan ${formatRupiah(summary.platformFeeTotal)}`}
+        hint={`termasuk Biaya Layanan ${formatRupiah(summary.platformFeeTotal)}${
+          summary.deliveryFeeTotal > 0
+            ? ` & Ongkir ${formatRupiah(summary.deliveryFeeTotal)}`
+            : ""
+        }`}
         className="col-span-2"
       />
     </div>

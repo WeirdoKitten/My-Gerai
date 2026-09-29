@@ -1,4 +1,8 @@
 import type { orderItems, orders } from "@/lib/db/schema";
+import type {
+  DeliveryFailureReason,
+  FulfillmentMethod,
+} from "@/lib/utils/order-status";
 
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
@@ -8,6 +12,30 @@ export type OrderItemVariantSelectionView = {
   groupNameSnapshot: string;
   optionNameSnapshot: string;
   priceDeltaSnapshot: number;
+};
+
+/** Info antar yang aman ditampilkan ke Pembeli pemilik Pesanan (tanpa nomor Pedagang). */
+export type BuyerOrderDeliveryView = {
+  address: string;
+  landmark: string | null;
+  /** Teks estimasi dari pengaturan Lapak SAAT INI (bukan snapshot), mis. "±30–60 menit". */
+  estimate: string | null;
+  failureReason: DeliveryFailureReason | null;
+  failureNote: string | null;
+};
+
+/** Info antar untuk Pedagang pemilik Pesanan (dashboard/riwayat). */
+export type MerchantOrderDeliveryView = {
+  /** Nomor ternormalisasi `62...`, siap dipakai `wa.me`. */
+  buyerPhone: string;
+  address: string;
+  landmark: string | null;
+  latitude: number;
+  longitude: number;
+  distanceKm: number | null;
+  startedAt: Date | null;
+  failureReason: DeliveryFailureReason | null;
+  failureNote: string | null;
 };
 
 /** Baris Item yang aman ditampilkan ke Pembeli (tanpa data internal). */
@@ -33,15 +61,19 @@ export type BuyerOrderStatusView = {
   stallName: string;
   subtotal: number;
   platformFeeSnapshot: number;
+  deliveryFeeSnapshot: number;
   totalForMerchant: number;
-  /** Nilai ekonomi penuh Pesanan (termasuk Biaya Layanan) = `subtotal + platformFeeSnapshot` — dipakai laporan/Admin, BUKAN selalu = yang dibayar Pembeli. */
+  /** Nilai ekonomi penuh Pesanan = `subtotal + platformFeeSnapshot + deliveryFeeSnapshot` — dipakai laporan/Admin, BUKAN selalu = yang dibayar Pembeli. */
   grandTotal: number;
   /**
    * Yang BENAR-BENAR dibayar Pembeli: `grandTotal` untuk mode gateway, atau
-   * cuma `subtotal` untuk `qris_pribadi` (Biaya Layanan ditagih belakangan
+   * `subtotal + Ongkir` untuk `qris_pribadi` (Biaya Layanan ditagih belakangan
    * ke Pedagang lewat tagihan mingguan, bukan dipungut dari Pembeli).
    */
   amountToPay: number;
+  fulfillmentMethod: FulfillmentMethod;
+  /** `null` untuk Ambil sendiri. */
+  delivery: BuyerOrderDeliveryView | null;
   /** `true` kalau Pesanan ini dibayar lewat QRIS pribadi Pedagang (bukan gateway). */
   isQrisPribadi: boolean;
   createdAt: Date;
@@ -85,6 +117,10 @@ export type MerchantOrderListItem = {
   buyerNote: string | null;
   createdAt: Date;
   items: MerchantOrderItemView[];
+  fulfillmentMethod: FulfillmentMethod;
+  deliveryFeeSnapshot: number;
+  /** `null` untuk Ambil sendiri. */
+  delivery: MerchantOrderDeliveryView | null;
   /**
    * `true` = Pesanan QRIS pribadi yang masih `menunggu_pembayaran`, tampilkan
    * tombol "Tandai Lunas" (markQrisPribadiOrderPaid) alih-alih tombol status
@@ -122,6 +158,9 @@ export type MerchantOrderHistoryItem = {
   paidAt: Date | null;
   completedAt: Date | null;
   items: MerchantOrderItemView[];
+  deliveryFeeSnapshot: number;
+  fulfillmentMethod: FulfillmentMethod;
+  delivery: MerchantOrderDeliveryView | null;
 };
 
 /**
@@ -139,8 +178,16 @@ export type OrderReceiptView = {
   subtotal: number;
   /** `0` untuk QRIS pribadi — Biaya Layanan tidak dipungut dari Pembeli di mode itu. */
   serviceFeePaid: number;
-  /** Yang benar-benar dibayar Pembeli = `subtotal + serviceFeePaid`. */
+  /** Ongkir (0 untuk Ambil sendiri). */
+  deliveryFee: number;
+  /** Yang benar-benar dibayar Pembeli = `subtotal + serviceFeePaid + deliveryFee`. */
   amountPaid: number;
+  /** `null` untuk Ambil sendiri. */
+  delivery: {
+    buyerPhone: string;
+    address: string;
+    landmark: string | null;
+  } | null;
 };
 
 export type GetOrderReceiptResult =
@@ -156,7 +203,15 @@ export type AdminOrderListItem = {
   status: Order["status"];
   subtotal: number;
   platformFeeSnapshot: number;
+  deliveryFeeSnapshot: number;
   totalForMerchant: number;
   createdAt: Date;
   paidAt: Date | null;
+  fulfillmentMethod: FulfillmentMethod;
+  deliveryFailureReason: DeliveryFailureReason | null;
+  deliveryFailureNote: string | null;
 };
+
+export type TrackOrderResult =
+  | { ok: true; orderId: string }
+  | { ok: false; message: string };

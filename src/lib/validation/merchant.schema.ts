@@ -69,6 +69,35 @@ export type UpdateMerchantProfileInput = z.infer<
   typeof updateMerchantProfileSchema
 >;
 
+/** Pengaturan Pesanan Antar Lapak sendiri (Fase 11) — lihat updateMerchantDeliverySettings. */
+export const updateMerchantDeliverySettingsSchema = z
+  .object({
+    deliveryEnabled: z.boolean(),
+    deliveryFee: z
+      .number()
+      .int("Ongkir harus bilangan bulat.")
+      .min(0, "Ongkir tidak boleh negatif.")
+      .max(100_000, "Ongkir maksimal Rp100.000.")
+      .nullable(),
+    deliveryRadiusKm: z
+      .number()
+      .min(0.5, "Jangkauan minimal 0,5 km.")
+      .max(20, "Jangkauan maksimal 20 km."),
+    deliveryEstimate: z
+      .string()
+      .trim()
+      .max(50, "Estimasi maksimal 50 karakter.")
+      .optional(),
+  })
+  .refine((data) => !data.deliveryEnabled || data.deliveryFee !== null, {
+    message: "Isi Ongkir dulu sebelum mengaktifkan pesanan antar.",
+    path: ["deliveryFee"],
+  });
+
+export type UpdateMerchantDeliverySettingsInput = z.infer<
+  typeof updateMerchantDeliverySettingsSchema
+>;
+
 /** Hanya Admin yang boleh memanggil — lihat setMerchantPaymentMode di server/merchants.ts. */
 export const setMerchantPaymentModeSchema = z.object({
   merchantId: z.uuid(),

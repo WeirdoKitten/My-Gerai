@@ -43,7 +43,9 @@ const baseReceipt: OrderReceiptView = {
   ],
   subtotal: 35000,
   serviceFeePaid: 1000,
+  deliveryFee: 0,
   amountPaid: 36000,
+  delivery: null,
 };
 
 const texts = (receipt: OrderReceiptView) =>
@@ -148,5 +150,40 @@ describe("encodeEscPos", () => {
     expect([...bytes.slice(2, 14)]).toEqual([
       0x1b, 0x61, 1, 0x1b, 0x45, 1, 0x1d, 0x21, 0, 0x48, 0x69, 0x0a,
     ]);
+  });
+});
+
+describe("buildReceiptLines — Pesanan Antar", () => {
+  const delivery: OrderReceiptView = {
+    ...baseReceipt,
+    deliveryFee: 5000,
+    amountPaid: 41000,
+    delivery: {
+      buyerPhone: "6281234567890",
+      address: "Jl. Kenanga No. 5, RT 02/RW 03",
+      landmark: "Pagar hijau",
+    },
+  };
+
+  it("mencetak penanda DIANTAR, HP, alamat, patokan, dan Ongkir", () => {
+    const lines = texts(delivery);
+    expect(lines).toContain("DIANTAR");
+    expect(lines).toContain("0812-3456-7890");
+    const joined = lines.join(" ");
+    expect(joined).toContain("Jl. Kenanga No. 5");
+    expect(joined).toContain("Patokan: Pagar hijau");
+    expect(lines.some((line) => /^Ongkir\s+5\.000$/.test(line))).toBe(true);
+    expect(lines.some((line) => /^TOTAL\s+Rp41\.000$/.test(line))).toBe(true);
+  });
+
+  it("QRIS pribadi + antar: Subtotal & Ongkir tercetak tanpa Biaya Layanan", () => {
+    const lines = texts({ ...delivery, serviceFeePaid: 0, amountPaid: 40000 });
+    expect(lines.some((line) => line.startsWith("Subtotal"))).toBe(true);
+    expect(lines.some((line) => line.startsWith("Biaya Layanan"))).toBe(false);
+    expect(lines.some((line) => line.startsWith("Ongkir"))).toBe(true);
+  });
+
+  it("Ambil sendiri tidak mencetak blok antar", () => {
+    expect(texts(baseReceipt)).not.toContain("DIANTAR");
   });
 });

@@ -51,11 +51,14 @@ export function LocationMapPicker({
   value,
   onChange,
   radiusKm,
+  initialCenter,
 }: {
   value: Coordinates | null;
   onChange: (coords: Coordinates | null) => void;
   /** Opsional -- kalau diisi, gambar lingkaran radius (km) di sekitar `value` (dipakai Admin memilih cakupan Area Lapak). */
   radiusKm?: number;
+  /** Opsional -- titik awal peta saat `value` masih kosong (mis. lokasi Lapak di checkout Pesanan Antar). */
+  initialCenter?: Coordinates;
 }) {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
@@ -94,8 +97,14 @@ export function LocationMapPicker({
     <div className="flex flex-col gap-2">
       <div className="h-64 w-full overflow-hidden rounded-xl border border-line">
         <MapContainer
-          center={value ? [value.latitude, value.longitude] : INDONESIA_CENTER}
-          zoom={value ? PICKED_ZOOM : DEFAULT_ZOOM}
+          center={
+            value
+              ? [value.latitude, value.longitude]
+              : initialCenter
+                ? [initialCenter.latitude, initialCenter.longitude]
+                : INDONESIA_CENTER
+          }
+          zoom={value || initialCenter ? PICKED_ZOOM : DEFAULT_ZOOM}
           scrollWheelZoom={false}
           className="h-full w-full"
         >

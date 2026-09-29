@@ -61,6 +61,15 @@ async function main() {
       passwordHash,
       status: "approved",
       photoUrl: await seedMerchantPhoto("bakso.jpg"),
+      // Titik lokasi + Pesanan Antar aktif (Fase 11) supaya alur antar bisa
+      // langsung dicoba di dev & dipakai tests/e2e/delivery-flow.spec.ts.
+      address: "Jl. Raya Baleendah No. 12, Kab. Bandung",
+      latitude: -6.9936,
+      longitude: 107.6275,
+      deliveryEnabled: true,
+      deliveryFee: 5000,
+      deliveryRadiusKm: 3,
+      deliveryEstimate: "±30–60 menit",
     })
     .returning();
 

@@ -7,7 +7,9 @@ export type SalesSummary = {
   revenue: number;
   /** SUM(orders.platform_fee_snapshot) — Biaya Layanan yang dibayar Pembeli. */
   platformFeeTotal: number;
-  /** SUM yang ditagih ke Pembeli = revenue + platformFeeTotal. */
+  /** SUM(orders.delivery_fee_snapshot) — Ongkir Pesanan Antar, 100% untuk Pedagang (Fase 11). Tidak masuk `revenue` (Omzet Item). */
+  deliveryFeeTotal: number;
+  /** SUM yang ditagih ke Pembeli = revenue + platformFeeTotal + deliveryFeeTotal. */
   buyerTotal: number;
   /** revenue / orderCount, 0 kalau belum ada Pesanan. */
   avgOrderValue: number;

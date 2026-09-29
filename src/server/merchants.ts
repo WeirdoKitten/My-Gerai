@@ -41,7 +41,9 @@ import {
   rejectMerchantSchema,
   type SetMerchantPaymentModeInput,
   setMerchantPaymentModeSchema,
+  type UpdateMerchantDeliverySettingsInput,
   type UpdateMerchantProfileInput,
+  updateMerchantDeliverySettingsSchema,
   updateMerchantProfileSchema,
 } from "@/lib/validation/merchant.schema";
 import {
@@ -58,6 +60,7 @@ import type {
 } from "@/types/admin";
 import type {
   LoginMerchantResult,
+  MerchantDeliverySettingsView,
   MerchantOpenStatusView,
   MerchantPaymentSettingsView,
   MerchantProfileView,
@@ -66,6 +69,7 @@ import type {
   RegisterMerchantResult,
   SetOperatingHoursResult,
   ToggleMerchantOpenResult,
+  UpdateMerchantDeliverySettingsResult,
   UpdateMerchantProfileResult,
   UploadMerchantPhotoResult,
   UploadQrisPhotoResult,
@@ -258,10 +262,81 @@ export async function updateMerchantProfile(
       address: parsed.data.address || null,
       latitude: parsed.data.latitude ?? null,
       longitude: parsed.data.longitude ?? null,
+      // Jangkauan antar dihitung dari titik GPS Lapak — kalau titiknya
+      // dihapus, mode antar ikut dimatikan (Fase 11).
+      ...(parsed.data.latitude == null ? { deliveryEnabled: false } : {}),
     })
     .where(eq(merchants.id, session.merchantId));
 
   return { ok: true, message: "Profil diperbarui." };
+}
+
+/** Pengaturan Pesanan Antar Lapak sendiri (Fase 11) — identitas dari sesi login. */
+export async function getMerchantDeliverySettings(): Promise<MerchantDeliverySettingsView | null> {
+  const session = await getMerchantSession();
+  if (!session) return null;
+
+  const merchant = await db.query.merchants.findFirst({
+    where: eq(merchants.id, session.merchantId),
+    columns: {
+      deliveryEnabled: true,
+      deliveryFee: true,
+      deliveryRadiusKm: true,
+      deliveryEstimate: true,
+      latitude: true,
+    },
+  });
+  if (!merchant) return null;
+
+  return {
+    deliveryEnabled: merchant.deliveryEnabled,
+    deliveryFee: merchant.deliveryFee,
+    deliveryRadiusKm: merchant.deliveryRadiusKm,
+    deliveryEstimate: merchant.deliveryEstimate,
+    hasLocation: merchant.latitude !== null,
+  };
+}
+
+export async function updateMerchantDeliverySettings(
+  input: UpdateMerchantDeliverySettingsInput,
+): Promise<UpdateMerchantDeliverySettingsResult> {
+  const session = await getMerchantSession();
+  if (!session)
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  const parsed = updateMerchantDeliverySettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
+    };
+  }
+
+  if (parsed.data.deliveryEnabled) {
+    const merchant = await db.query.merchants.findFirst({
+      where: eq(merchants.id, session.merchantId),
+      columns: { latitude: true },
+    });
+    if (merchant?.latitude == null) {
+      return {
+        ok: false,
+        message:
+          "Pasang titik lokasi Lapak dulu di Profil — jangkauan antar dihitung dari titik itu.",
+      };
+    }
+  }
+
+  await db
+    .update(merchants)
+    .set({
+      deliveryEnabled: parsed.data.deliveryEnabled,
+      deliveryFee: parsed.data.deliveryFee,
+      deliveryRadiusKm: parsed.data.deliveryRadiusKm,
+      deliveryEstimate: parsed.data.deliveryEstimate || null,
+    })
+    .where(eq(merchants.id, session.merchantId));
+
+  return { ok: true, message: "Pengaturan antar disimpan." };
 }
 
 /** Pengaturan pembayaran Lapak sendiri (`/dashboard/pembayaran`) — identitas dari sesi login. */

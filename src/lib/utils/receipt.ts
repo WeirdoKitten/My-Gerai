@@ -1,3 +1,4 @@
+import { formatIndonesianPhone } from "@/lib/utils/phone";
 import type { OrderReceiptView } from "@/types/order";
 
 /** Lebar kertas thermal 58mm dengan font standar (Font A) = 32 karakter/baris. */
@@ -124,6 +125,15 @@ export function buildReceiptLines(
   plain(leftRight("No. Pesanan", receipt.orderCode, width));
   plain(leftRight("Atas nama", ascii(receipt.buyerName), width));
   plain([formatReceiptDateTime(receipt.paidAt)]);
+  if (receipt.delivery) {
+    lines.push(divider(width));
+    lines.push({ text: "DIANTAR", bold: true });
+    plain([formatIndonesianPhone(receipt.delivery.buyerPhone)]);
+    plain(wrapText(ascii(receipt.delivery.address), width));
+    if (receipt.delivery.landmark) {
+      plain(wrapText(ascii(`Patokan: ${receipt.delivery.landmark}`), width));
+    }
+  }
   lines.push(divider(width));
 
   for (const item of receipt.items) {
@@ -149,11 +159,16 @@ export function buildReceiptLines(
   }
   lines.push(divider(width));
 
-  if (receipt.serviceFeePaid > 0) {
+  if (receipt.serviceFeePaid > 0 || receipt.deliveryFee > 0) {
     plain(leftRight("Subtotal", formatAmount(receipt.subtotal), width));
+  }
+  if (receipt.serviceFeePaid > 0) {
     plain(
       leftRight("Biaya Layanan", formatAmount(receipt.serviceFeePaid), width),
     );
+  }
+  if (receipt.deliveryFee > 0) {
+    plain(leftRight("Ongkir", formatAmount(receipt.deliveryFee), width));
   }
   for (const text of leftRight(
     "TOTAL",

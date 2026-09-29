@@ -28,6 +28,7 @@ import type {
   ProductVariantGroupView,
   SetProductStatusResult,
   StallCatalogResult,
+  StallDeliveryView,
   UpdateProductResult,
   UploadProductPhotoResult,
 } from "@/types/product";
@@ -149,6 +150,38 @@ export async function getMerchantPaymentMode(
     columns: { paymentMode: true },
   });
   return merchant ? { paymentMode: merchant.paymentMode } : null;
+}
+
+/** Pengaturan Pesanan Antar sebuah Lapak untuk checkout Pembeli (tanpa sesi) — lihat StallDeliveryView. */
+export async function getStallDeliverySettings(
+  slug: string,
+): Promise<StallDeliveryView> {
+  const merchant = await db.query.merchants.findFirst({
+    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
+    columns: {
+      deliveryEnabled: true,
+      deliveryFee: true,
+      deliveryRadiusKm: true,
+      deliveryEstimate: true,
+      latitude: true,
+      longitude: true,
+    },
+  });
+  if (
+    !merchant?.deliveryEnabled ||
+    merchant.deliveryFee === null ||
+    merchant.latitude === null ||
+    merchant.longitude === null
+  ) {
+    return null;
+  }
+  return {
+    fee: merchant.deliveryFee,
+    radiusKm: merchant.deliveryRadiusKm,
+    estimate: merchant.deliveryEstimate,
+    stallLatitude: merchant.latitude,
+    stallLongitude: merchant.longitude,
+  };
 }
 
 /**
