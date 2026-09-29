@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-30 — Varian Item lewat popup di menu Pembeli, badge varian dashboard dihapus
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 Kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/buyer/AddToCartControls.tsx`, `src/components/merchant/ProductListItem.tsx`, `src/server/products.ts`, `src/types/product.ts`. Test baru `tests/e2e/menu-variant.spec.ts`.
+**Alasan:** Permintaan User: kartu menu terlalu ramai kalau pilihan varian tampil langsung; badge "n varian" di dashboard tidak perlu.
+**Ringkasan:**
+- Item bervarian di halaman menu: kartu hanya menampilkan tombol "Tambah"; pilihan varian, catatan, jumlah, dan total harga ada di popup. Item tanpa varian tetap seperti sebelumnya.
+- Badge "n varian" di kartu Item dashboard dihapus, beserta field & query yang tidak dipakai lagi.
+- **Diverifikasi nyata**: E2E 13/13 lulus (1 baru), screenshot dicek.
+
 ## 2026-09-30 — Tagihan Biaya Layanan susulan (branch `fix/tagihan-susulan`)
 
 **Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (alur Fase 7 langkah 3), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`service_fee_invoices.due_at`), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (panduan Scheduled Job), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md). Kode: `src/lib/billing/{period,service-fee,constants}.ts`, `src/lib/db/seed-demo-invoices.ts`, `Dockerfile`, `docker-entrypoint.sh`, `package.json`. Tanpa migrasi, tanpa dependency baru.

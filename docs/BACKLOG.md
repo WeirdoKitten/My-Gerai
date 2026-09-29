@@ -452,6 +452,11 @@
 - [x] Seeder contoh tagihan untuk Lapak demo `nasi-goreng-raja-rasa` (`src/lib/db/seed-demo-invoices.ts`, `pnpm db:seed:demo:invoices`, ikut jalan otomatis saat `SEED_DEMO=true`): 4 periode tertutup terakhir, 2 `lunas`, 1 `dibatalkan`, 1 `belum_lunas`. Ditandai `reference_id` berawalan `SEED-DEMO-`, idempoten, dan **dikecualikan dari penguncian Lapak** (tidak bisa dibayar sungguhan). Temuan: `seed-demo-orders.ts` membuat Pesanan tanpa baris `payments`, jadi Pesanan demo memang tidak pernah ikut tertagih oleh job asli.
 - [x] Verifikasi: seeder dijalankan 2× (tetap 4 tagihan), bundle esbuild jalan, tagihan demo lewat tenggang tidak mengunci Lapak sedangkan tagihan asli tetap mengunci, tampilan `/dashboard/pembayaran` dicek.
 
+## Polish lanjutan (2026-09-30, branch `fix/tagihan-susulan`)
+
+- [x] Dashboard `/dashboard/produk`: badge "n varian" di kartu Item dihapus (field `variantGroupCount` + query-nya ikut dihapus karena tidak dipakai lagi).
+- [x] Halaman menu Pembeli: varian Item tidak lagi tampil langsung di kartu; kartu Item bervarian cuma punya tombol "Tambah", pilihan varian + catatan + jumlah muncul di popup. Item tanpa varian tidak berubah. E2E baru `tests/e2e/menu-variant.spec.ts` (varian disuntik ke DB test, tanpa login).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.
