@@ -80,6 +80,19 @@ export function ImageOffIcon({ className }: IconProps) {
   );
 }
 
+/** Motor pengantaran — pilihan "Diantar" di checkout (Fase 11). */
+export function DeliveryIcon({ className }: IconProps) {
+  return (
+    <Icon className={className}>
+      <circle cx="5.5" cy="17.5" r="3" />
+      <circle cx="18.5" cy="17.5" r="3" />
+      <path d="M8.5 17.5h5l2.5-6h-4" />
+      <path d="M15 7h2l1.5 4.5" />
+      <path d="M3 11h6l2 3" />
+    </Icon>
+  );
+}
+
 export function StoreIcon({ className }: IconProps) {
   return (
     <Icon className={className}>

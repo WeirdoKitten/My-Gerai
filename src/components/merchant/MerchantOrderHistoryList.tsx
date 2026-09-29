@@ -55,8 +55,6 @@ function MerchantOrderHistoryCard({
       </p>
       {order.delivery ? (
         <DeliveryInfo
-          orderId={order.id}
-          orderCode={order.orderCode}
           delivery={order.delivery}
           deliveryFee={order.deliveryFeeSnapshot}
           showActions={false}

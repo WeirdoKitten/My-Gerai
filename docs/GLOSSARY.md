@@ -14,7 +14,7 @@
 | **Harga Modal** | Biaya pokok (HPP) per unit Item, diisi **opsional** oleh Pedagang saat tambah/ubah Item. Dipakai untuk menghitung **Keuntungan** di **Laporan Penjualan**; tidak pernah ditampilkan ke Pembeli. Di-snapshot per Pesanan (sama seperti harga jual) supaya Keuntungan Pesanan lama tidak berubah kalau harga modal diedit belakangan. |
 | **Keranjang** | Kumpulan Item yang dipilih Pembeli sebelum checkout. Tersimpan sementara di sisi browser Pembeli (belum jadi Pesanan resmi). |
 | **Pesanan** | Transaksi resmi yang tercipta saat Pembeli checkout. Setara "order". Punya **Kode Pesanan** dan **Status Pesanan**. |
-| **Kode Pesanan** | Kode pendek unik (mis. `B231`) yang ditampilkan ke Pembeli untuk ditunjukkan/disebutkan ke Pedagang saat mengambil Pesanan. |
+| **Kode Pesanan** | Kode unik 8 karakter acak, mis. `K7QX9MB4` (sejak 2026-09-29; Pesanan lama memakai 4 karakter, mis. `B231`). Ditunjukkan/disebutkan ke Pedagang saat serah terima, dan jadi satu-satunya kunci **Lacak Pesanan**. |
 | **Status Pesanan** | Salah satu dari: `menunggu_pembayaran`, `dibayar`, `diproses`, `siap_diambil`, `selesai`, `dibatalkan`, `kedaluwarsa` (+ `sedang_diantar`, `gagal_diantar` untuk Pesanan Antar, Fase 11). Detail lihat [DATA-MODEL.md](DATA-MODEL.md). |
 | **Pesanan Antar** / **Ambil Sendiri** | Dua mode Pesanan (Fase 11). **Ambil Sendiri** = Pembeli datang ke Lapak (alur lama, cukup Nama). **Pesanan Antar** = Pedagang sendiri mengantar ke alamat Pembeli (wajib No. HP/WA + alamat + pin, dalam radius Lapak). Bukan integrasi ojol. |
 | **Ongkir** | Ongkos kirim Pesanan Antar. Tarif tetap per Lapak (diatur Pedagang), **100% untuk Pedagang**, ditambahkan ke tagihan Pembeli, di-snapshot per Pesanan. Beda dari **Biaya Layanan** (untuk Aplikator) dan **MDR**. |

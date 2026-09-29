@@ -52,7 +52,9 @@ async function openCheckout(page: Page): Promise<void> {
 }
 
 async function fillDeliveryForm(page: Page, name: string): Promise<void> {
-  await page.getByRole("button", { name: /^Diantar/ }).click();
+  // Kartu pilihan = <label> berisi radio tersembunyi — klik teks kartunya.
+  await page.getByText("Diantar", { exact: true }).click();
+  await expect(page.getByRole("radio", { name: /Diantar/ })).toBeChecked();
   await page.getByLabel("Nama").fill(name);
   await page.getByLabel("Nomor HP/WhatsApp").fill(BUYER_PHONE_INPUT);
   await page
@@ -242,16 +244,22 @@ test.describe
       await context.close();
     });
 
-    test("Lacak Pesanan dengan Kode + No. HP (tanpa localStorage)", async ({
+    test("Lacak Pesanan cukup dengan Kode Pesanan (tanpa localStorage)", async ({
       page,
     }) => {
+      // Kode Pesanan: 8 karakter acak.
+      expect(deliveredOrder.orderCode).toMatch(/^[A-Z0-9]{8}$/);
+
       await page.goto("/lacak");
-      await page.getByLabel("Kode Pesanan").fill(deliveredOrder.orderCode);
-      await page.getByLabel("Nomor HP").fill("0899 9999 9999");
+      await page.getByLabel("Kode Pesanan").fill("ZZZZZZZZ");
       await page.getByRole("button", { name: "Lacak Pesanan" }).click();
       await expect(page.getByText(/Pesanan tidak ditemukan/)).toBeVisible();
 
-      await page.getByLabel("Nomor HP").fill(BUYER_PHONE_INPUT);
+      // Huruf kecil & spasi tetap diterima (dinormalisasi di server).
+      const code = deliveredOrder.orderCode.toLowerCase();
+      await page
+        .getByLabel("Kode Pesanan")
+        .fill(`${code.slice(0, 4)} ${code.slice(4)}`);
       await page.getByRole("button", { name: "Lacak Pesanan" }).click();
       await expect(page).toHaveURL(deliveredOrder.statusUrl);
     });

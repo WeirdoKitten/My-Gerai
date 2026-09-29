@@ -6,7 +6,12 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CopyButton } from "@/components/ui/CopyButton";
-import { DownloadIcon, MapPinIcon } from "@/components/ui/icons";
+import {
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  MapPinIcon,
+} from "@/components/ui/icons";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { rememberRecentOrder } from "@/lib/buyer/storage";
 import { formatRupiah } from "@/lib/utils/money";
@@ -163,7 +168,7 @@ export function OrderStatusView({
           {order.orderCode}
         </p>
         <OrderStatusBadge status={order.status} />
-        <ShareStatusLink orderCode={order.orderCode} />
+        <CopyOrderCode orderCode={order.orderCode} />
       </Card>
 
       {order.delivery ? (
@@ -179,7 +184,7 @@ export function OrderStatusView({
                 </p>
               ) : null}
               {order.delivery.estimate &&
-              !FINAL_ORDER_STATUSES.includes(order.status) ? (
+                !FINAL_ORDER_STATUSES.includes(order.status) ? (
                 <p className="text-ink-muted">
                   Estimasi {order.delivery.estimate} setelah diproses.
                 </p>
@@ -275,54 +280,64 @@ export function OrderStatusView({
       </Card>
 
       <p className="text-center text-xs text-ink-muted">
-        Kehilangan link ini nanti? Buka{" "}
+        Mau cek pesanan ini lagi nanti? Buka{" "}
         <Link href="/lacak" className="font-semibold text-brand-strong">
           Lacak Pesanan
-        </Link>
-        .
+        </Link>{" "}
+        lalu masukkan Kode Pesanan di atas.
       </p>
     </div>
   );
 }
 
 /**
- * Bagikan/salin link halaman status — Pembeli tanpa akun, jadi link inilah
- * "kunci" Pesanannya. `navigator.share` di HP (bisa kirim ke WA sendiri),
- * fallback salin ke clipboard.
+ * Salin Kode Pesanan — Pembeli tanpa akun, jadi kode inilah "kunci" untuk
+ * membuka pesanan lagi di halaman Lacak Pesanan kalau link/riwayat browser
+ * hilang. `navigator.clipboard` hanya ada di HTTPS/localhost; fallback
+ * `execCommand("copy")` untuk akses lewat HTTP biasa (mis. uji di HP via IP LAN).
  */
-function ShareStatusLink({ orderCode }: { orderCode: string }) {
+function CopyOrderCode({ orderCode }: { orderCode: string }) {
   const [copied, setCopied] = useState(false);
 
-  async function handleShare() {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Pesanan ${orderCode}`,
-          text: `Status Pesanan ${orderCode}`,
-          url,
-        });
-        return;
-      } catch {
-        // Dibatalkan Pembeli atau gagal — lanjut ke salin link.
-      }
-    }
+  async function handleCopy() {
+    let ok = false;
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
+      await navigator.clipboard.writeText(orderCode);
+      ok = true;
     } catch {
-      // Clipboard tidak tersedia — tidak ada yang bisa dilakukan.
+      const textarea = document.createElement("textarea");
+      textarea.value = orderCode;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      ok = document.execCommand("copy");
+      textarea.remove();
     }
+    if (!ok) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
   }
 
   return (
-    <div className="mt-1 flex flex-col items-center gap-1">
-      <Button type="button" variant="secondary" size="sm" onClick={handleShare}>
-        {copied ? "Link tersalin" : "Bagikan / Salin Link Pesanan"}
+    <div className="mt-1 flex flex-col items-center gap-1.5">
+      <Button type="button" variant="secondary" size="sm" onClick={handleCopy}>
+        {copied ? (
+          <>
+            <CheckIcon className="size-4" />
+            Kode tersalin
+          </>
+        ) : (
+          <>
+            <CopyIcon className="size-4" />
+            Salin Kode Pesanan
+          </>
+        )}
       </Button>
-      <p className="text-xs text-ink-muted">
-        Simpan Kode Pesanan & link ini untuk memantau pesananmu.
+      <p className="max-w-xs text-xs text-ink-muted">
+        Jangan lupa untuk simpan/salin kode ini. Kalau riwayat browser terhapus, pesananmu tetap bisa dibuka lewat Lacak
+        Pesanan dengan kode ini.
       </p>
     </div>
   );

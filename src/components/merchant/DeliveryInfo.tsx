@@ -13,29 +13,17 @@ const LINK_CLASS =
 
 /**
  * Blok info Pesanan Antar di kartu Pesanan Pedagang — alamat, HP, jarak,
- * Ongkir, plus link Maps & WhatsApp (`wa.me`, tanpa API berbayar). Link
- * "Kirim link status" membuka WA dengan teks berisi URL halaman status
- * Pesanan, untuk Pembeli yang kehilangan link-nya.
+ * Ongkir, plus link Maps & WhatsApp (`wa.me`, tanpa API berbayar).
  */
 export function DeliveryInfo({
-  orderId,
-  orderCode,
   delivery,
   deliveryFee,
   showActions = true,
 }: {
-  orderId: string;
-  orderCode: string;
   delivery: MerchantOrderDeliveryView;
   deliveryFee: number;
   showActions?: boolean;
 }) {
-  const statusUrl =
-    typeof window === "undefined"
-      ? `/pesanan/${orderId}`
-      : `${window.location.origin}/pesanan/${orderId}`;
-  const shareText = `Halo, ini link status Pesanan ${orderCode} kamu: ${statusUrl}`;
-
   return (
     <div className="flex flex-col gap-2 rounded-control border border-line bg-bg p-3 text-sm">
       <div className="flex items-start gap-2">
@@ -78,14 +66,6 @@ export function DeliveryInfo({
             className={LINK_CLASS}
           >
             Chat WA
-          </a>
-          <a
-            href={`https://wa.me/${delivery.buyerPhone}?text=${encodeURIComponent(shareText)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={LINK_CLASS}
-          >
-            Kirim link status
           </a>
         </div>
       ) : null}

@@ -2,6 +2,17 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-29 — Revisi Fase 11: Kode Pesanan baru untuk lacak, Ongkir di Laporan, kartu pilihan antar
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-09-29), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/PRD.md](docs/PRD.md), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`order_code`), [docs/GLOSSARY.md](docs/GLOSSARY.md) (Kode Pesanan, Lacak Pesanan). Migrasi `drizzle/0013_soft_wallop.sql` + `0014_tranquil_scorpion.sql` (unique index parsial, predikat akhir 8 karakter). Tanpa dependency baru.
+**Alasan:** Permintaan User setelah mencoba alur antar. Format kode akhir diminta User: 8 karakter acak tanpa awalan & tanpa tanda hubung (sempat `[A|S]` + 6 acak, awalan lalu dihapus).
+**Ringkasan:**
+- Kode Pesanan baru 8 karakter mis. `K7QX9MB4`, acak dari `crypto.randomInt` (±1 triliun kombinasi), unik global. Lacak Pesanan cukup kode ini (tanpa No. HP), untuk semua Pesanan; kode lama 4 karakter tidak bisa dilacak.
+- Halaman status Pembeli: tombol "Bagikan / Salin Link" diganti **Salin Kode Pesanan** + penjelasan untuk lacak kalau riwayat browser terhapus (fallback `execCommand` untuk akses HTTP).
+- Dashboard Pedagang: tombol "Kirim link status" dihapus.
+- Laporan Penjualan: kartu **Ongkir**; "Ditagih ke Pembeli" ikut menghitung Ongkir.
+- Checkout: pilihan Ambil sendiri / Diantar jadi dua kartu besar (ikon, keterangan, biaya, tanda centang), memakai radio asli yang disembunyikan.
+
 ## 2026-09-28 — Implementasi Pengantaran oleh Pedagang + Ongkir (Fase 11)
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 11 dicentang), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom final `orders`/`merchants`), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md) (`/lacak`, `/dashboard/pengantaran`, `lib/buyer/`, `utils/phone.ts`), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (tone badge status baru), [docs/PRD.md](docs/PRD.md) (koreksi: tanpa WA Pedagang untuk Pembeli). Migrasi `drizzle/0012_fresh_chronomancer.sql` (aditif, aman untuk Pesanan lama). Tanpa dependency baru.

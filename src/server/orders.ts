@@ -1,7 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import QRCode from "qrcode";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
@@ -75,19 +75,17 @@ const MERCHANT_HISTORY_LIMIT = 50;
  */
 const ACTIVE_ORDER_LIST_LIMIT = 100;
 
-/** Kode Pesanan unik per Lapak per hari (lokal), retry maks 5x kalau tabrakan. */
-async function generateUniqueOrderCode(merchantId: string): Promise<string> {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
+/**
+ * Kode Pesanan unik GLOBAL (dipakai Lacak Pesanan), retry maks 5x kalau
+ * tabrakan. Unique index parsial `orders_order_code_v2_idx` jadi pengaman
+ * terakhir kalau dua request kebetulan dapat kode sama bersamaan.
+ */
+async function generateUniqueOrderCode(): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateOrderCode();
     const existing = await db.query.orders.findFirst({
-      where: and(
-        eq(orders.merchantId, merchantId),
-        eq(orders.orderCode, code),
-        gte(orders.createdAt, startOfDay),
-      ),
+      where: eq(orders.orderCode, code),
+      columns: { id: true },
     });
     if (!existing) return code;
   }
@@ -448,7 +446,7 @@ export async function createOrder(
     true,
   );
   const expiresAt = new Date(Date.now() + orderExpiryMinutes * 60_000);
-  const orderCode = await generateUniqueOrderCode(merchant.id);
+  const orderCode = await generateUniqueOrderCode();
 
   // ID Pesanan dibuat lebih dulu supaya pembayaran di gateway bisa dibuat
   // SEBELUM ada baris DB apa pun — kalau gateway gagal, tidak ada Pesanan
@@ -1144,23 +1142,20 @@ export async function markDeliveryFailed(
   return { ok: true };
 }
 
-/** Jendela waktu pencarian Lacak Pesanan — Kode Pesanan cuma unik per hari per Lapak. */
-const TRACK_ORDER_LOOKBACK_DAYS = 7;
-
 /**
- * Lacak Pesanan tanpa link (Fase 11): Kode Pesanan + No. HP harus cocok. Tanpa
- * sesi, jadi dijaga rate-limit per IP dan pesan gagal yang SAMA untuk semua
- * kasus (kode salah / HP salah / tidak ada) supaya tidak bisa dipakai menebak.
+ * Lacak Pesanan tanpa link (Fase 11, revisi 2026-09-29): cukup Kode Pesanan
+ * format baru (8 karakter acak CSPRNG, unik global) — berlaku untuk
+ * semua Pesanan. Tanpa sesi, jadi dijaga rate-limit per IP dan pesan gagal
+ * yang SAMA untuk semua kasus supaya tidak bisa dipakai menebak. Kode lama
+ * (4 karakter, tidak unik & mudah ditebak) ditolak lewat ORDER_CODE_PATTERN.
  * Hanya mengembalikan `orderId` — halaman status yang menampilkan isinya.
- * Pesanan Ambil sendiri tidak punya nomor HP, jadi memang tidak bisa dilacak.
  */
 export async function findOrderForTracking(
   orderCode: string,
-  buyerPhone: string,
 ): Promise<TrackOrderResult> {
   const notFound = {
     ok: false as const,
-    message: "Pesanan tidak ditemukan. Periksa lagi Kode Pesanan & nomor HP.",
+    message: "Pesanan tidak ditemukan. Periksa lagi Kode Pesanan-mu.",
   };
 
   const ip = await getClientIp();
@@ -1171,24 +1166,11 @@ export async function findOrderForTracking(
     };
   }
 
-  const parsed = trackOrderSchema.safeParse({ orderCode, buyerPhone });
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: parsed.error.issues[0]?.message ?? notFound.message,
-    };
-  }
+  const parsed = trackOrderSchema.safeParse({ orderCode });
+  if (!parsed.success) return notFound;
 
-  const since = new Date(
-    Date.now() - TRACK_ORDER_LOOKBACK_DAYS * 24 * 60 * 60_000,
-  );
   const order = await db.query.orders.findFirst({
-    where: and(
-      eq(orders.orderCode, parsed.data.orderCode),
-      eq(orders.buyerPhone, parsed.data.buyerPhone),
-      gte(orders.createdAt, since),
-    ),
-    orderBy: (row, { desc }) => [desc(row.createdAt)],
+    where: eq(orders.orderCode, parsed.data.orderCode),
     columns: { id: true },
   });
   return order ? { ok: true, orderId: order.id } : notFound;

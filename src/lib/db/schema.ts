@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   doublePrecision,
@@ -240,45 +241,56 @@ export const productVariantOptions = pgTable("product_variant_options", {
  * Handler/Server Component yang query by primary key. Tidak ada isu RLS/anon
  * di sini karena Pembeli tidak pernah konek langsung ke DB.
  */
-export const orders = pgTable("orders", {
-  id: uuid().primaryKey().defaultRandom(),
-  merchantId: uuid()
-    .notNull()
-    .references(() => merchants.id),
-  orderCode: text().notNull(),
-  buyerName: text().notNull(),
-  buyerNote: text(),
-  status: orderStatusEnum().notNull().default("menunggu_pembayaran"),
-  subtotal: integer().notNull(),
-  platformFeeSnapshot: integer().notNull(),
-  /** = subtotal + deliveryFeeSnapshot (Ongkir 100% untuk Pedagang, Fase 11). */
-  totalForMerchant: integer().notNull(),
-  fulfillmentMethod: orderFulfillmentMethodEnum()
-    .notNull()
-    .default("ambil_sendiri"),
-  /**
-   * Data Pesanan Antar (Fase 11) -- `null` untuk Ambil sendiri. Data pribadi:
-   * hanya boleh terbaca sesi Pedagang pemilik Pesanan, Admin, dan halaman
-   * status by UUID. `buyerPhone` selalu dinormalisasi ke format `62...`.
-   */
-  buyerPhone: text(),
-  deliveryAddress: text(),
-  deliveryLandmark: text(),
-  deliveryLatitude: doublePrecision(),
-  deliveryLongitude: doublePrecision(),
-  /** Snapshot Ongkir saat Pesanan dibuat (0 untuk Ambil sendiri). */
-  deliveryFeeSnapshot: integer().notNull().default(0),
-  /** Jarak garis lurus Lapak -> pin Pembeli saat Pesanan dibuat. */
-  deliveryDistanceKm: doublePrecision(),
-  /** Waktu masuk `sedang_diantar` -- patokan jeda sebelum boleh `gagal_diantar`. */
-  deliveryStartedAt: timestamp({ withTimezone: true }),
-  deliveryFailureReason: deliveryFailureReasonEnum(),
-  deliveryFailureNote: text(),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-  paidAt: timestamp({ withTimezone: true }),
-  expiresAt: timestamp({ withTimezone: true }).notNull(),
-  completedAt: timestamp({ withTimezone: true }),
-});
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id),
+    orderCode: text().notNull(),
+    buyerName: text().notNull(),
+    buyerNote: text(),
+    status: orderStatusEnum().notNull().default("menunggu_pembayaran"),
+    subtotal: integer().notNull(),
+    platformFeeSnapshot: integer().notNull(),
+    /** = subtotal + deliveryFeeSnapshot (Ongkir 100% untuk Pedagang, Fase 11). */
+    totalForMerchant: integer().notNull(),
+    fulfillmentMethod: orderFulfillmentMethodEnum()
+      .notNull()
+      .default("ambil_sendiri"),
+    /**
+     * Data Pesanan Antar (Fase 11) -- `null` untuk Ambil sendiri. Data pribadi:
+     * hanya boleh terbaca sesi Pedagang pemilik Pesanan, Admin, dan halaman
+     * status by UUID. `buyerPhone` selalu dinormalisasi ke format `62...`.
+     */
+    buyerPhone: text(),
+    deliveryAddress: text(),
+    deliveryLandmark: text(),
+    deliveryLatitude: doublePrecision(),
+    deliveryLongitude: doublePrecision(),
+    /** Snapshot Ongkir saat Pesanan dibuat (0 untuk Ambil sendiri). */
+    deliveryFeeSnapshot: integer().notNull().default(0),
+    /** Jarak garis lurus Lapak -> pin Pembeli saat Pesanan dibuat. */
+    deliveryDistanceKm: doublePrecision(),
+    /** Waktu masuk `sedang_diantar` -- patokan jeda sebelum boleh `gagal_diantar`. */
+    deliveryStartedAt: timestamp({ withTimezone: true }),
+    deliveryFailureReason: deliveryFailureReasonEnum(),
+    deliveryFailureNote: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp({ withTimezone: true }),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    completedAt: timestamp({ withTimezone: true }),
+  },
+  (table) => [
+    // Kode Pesanan format baru (8 karakter, 2026-09-29) unik global karena
+    // jadi kunci Lacak Pesanan. Parsial: kode lama 4 karakter memang boleh
+    // berulang lintas hari/Lapak.
+    uniqueIndex("orders_order_code_v2_idx")
+      .on(table.orderCode)
+      .where(sql`length(${table.orderCode}) = 8`),
+  ],
+);
 
 /** Baris Item di dalam sebuah Pesanan (snapshot nama & harga saat itu). */
 export const orderItems = pgTable("order_items", {

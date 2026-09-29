@@ -84,8 +84,6 @@ export function MerchantOrderCard({
       <p className="text-sm text-ink-muted">Atas nama {order.buyerName}</p>
       {order.delivery ? (
         <DeliveryInfo
-          orderId={order.id}
-          orderCode={order.orderCode}
           delivery={order.delivery}
           deliveryFee={order.deliveryFeeSnapshot}
         />

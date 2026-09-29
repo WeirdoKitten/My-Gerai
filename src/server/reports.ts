@@ -44,6 +44,10 @@ async function summaryInRange(
         sql<number>`coalesce(sum(${orders.platformFeeSnapshot}), 0)`.mapWith(
           Number,
         ),
+      deliveryFeeTotal:
+        sql<number>`coalesce(sum(${orders.deliveryFeeSnapshot}), 0)`.mapWith(
+          Number,
+        ),
     })
     .from(orders)
     .where(
@@ -58,11 +62,13 @@ async function summaryInRange(
   const orderCount = row?.orderCount ?? 0;
   const revenue = row?.revenue ?? 0;
   const platformFeeTotal = row?.platformFeeTotal ?? 0;
+  const deliveryFeeTotal = row?.deliveryFeeTotal ?? 0;
   return {
     orderCount,
     revenue,
     platformFeeTotal,
-    buyerTotal: revenue + platformFeeTotal,
+    deliveryFeeTotal,
+    buyerTotal: revenue + platformFeeTotal + deliveryFeeTotal,
     avgOrderValue: orderCount > 0 ? Math.round(revenue / orderCount) : 0,
   };
 }

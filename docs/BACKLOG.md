@@ -416,6 +416,17 @@
 
 **Ditunda (ide masa depan):** ongkir per km (model B), gratis ongkir di atas minimal belanja.
 
+### Fase 11 — Revisi setelah uji User (2026-09-29)
+
+> Permintaan User setelah mencoba alur antar. Format kode akhir (revisi User): **8 karakter acak, tanpa awalan & tanpa tanda hubung** (mis. `K7QX9MB4`). Sempat dibuat `[A|S]` + 6 acak, lalu awalan dihapus. Lacak cukup pakai kode saja, berlaku untuk **semua** Pesanan.
+
+- [x] Laporan Penjualan: tampilkan total Ongkir; "Ditagih ke Pembeli" ikut menghitung Ongkir.
+- [x] Kode Pesanan baru 8 karakter acak, unik global (unique index parsial untuk kode 8 karakter, migrasi `0013` + `0014`; kode lama 4 karakter tetap valid tapi tidak bisa dilacak). Lacak Pesanan cukup Kode Pesanan (No. HP tidak lagi dipakai untuk lacak, tetap wajib untuk antar).
+- [x] Dashboard Pedagang: hapus tombol "Kirim link status".
+- [x] Halaman status Pembeli: ganti "Bagikan / Salin Link" dengan tombol "Salin Kode" + teks penjelasan (untuk lacak kalau riwayat browser terhapus).
+- [x] Checkout: pilihan Ambil sendiri / Diantar dibuat jadi kartu pilihan yang lebih jelas & nyaman disentuh.
+- [x] Update ground truth (ADR 2026-09-29, PRD, DATA-MODEL, GLOSSARY, CHANGELOG). Test: unit 165 lulus (+10 di `order-code.test.ts`), E2E 12/12 lulus, `build` lulus, screenshot mobile dicek. Security check lacak: kode dari CSPRNG, ±1 miliar kombinasi, rate-limit per IP, pesan gagal generik — tanpa temuan.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

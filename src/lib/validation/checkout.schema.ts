@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ORDER_CODE_PATTERN } from "@/lib/utils/order-code";
 import { normalizeIndonesianPhone } from "@/lib/utils/phone";
 
 /**
@@ -80,12 +81,11 @@ export const createOrderSchema = z.discriminatedUnion("fulfillmentMethod", [
 
 export type CreateOrderInput = z.input<typeof createOrderSchema>;
 
+/** Lacak Pesanan: kode format baru saja, spasi diabaikan & huruf kecil dinormalisasi. */
 export const trackOrderSchema = z.object({
   orderCode: z
     .string()
-    .trim()
-    .min(1, "Kode Pesanan wajib diisi.")
-    .max(10)
-    .transform((value) => value.toUpperCase()),
-  buyerPhone: buyerPhoneSchema,
+    .max(20)
+    .transform((value) => value.replace(/\s/g, "").toUpperCase())
+    .pipe(z.string().regex(ORDER_CODE_PATTERN)),
 });

@@ -7,7 +7,6 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
-import { PillOption } from "@/components/ui/PillOption";
 import { Textarea } from "@/components/ui/Textarea";
 import { loadBuyerProfile, saveBuyerProfile } from "@/lib/buyer/storage";
 import { useCart } from "@/lib/cart/cart-context";
@@ -20,6 +19,7 @@ import { formatRupiah } from "@/lib/utils/money";
 import type { FulfillmentMethod } from "@/lib/utils/order-status";
 import { createOrder } from "@/server/orders";
 import type { StallDeliveryView } from "@/types/product";
+import { FulfillmentMethodPicker } from "./FulfillmentMethodPicker";
 
 // Leaflet cuma dimuat kalau Pembeli memilih "Diantar" — halaman checkout mode
 // Ambil sendiri tetap ringan (prioritas performa halaman Pembeli).
@@ -157,32 +157,11 @@ export function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {delivery ? (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-semibold text-ink">
-            Cara terima pesanan
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <PillOption
-              selected={method === "ambil_sendiri"}
-              onClick={() => onMethodChange("ambil_sendiri")}
-            >
-              Ambil sendiri
-            </PillOption>
-            <PillOption
-              selected={method === "antar"}
-              onClick={() => onMethodChange("antar")}
-            >
-              Diantar · {formatRupiah(delivery.fee)}
-            </PillOption>
-          </div>
-          {isDelivery ? (
-            <span className="text-xs text-ink-muted">
-              Diantar Pedagang sendiri, maks.{" "}
-              {formatDistanceKm(delivery.radiusKm)} dari Lapak
-              {delivery.estimate ? ` · estimasi ${delivery.estimate}` : ""}.
-            </span>
-          ) : null}
-        </div>
+        <FulfillmentMethodPicker
+          value={method}
+          onChange={onMethodChange}
+          delivery={delivery}
+        />
       ) : null}
       <Field
         label="Nama"

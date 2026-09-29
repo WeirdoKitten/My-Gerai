@@ -92,6 +92,20 @@
       "when": 1790550066210,
       "tag": "0012_fresh_chronomancer",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790669286365,
+      "tag": "0013_soft_wallop",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790672678955,
+      "tag": "0014_tranquil_scorpion",
+      "breakpoints": true
     }
   ]
 }

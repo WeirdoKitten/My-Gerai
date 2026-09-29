@@ -13,14 +13,13 @@ import { formatDateTime } from "@/lib/utils/datetime";
 import { findOrderForTracking } from "@/server/orders";
 
 /**
- * "Pesanan Saya" (dari localStorage perangkat ini) + form Kode Pesanan &
- * No. HP untuk Pembeli yang kehilangan link — tetap tanpa login (Fase 11).
+ * "Pesanan Saya" (dari localStorage perangkat ini) + form Kode Pesanan untuk
+ * Pembeli yang kehilangan link — tetap tanpa login (Fase 11).
  */
 export function TrackOrderView() {
   const router = useRouter();
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [orderCode, setOrderCode] = useState("");
-  const [buyerPhone, setBuyerPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,7 +31,7 @@ export function TrackOrderView() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const result = await findOrderForTracking(orderCode, buyerPhone);
+    const result = await findOrderForTracking(orderCode);
     if (!result.ok) {
       setError(result.message);
       setSubmitting(false);
@@ -81,30 +80,21 @@ export function TrackOrderView() {
         </h2>
         <Card>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Field label="Kode Pesanan" hint="4 karakter, mis. B7K2.">
+            <Field
+              label="Kode Pesanan"
+              hint="8 karakter, ada di halaman status pesananmu."
+            >
               <Input
                 type="text"
                 value={orderCode}
                 onChange={(e) => setOrderCode(e.target.value.toUpperCase())}
-                required
-                maxLength={10}
-                autoCapitalize="characters"
-                autoComplete="off"
-              />
-            </Field>
-            <Field
-              label="Nomor HP"
-              hint="Nomor yang kamu isi saat memesan antar."
-            >
-              <Input
-                type="tel"
-                inputMode="tel"
-                value={buyerPhone}
-                onChange={(e) => setBuyerPhone(e.target.value)}
-                placeholder="0812 3456 7890"
+                placeholder="K7QX9MB4"
                 required
                 maxLength={20}
-                autoComplete="tel"
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                className="font-semibold tracking-[0.15em]"
               />
             </Field>
             {error ? <Alert tone="error">{error}</Alert> : null}
@@ -114,9 +104,8 @@ export function TrackOrderView() {
           </form>
         </Card>
         <p className="text-xs text-ink-muted">
-          Pencarian dengan nomor HP hanya berlaku untuk pesanan antar dalam 7
-          hari terakhir. Pesanan ambil sendiri cukup ditanyakan langsung ke
-          Pedagang.
+          Kode Pesanan ada di halaman status pesananmu. Pesanan lama dengan kode
+          4 karakter tidak bisa dilacak di sini — tanyakan langsung ke Pedagang.
         </p>
       </section>
     </div>
