@@ -29,6 +29,7 @@ RUN pnpm exec esbuild \
       src/lib/db/migrate.ts \
       src/lib/db/seed-demo.ts \
       src/lib/db/seed-demo-orders.ts \
+      src/lib/db/seed-demo-invoices.ts \
       src/lib/db/create-admin.ts \
     --bundle --platform=node --target=node24 --format=esm \
     --outdir=scripts --out-extension:.js=.mjs

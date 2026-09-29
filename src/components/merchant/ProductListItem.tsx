@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
@@ -51,11 +50,6 @@ export function ProductListItem({
             >
               · Stok {product.stock}
             </span>
-          ) : null}
-          {product.variantGroupCount > 0 ? (
-            <Badge tone="primary" className="ml-2">
-              {product.variantGroupCount} varian
-            </Badge>
           ) : null}
         </p>
       </div>

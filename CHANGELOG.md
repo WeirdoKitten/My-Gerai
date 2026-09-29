@@ -2,6 +2,25 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-30 — Varian Item lewat popup di menu Pembeli, badge varian dashboard dihapus
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 Kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/buyer/AddToCartControls.tsx`, `src/components/merchant/ProductListItem.tsx`, `src/server/products.ts`, `src/types/product.ts`. Test baru `tests/e2e/menu-variant.spec.ts`.
+**Alasan:** Permintaan User: kartu menu terlalu ramai kalau pilihan varian tampil langsung; badge "n varian" di dashboard tidak perlu.
+**Ringkasan:**
+- Item bervarian di halaman menu: kartu hanya menampilkan tombol "Tambah"; pilihan varian, catatan, jumlah, dan total harga ada di popup. Item tanpa varian tetap seperti sebelumnya.
+- Badge "n varian" di kartu Item dashboard dihapus, beserta field & query yang tidak dipakai lagi.
+- **Diverifikasi nyata**: E2E 13/13 lulus (1 baru), screenshot dicek.
+
+## 2026-09-30 — Tagihan Biaya Layanan susulan (branch `fix/tagihan-susulan`)
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (alur Fase 7 langkah 3), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`service_fee_invoices.due_at`), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (panduan Scheduled Job), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md). Kode: `src/lib/billing/{period,service-fee,constants}.ts`, `src/lib/db/seed-demo-invoices.ts`, `Dockerfile`, `docker-entrypoint.sh`, `package.json`. Tanpa migrasi, tanpa dependency baru.
+**Alasan:** Laporan User: tagihan Lapak QRIS pribadi tidak muncul setelah seminggu. Penyebab utama Scheduled Job belum dipasang di produksi; ditemukan juga bahwa job hanya menagih satu periode terakhir sehingga minggu yang terlewat hilang.
+**Ringkasan:**
+- Job tagihan sekarang menagih semua periode tertutup yang masih punya Pesanan belum tertagih. Pesanan yang sudah tercakup tagihan apa pun (termasuk yang dibatalkan Admin) tidak ditagih ulang.
+- `due_at` = saat tagihan terbit (sebelumnya `period_end`); praktis sama untuk job tepat waktu, mencegah Lapak langsung terkunci oleh tagihan susulan.
+- Seeder contoh tagihan untuk Lapak demo `nasi-goreng-raja-rasa` (`seed-demo-invoices.ts`, ikut `SEED_DEMO=true`): 2 lunas, 1 dibatalkan, 1 belum lunas; ditandai `SEED-DEMO-` dan tidak pernah mengunci Lapak. Temuan: Pesanan hasil `seed-demo-orders.ts` tidak punya baris `payments`, jadi memang tidak pernah ikut tertagih job asli.
+- **Diverifikasi nyata**: unit 168 lulus, uji integrasi ke DB test sesuai skenario di BACKLOG, seeder idempoten + bundle esbuild jalan, kunci Lapak dicek untuk tagihan demo vs asli.
+
 ## 2026-09-30 — Polish UI & teks (branch `polish`)
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§1 poin 6: aturan teks UI tanpa "mis." & tanda hubung, §7), [docs/BACKLOG.md](docs/BACKLOG.md) (seksi Polish), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom `merchants.delivery_estimate` dihapus). Migrasi `drizzle/0015_dizzy_puma.sql` (DROP COLUMN). Tanpa dependency baru.

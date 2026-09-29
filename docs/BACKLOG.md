@@ -439,6 +439,24 @@
 - [x] Editor varian Item dirapikan: tiap grup jadi kartu dengan label "Grup N", tombol hapus berupa ikon (tempat sampah untuk grup, silang untuk pilihan), kolom "Pilihan" & "Tambahan harga" berlabel, harga pakai awalan "Rp", tombol tambah grup bergaris putus-putus.
 - [x] Test (unit + E2E) + update CHANGELOG.
 
+## Tagihan Biaya Layanan susulan (2026-09-30, branch `fix/tagihan-susulan`)
+
+> User melapor: sudah seminggu memakai Lapak QRIS pribadi ("Nasi Goreng Raja Rasa") tapi tagihan tidak muncul. Penyebab utama: Scheduled Job `POST /api/cron/bill-service-fee` belum dipasang di Dokploy produksi. Ditemukan juga celah di kode: tiap run hanya menagih **satu** periode terakhir, jadi minggu yang terlewat tidak pernah tertagih.
+
+- [x] `listClosedBillingPeriods` (`src/lib/billing/period.ts`): daftar semua periode tertutup sejak Pesanan tertua yang belum tertagih (maks. 104).
+- [x] `runWeeklyServiceFeeBilling`: tagih semua periode itu; Pesanan yang sudah tercakup tagihan apa pun (termasuk `dibatalkan`) tidak ditagih ulang, aman walau panjang siklus diubah Admin.
+- [x] `due_at` = saat tagihan terbit, supaya tagihan susulan tidak langsung mengunci Lapak.
+- [x] Test: unit +4 (168 lulus); uji integrasi nyata ke DB test (periode 3 minggu lalu tertagih, periode dengan tagihan dibatalkan dilewati, periode berjalan belum ditagih, run kedua tidak membuat tagihan dobel, Lapak tidak terkunci).
+- [x] Panduan Scheduled Job Dokploy dicatat di [TEKNOLOGI.md](TEKNOLOGI.md).
+- [ ] **User:** pasang Scheduled Job di Dokploy produksi + pastikan `CRON_SECRET` terisi, lalu jalankan sekali manual.
+- [x] Seeder contoh tagihan untuk Lapak demo `nasi-goreng-raja-rasa` (`src/lib/db/seed-demo-invoices.ts`, `pnpm db:seed:demo:invoices`, ikut jalan otomatis saat `SEED_DEMO=true`): 4 periode tertutup terakhir, 2 `lunas`, 1 `dibatalkan`, 1 `belum_lunas`. Ditandai `reference_id` berawalan `SEED-DEMO-`, idempoten, dan **dikecualikan dari penguncian Lapak** (tidak bisa dibayar sungguhan). Temuan: `seed-demo-orders.ts` membuat Pesanan tanpa baris `payments`, jadi Pesanan demo memang tidak pernah ikut tertagih oleh job asli.
+- [x] Verifikasi: seeder dijalankan 2× (tetap 4 tagihan), bundle esbuild jalan, tagihan demo lewat tenggang tidak mengunci Lapak sedangkan tagihan asli tetap mengunci, tampilan `/dashboard/pembayaran` dicek.
+
+## Polish lanjutan (2026-09-30, branch `fix/tagihan-susulan`)
+
+- [x] Dashboard `/dashboard/produk`: badge "n varian" di kartu Item dihapus (field `variantGroupCount` + query-nya ikut dihapus karena tidak dipakai lagi).
+- [x] Halaman menu Pembeli: varian Item tidak lagi tampil langsung di kartu; kartu Item bervarian cuma punya tombol "Tambah", pilihan varian + catatan + jumlah muncul di popup. Item tanpa varian tidak berubah. E2E baru `tests/e2e/menu-variant.spec.ts` (varian disuntik ke DB test, tanpa login).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

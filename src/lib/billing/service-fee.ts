@@ -1,11 +1,22 @@
-import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  notLike,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { orders, payments, serviceFeeInvoices } from "@/lib/db/schema";
 import { getPaymentProviderName } from "@/lib/payment";
 import { createServiceFeeInvoiceCharge } from "@/lib/payment/midtrans-provider";
 import { PAID_ORDER_STATUSES } from "@/lib/utils/order-status";
 import { getActivePlatformConfig } from "@/server/config";
-import { resolveBillingPeriod } from "./period";
+import { SEED_DEMO_INVOICE_PREFIX } from "./constants";
+import { listClosedBillingPeriods } from "./period";
 
 /**
  * Lapak sedang terkunci dari Pesanan baru = ada tagihan `belum_lunas` yang
@@ -25,6 +36,11 @@ export async function isMerchantOrderingLocked(
       eq(serviceFeeInvoices.merchantId, merchantId),
       eq(serviceFeeInvoices.status, "belum_lunas"),
       lt(serviceFeeInvoices.dueAt, threshold),
+      // Tagihan contoh dari seeder demo tidak pernah mengunci Lapak.
+      or(
+        isNull(serviceFeeInvoices.referenceId),
+        notLike(serviceFeeInvoices.referenceId, `${SEED_DEMO_INVOICE_PREFIX}%`),
+      ),
     ),
   });
   return !!overdue;
@@ -55,13 +71,43 @@ async function chargeInvoice(invoice: {
 }
 
 /**
+ * Pesanan `qris_pribadi` lunas yang BELUM tercakup tagihan mana pun milik
+ * Lapak-nya (status tagihan apa pun, termasuk `dibatalkan` — tagihan yang
+ * dibatalkan Admin tidak boleh terbit ulang). Menjaga supaya satu Pesanan
+ * tidak pernah ditagih dua kali, walau panjang siklus diubah Admin sehingga
+ * batas periode baru tidak sejajar dengan tagihan lama.
+ */
+const notYetInvoiced = sql`not exists (
+  select 1 from ${serviceFeeInvoices}
+  where ${serviceFeeInvoices.merchantId} = ${orders.merchantId}
+    and ${orders.paidAt} >= ${serviceFeeInvoices.periodStart}
+    and ${orders.paidAt} < ${serviceFeeInvoices.periodEnd}
+)`;
+
+// Akrual per Lapak: filter dari `payments.provider` milik Pesanan itu sendiri
+// (bukan `merchants.paymentMode` saat ini) — supaya Pesanan qris_pribadi lama
+// tetap tertagih meski Lapak-nya sudah dipindah Admin balik ke mode gateway.
+const billableOrder = and(
+  eq(payments.provider, "qris_pribadi"),
+  inArray(orders.status, PAID_ORDER_STATUSES),
+  notYetInvoiced,
+);
+
+/**
  * Job tagihan mingguan Biaya Layanan (Pedagang `qris_pribadi` → Aplikator).
  * BUKAN Server Action — sengaja modul biasa (sama alasan `settle.ts`) supaya
  * tidak jadi RPC publik. Dipanggil dari `POST /api/cron/bill-service-fee`
  * (guard `CRON_SECRET`, lihat src/app/api/cron/bill-service-fee/route.ts).
  *
- * Idempoten: `UNIQUE(merchantId, periodStart)` mencegah insert dobel kalau
- * cron ke-trigger 2x untuk periode yang sama. Charge yang gagal (referenceId
+ * Tagihan susulan (2026-09-30): menagih SEMUA periode tertutup yang masih
+ * punya Pesanan belum tertagih, bukan cuma periode terakhir — kalau job telat
+ * atau terlewat beberapa minggu, tidak ada Biaya Layanan yang hilang.
+ * `dueAt` = saat tagihan terbit (bukan akhir periode), supaya tagihan
+ * susulan untuk periode lama tidak langsung lewat masa tenggang dan
+ * mengunci Lapak seketika (lihat isMerchantOrderingLocked).
+ *
+ * Idempoten: `notYetInvoiced` + `UNIQUE(merchantId, periodStart)` mencegah
+ * tagihan dobel kalau cron ke-trigger 2x. Charge yang gagal (referenceId
  * masih null) otomatis dicoba lagi di run berikutnya — tidak perlu job retry
  * terpisah.
  */
@@ -69,51 +115,58 @@ export async function runWeeklyServiceFeeBilling(): Promise<{
   invoicesCreated: number;
   chargesCreated: number;
 }> {
+  const now = new Date();
   const { serviceFeeBillingCycleDays } = await getActivePlatformConfig();
-  const { periodStart, periodEnd } = resolveBillingPeriod(
-    new Date(),
-    serviceFeeBillingCycleDays,
-  );
 
-  // Akrual per Lapak: filter dari `payments.provider` milik Pesanan itu
-  // sendiri (bukan `merchants.paymentMode` saat ini) — supaya Pesanan
-  // qris_pribadi lama tetap tertagih meski Lapak-nya sudah dipindah Admin
-  // balik ke mode gateway.
-  const accrualRows = await db
+  const [oldest] = await db
     .select({
-      merchantId: orders.merchantId,
-      total:
-        sql<number>`coalesce(sum(${orders.platformFeeSnapshot}), 0)`.mapWith(
-          Number,
-        ),
+      paidAt: sql<Date | null>`min(${orders.paidAt})`.mapWith((value) =>
+        value ? new Date(value) : null,
+      ),
     })
     .from(orders)
     .innerJoin(payments, eq(payments.orderId, orders.id))
-    .where(
-      and(
-        eq(payments.provider, "qris_pribadi"),
-        inArray(orders.status, PAID_ORDER_STATUSES),
-        gte(orders.paidAt, periodStart),
-        lt(orders.paidAt, periodEnd),
-      ),
-    )
-    .groupBy(orders.merchantId);
+    .where(billableOrder);
+
+  const periods = oldest?.paidAt
+    ? listClosedBillingPeriods(oldest.paidAt, now, serviceFeeBillingCycleDays)
+    : [];
 
   const providerName = getPaymentProviderName();
-  const toInsert = accrualRows
-    .filter((row) => row.total > 0)
-    .map((row) => ({
-      merchantId: row.merchantId,
-      periodStart,
-      periodEnd,
-      amount: row.total,
-      dueAt: periodEnd,
-      status: "belum_lunas" as const,
-      provider: providerName,
-    }));
-
   let invoicesCreated = 0;
-  if (toInsert.length > 0) {
+  for (const { periodStart, periodEnd } of periods) {
+    const accrualRows = await db
+      .select({
+        merchantId: orders.merchantId,
+        total:
+          sql<number>`coalesce(sum(${orders.platformFeeSnapshot}), 0)`.mapWith(
+            Number,
+          ),
+      })
+      .from(orders)
+      .innerJoin(payments, eq(payments.orderId, orders.id))
+      .where(
+        and(
+          billableOrder,
+          gte(orders.paidAt, periodStart),
+          lt(orders.paidAt, periodEnd),
+        ),
+      )
+      .groupBy(orders.merchantId);
+
+    const toInsert = accrualRows
+      .filter((row) => row.total > 0)
+      .map((row) => ({
+        merchantId: row.merchantId,
+        periodStart,
+        periodEnd,
+        amount: row.total,
+        dueAt: now,
+        status: "belum_lunas" as const,
+        provider: providerName,
+      }));
+    if (toInsert.length === 0) continue;
+
     const inserted = await db
       .insert(serviceFeeInvoices)
       .values(toInsert)
@@ -121,7 +174,7 @@ export async function runWeeklyServiceFeeBilling(): Promise<{
         target: [serviceFeeInvoices.merchantId, serviceFeeInvoices.periodStart],
       })
       .returning({ id: serviceFeeInvoices.id });
-    invoicesCreated = inserted.length;
+    invoicesCreated += inserted.length;
   }
 
   // Tagihan `belum_lunas` tanpa charge (baru dibuat DI ATAS, atau charge-nya

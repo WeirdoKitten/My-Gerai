@@ -3,7 +3,8 @@
 #   1. Terapkan migrasi database (selalu, idempoten).
 #   2. Kalau SEED_DEMO=true: isi data demo (idempoten, tanpa TRUNCATE), lalu
 #      isi/segarkan riwayat Pesanan demo (30 hari terakhir, idempoten lewat
-#      marker) supaya asisten rekomendasi punya data untuk ditampilkan.
+#      marker) supaya asisten rekomendasi punya data untuk ditampilkan, plus
+#      contoh Tagihan Biaya Layanan untuk Lapak demo QRIS pribadi.
 #   3. Jalankan server Next.js (perintah dari CMD Dockerfile).
 # Lihat docs/ARSITEKTUR-SISTEM.md ADR 2026-09-07 & 2026-09-15.
 set -e
@@ -20,6 +21,8 @@ if [ "$SEED_DEMO" = "true" ]; then
   node /app/scripts/seed-demo.mjs
   echo "[entrypoint] Mengisi riwayat Pesanan demo (untuk asisten rekomendasi)..."
   node /app/scripts/seed-demo-orders.mjs
+  echo "[entrypoint] Mengisi contoh Tagihan Biaya Layanan demo..."
+  node /app/scripts/seed-demo-invoices.mjs
 fi
 
 echo "[entrypoint] Memulai server..."
