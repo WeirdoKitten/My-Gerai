@@ -31,7 +31,7 @@ export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
               <p className="mt-0.5 truncate text-xs text-danger">
                 {DELIVERY_FAILURE_REASON_LABEL_ID[order.deliveryFailureReason]}
                 {order.deliveryFailureNote
-                  ? ` — ${order.deliveryFailureNote}`
+                  ? ` (${order.deliveryFailureNote})`
                   : ""}
               </p>
             ) : null}

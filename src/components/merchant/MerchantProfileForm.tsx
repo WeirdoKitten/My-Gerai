@@ -143,7 +143,7 @@ export function MerchantProfileForm({
           maxLength={100}
         />
       </Field>
-      <Field label="Kategori" hint="mis. Makanan, Minuman, Pakaian">
+      <Field label="Kategori" hint="Contoh: Makanan, Minuman, Pakaian">
         <Input
           value={category}
           onChange={(e) => setCategory(e.target.value)}
@@ -191,8 +191,8 @@ export function MerchantProfileForm({
           onChange={handlePhotoChange}
         />
         <span className="text-xs text-ink-muted">
-          Tampil di kartu Gerai (landing & "Semua Gerai") -- belum ada foto =
-          tampil ikon toko polos.
+          Tampil di kartu Gerai (landing & "Semua Gerai"). Kalau belum ada foto,
+          yang tampil ikon toko polos.
         </span>
         {photoError ? <Alert tone="error">{photoError}</Alert> : null}
       </div>
@@ -205,7 +205,7 @@ export function MerchantProfileForm({
         </span>
         <LocationMapPicker value={location} onChange={handleLocationChange} />
         <span className="text-xs text-ink-muted">
-          Taruh/geser pin ke lokasi Lapak -- alamat di bawah otomatis terisi.
+          Taruh atau geser pin ke lokasi Lapak, alamat di bawah otomatis terisi.
           Opsional.
         </span>
       </div>
@@ -214,25 +214,25 @@ export function MerchantProfileForm({
         hint={
           geocoding
             ? "Mengambil nama alamat dari peta..."
-            : "Otomatis terisi dari pin di atas -- bisa diedit manual, mis. tambah patokan."
+            : "Otomatis terisi dari pin di atas. Boleh diubah sendiri, contohnya untuk menambah patokan."
         }
       >
         <Textarea
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           maxLength={200}
-          placeholder="mis. Jl. Merdeka No. 5, dekat Alfamart"
+          placeholder="Contoh: Jl. Merdeka No. 5, dekat Alfamart"
         />
       </Field>
       <Field
-        label="Info Rekening / E-wallet Pencairan"
+        label="Info Rekening atau Dompet Digital Pencairan"
         hint="Ke mana Admin mengirim uang saat pencairan. Opsional."
       >
         <Textarea
           value={payoutAccountInfo}
           onChange={(e) => setPayoutAccountInfo(e.target.value)}
           maxLength={300}
-          placeholder="mis. BCA 1234567890 a.n. Budi — atau GoPay 0812xxxxxxx"
+          placeholder="Contoh: BCA 1234567890 a.n. Budi, atau GoPay 0812xxxxxxx"
         />
       </Field>
       <Field label="Nomor HP (untuk login)" hint="Belum bisa diubah dari sini.">

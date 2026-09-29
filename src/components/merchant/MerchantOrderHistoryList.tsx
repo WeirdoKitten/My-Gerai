@@ -54,11 +54,7 @@ function MerchantOrderHistoryCard({
         Atas nama {order.buyerName} · {formatDateTime(timestamp)}
       </p>
       {order.delivery ? (
-        <DeliveryInfo
-          delivery={order.delivery}
-          deliveryFee={order.deliveryFeeSnapshot}
-          showActions={false}
-        />
+        <DeliveryInfo delivery={order.delivery} showActions={false} />
       ) : null}
       <ul className="flex flex-col gap-1 border-t border-line pt-3">
         {order.items.map((item) => (
@@ -67,7 +63,7 @@ function MerchantOrderHistoryCard({
               <span className="text-ink">
                 {item.qty}× {item.productNameSnapshot}
                 {item.note ? (
-                  <span className="text-ink-muted"> — {item.note}</span>
+                  <span className="text-ink-muted"> ({item.note})</span>
                 ) : null}
               </span>
               <span className="tabular-nums text-ink-muted">

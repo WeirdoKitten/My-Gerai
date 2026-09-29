@@ -105,7 +105,7 @@ export function TrackOrderView() {
         </Card>
         <p className="text-xs text-ink-muted">
           Kode Pesanan ada di halaman status pesananmu. Pesanan lama dengan kode
-          4 karakter tidak bisa dilacak di sini — tanyakan langsung ke Pedagang.
+          4 karakter tidak bisa dilacak di sini, tanyakan langsung ke Pedagang.
         </p>
       </section>
     </div>

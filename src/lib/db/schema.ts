@@ -159,8 +159,6 @@ export const merchants = pgTable("merchants", {
   /** Ongkir tarif tetap per Pesanan Antar (Rupiah), 100% untuk Pedagang. */
   deliveryFee: integer(),
   deliveryRadiusKm: doublePrecision().notNull().default(3),
-  /** Teks estimasi waktu antar untuk Pembeli, mis. "±30–60 menit". */
-  deliveryEstimate: text(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 

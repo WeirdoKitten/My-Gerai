@@ -11,7 +11,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { updateMerchantDeliverySettings } from "@/server/merchants";
 import type { MerchantDeliverySettingsView } from "@/types/merchant";
 
-/** Pengaturan Pesanan Antar Lapak sendiri (Fase 11): toggle, Ongkir, jangkauan, estimasi. */
+/** Pengaturan Pesanan Antar Lapak sendiri (Fase 11): toggle, Ongkir, jangkauan. */
 export function DeliverySettingsForm({
   initialSettings,
 }: {
@@ -25,9 +25,6 @@ export function DeliverySettingsForm({
   );
   const [radiusKm, setRadiusKm] = useState(
     String(initialSettings.deliveryRadiusKm),
-  );
-  const [estimate, setEstimate] = useState(
-    initialSettings.deliveryEstimate ?? "",
   );
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -43,7 +40,6 @@ export function DeliverySettingsForm({
       deliveryEnabled: enabled,
       deliveryFee: fee.trim() === "" ? null : Number(fee),
       deliveryRadiusKm: Number(radiusKm.replace(",", ".")),
-      deliveryEstimate: estimate,
     });
     setSubmitting(false);
     if (!result.ok) {
@@ -61,15 +57,16 @@ export function DeliverySettingsForm({
             Pasang titik lokasi Lapak dulu di{" "}
             <Link href="/dashboard/profil" className="font-semibold underline">
               Profil
-            </Link>{" "}
-            — jangkauan antar dihitung dari titik itu.
+            </Link>
+            , karena jangkauan antar dihitung dari titik itu.
           </Alert>
         )}
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-semibold text-ink">Terima pesanan antar</p>
             <p className="text-sm text-ink-muted">
-              Matikan kapan saja, mis. saat sedang ramai atau sedang mengantar.
+              Bisa dimatikan kapan saja, contohnya saat sedang ramai atau sedang
+              mengantar.
             </p>
           </div>
           <Toggle
@@ -112,18 +109,6 @@ export function DeliverySettingsForm({
               setRadiusKm(e.target.value);
               setSaved(false);
             }}
-          />
-        </Field>
-        <Field label="Estimasi waktu antar (opsional)">
-          <Input
-            type="text"
-            value={estimate}
-            onChange={(e) => {
-              setEstimate(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="±30–60 menit"
-            maxLength={50}
           />
         </Field>
         {error ? <Alert tone="error">{error}</Alert> : null}

@@ -2,6 +2,18 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-30 — Polish UI & teks (branch `polish`)
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§1 poin 6: aturan teks UI tanpa "mis." & tanda hubung, §7), [docs/BACKLOG.md](docs/BACKLOG.md) (seksi Polish), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom `merchants.delivery_estimate` dihapus). Migrasi `drizzle/0015_dizzy_puma.sql` (DROP COLUMN). Tanpa dependency baru.
+**Alasan:** Permintaan User setelah mencoba fitur antar.
+**Ringkasan:**
+- Link "Lacak Pesanan" di halaman menu pindah ke bawah kartu alamat Lapak. Kartu pilihan checkout "Diantar" jadi "Diantar Kurir".
+- Kartu Pesanan masuk (antar) lebih ringkas: tanpa ikon lokasi & teks Ongkir.
+- Estimasi waktu antar dihapus total (pengaturan, checkout, halaman status, DB).
+- Seluruh teks UI diaudit: "mis." diganti "contoh:"/"contohnya", tanda hubung/pisah diganti koma/titik/"sampai"/kurung (kecuali kata ulang). "Real-Time" → "Secara Langsung", "E-wallet" → "Dompet Digital".
+- Editor varian Item dirapikan (kartu per grup, tombol hapus ikon, kolom berlabel, awalan "Rp", tombol tambah grup bergaris putus-putus).
+- **Diverifikasi nyata**: unit 164 lulus, E2E 12/12 lulus, screenshot mobile dicek.
+
 ## 2026-09-29 — Revisi Fase 11: Kode Pesanan baru untuk lacak, Ongkir di Laporan, kartu pilihan antar
 
 **Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-09-29), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/PRD.md](docs/PRD.md), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`order_code`), [docs/GLOSSARY.md](docs/GLOSSARY.md) (Kode Pesanan, Lacak Pesanan). Migrasi `drizzle/0013_soft_wallop.sql` + `0014_tranquil_scorpion.sql` (unique index parsial, predikat akhir 8 karakter). Tanpa dependency baru.

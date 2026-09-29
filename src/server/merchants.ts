@@ -282,7 +282,6 @@ export async function getMerchantDeliverySettings(): Promise<MerchantDeliverySet
       deliveryEnabled: true,
       deliveryFee: true,
       deliveryRadiusKm: true,
-      deliveryEstimate: true,
       latitude: true,
     },
   });
@@ -292,7 +291,6 @@ export async function getMerchantDeliverySettings(): Promise<MerchantDeliverySet
     deliveryEnabled: merchant.deliveryEnabled,
     deliveryFee: merchant.deliveryFee,
     deliveryRadiusKm: merchant.deliveryRadiusKm,
-    deliveryEstimate: merchant.deliveryEstimate,
     hasLocation: merchant.latitude !== null,
   };
 }
@@ -321,7 +319,7 @@ export async function updateMerchantDeliverySettings(
       return {
         ok: false,
         message:
-          "Pasang titik lokasi Lapak dulu di Profil — jangkauan antar dihitung dari titik itu.",
+          "Pasang titik lokasi Lapak dulu di Profil, karena jangkauan antar dihitung dari titik itu.",
       };
     }
   }
@@ -332,7 +330,6 @@ export async function updateMerchantDeliverySettings(
       deliveryEnabled: parsed.data.deliveryEnabled,
       deliveryFee: parsed.data.deliveryFee,
       deliveryRadiusKm: parsed.data.deliveryRadiusKm,
-      deliveryEstimate: parsed.data.deliveryEstimate || null,
     })
     .where(eq(merchants.id, session.merchantId));
 

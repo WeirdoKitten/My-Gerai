@@ -112,7 +112,7 @@ export function OperatingHoursForm({
                   }
                   className="w-28"
                 />
-                <span className="text-sm text-ink-muted">–</span>
+                <span className="text-sm text-ink-muted">sampai</span>
                 <Input
                   type="time"
                   inputSize="sm"

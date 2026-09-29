@@ -45,7 +45,7 @@ export function ServiceAreaManagerForm({
     const missingCenter = areas.some((area) => area.center == null);
     if (missingCenter) {
       setError(
-        "Semua area harus punya titik lokasi -- klik peta untuk pasang titik pusatnya.",
+        "Semua area harus punya titik lokasi. Klik peta untuk pasang titik pusatnya.",
       );
       return;
     }

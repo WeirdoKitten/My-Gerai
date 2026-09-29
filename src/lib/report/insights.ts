@@ -63,7 +63,7 @@ function daysSince(from: Date, now: Date): number {
 function hourRange(hour: number): string {
   const end = (hour + 1) % 24;
   const pad = (h: number) => String(h).padStart(2, "0");
-  return `${pad(hour)}.00–${pad(end)}.00`;
+  return `${pad(hour)}.00 sampai ${pad(end)}.00`;
 }
 
 /** Item ber-stok yang lajunya bakal menghabiskan stok < ~3 hari. */
@@ -150,7 +150,7 @@ function slowDayInsight(input: InsightInput): Insight | null {
   return {
     kind: "hari_sepi",
     title: `${DAY_LABEL[slowest.dow]} paling sepi`,
-    body: `Rata-rata omzet ${DAY_LABEL[slowest.dow]} cuma ${formatRupiah(Math.round(slowest.avg))} — di bawah hari biasa. Coba promo kecil hari itu, atau kurangi belanja bahan supaya tidak mubazir.`,
+    body: `Rata-rata omzet ${DAY_LABEL[slowest.dow]} cuma ${formatRupiah(Math.round(slowest.avg))}, di bawah hari biasa. Coba promo kecil hari itu, atau kurangi belanja bahan supaya tidak mubazir.`,
     priority: 50,
   };
 }
@@ -177,7 +177,7 @@ function paretoInsight(input: InsightInput): Insight | null {
   return {
     kind: "fokus_menu",
     title: `${core.length} Item ini = 80% omzetmu`,
-    body: `${core.map((n) => `"${n}"`).join(", ")} menghasilkan sebagian besar pemasukanmu 30 hari terakhir. Ini prioritas utama — jangan sampai kehabisan bahan atau kehabisan stok.`,
+    body: `${core.map((n) => `"${n}"`).join(", ")} menghasilkan sebagian besar pemasukanmu 30 hari terakhir. Ini prioritas utama, jangan sampai kehabisan bahan atau kehabisan stok.`,
     priority: 80,
   };
 }
@@ -190,7 +190,7 @@ function comboInsight(input: InsightInput): Insight | null {
   return {
     kind: "sering_bareng",
     title: `"${pair.nameA}" & "${pair.nameB}" sering dibeli bareng`,
-    body: `Pembeli memesan keduanya bersama ${pair.count} kali. Coba tawarkan sebagai paket hemat — bisa mendorong yang cuma beli satu jadi ambil dua.`,
+    body: `Pembeli memesan keduanya bersama ${pair.count} kali. Coba tawarkan sebagai paket hemat, supaya yang cuma beli satu jadi ambil dua.`,
     // Di atas "hari sepi" (informatif) tapi di bawah stok/pareto/jam ramai
     // (operasional mendesak) — paket hemat actionable & langsung berpotensi
     // nambah omzet, pantas diprioritaskan di atas insight yang cuma observasi.
@@ -220,7 +220,7 @@ function pricingInsight(input: InsightInput): Insight | null {
   return {
     kind: "harga",
     title: `"${pick.name}" murah tapi laris`,
-    body: `Termasuk 3 Item terlaris tapi harganya (${formatRupiah(pick.price)}) di bawah rata-rata menu. Naik Rp1.000–2.000 kemungkinan tidak mengurangi minat, tapi menambah margin tiap porsi.`,
+    body: `Termasuk 3 Item terlaris tapi harganya (${formatRupiah(pick.price)}) di bawah rata-rata menu. Naik Rp1.000 sampai Rp2.000 kemungkinan tidak mengurangi minat, tapi menambah margin tiap porsi.`,
     priority: 40,
   };
 }

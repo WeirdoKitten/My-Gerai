@@ -385,7 +385,7 @@
 - **Ongkir tarif tetap per Lapak** (diatur Pedagang), **100% untuk Pedagang**, snapshot per Pesanan, dihitung ulang di server (tidak pernah dari klien). Pembeli bayar `subtotal + Biaya Layanan + Ongkir`; `total_for_merchant = subtotal + Ongkir`.
 - **Radius maksimal** per Lapak (diatur Pedagang, default 3 km), dicek di server dari koordinat Lapak vs pin Pembeli (garis lurus/haversine). Lapak tanpa titik GPS tidak bisa mengaktifkan mode antar.
 - Toggle **"Terima antar"** on/off di dashboard Pedagang (mode Ambil sendiri tetap jalan).
-- Estimasi waktu antar = **teks statis per Lapak** (mis. "±30–60 menit").
+- ~~Estimasi waktu antar = teks statis per Lapak~~ — **dihapus 2026-09-30** atas permintaan User (kolom `delivery_estimate` di-drop, migrasi `0015`).
 - Status baru: `sedang_diantar` (dari `diproses`) dan `gagal_diantar` (status akhir). Alur antar: `dibayar` → `diproses` → `sedang_diantar` → `selesai` / `gagal_diantar`.
 - `selesai` & `gagal_diantar` ditandai **Pedagang**. "Gagal diantar" wajib pilih alasan (tidak bisa dihubungi / alamat tidak ditemukan / lainnya + catatan), baru bisa ditekan **±15 menit** setelah `sedang_diantar`. Alasan terlihat Admin.
 - **Tanpa refund.** Dana `gagal_diantar` tetap hak Pedagang.
@@ -400,7 +400,7 @@
 - [x] Keputusan produk dikonfirmasi User + ground truth diperbarui (PRD, ADR, DATA-MODEL, GLOSSARY, CHANGELOG).
 - [x] Rencana implementasi (Plan mode) disetujui User.
 - [x] Migrasi DB `0012` (aditif): enum `order_fulfillment_method` & `delivery_failure_reason`, status `sedang_diantar`/`gagal_diantar`, kolom antar di `orders` & `merchants`.
-- [x] Pengaturan antar di `/dashboard/pengantaran` (toggle, Ongkir, jangkauan, estimasi). Tidak bisa diaktifkan tanpa titik GPS; menghapus titik GPS di Profil otomatis mematikan mode antar.
+- [x] Pengaturan antar di `/dashboard/pengantaran` (toggle, Ongkir, jangkauan; estimasi dihapus 2026-09-30). Tidak bisa diaktifkan tanpa titik GPS; menghapus titik GPS di Profil otomatis mematikan mode antar.
 - [x] Checkout Pembeli: pilihan mode, form HP/alamat/patokan + peta (Leaflet dimuat hanya saat Diantar; tanpa reverse-geocode untuk Pembeli), peringatan jarak, rincian Ongkir, isi otomatis dari localStorage (`src/lib/buyer/storage.ts`).
 - [x] `createOrder`: discriminated union Zod, Ongkir & jarak dihitung ulang di server, snapshot.
 - [x] Nominal Midtrans / QRIS Pribadi ikut Ongkir (`orderAmountToPay`); `PAID_ORDER_STATUSES` ditambah status baru (Saldo, laporan, tagihan ikut otomatis).
@@ -426,6 +426,18 @@
 - [x] Halaman status Pembeli: ganti "Bagikan / Salin Link" dengan tombol "Salin Kode" + teks penjelasan (untuk lacak kalau riwayat browser terhapus).
 - [x] Checkout: pilihan Ambil sendiri / Diantar dibuat jadi kartu pilihan yang lebih jelas & nyaman disentuh.
 - [x] Update ground truth (ADR 2026-09-29, PRD, DATA-MODEL, GLOSSARY, CHANGELOG). Test: unit 165 lulus (+10 di `order-code.test.ts`), E2E 12/12 lulus, `build` lulus, screenshot mobile dicek. Security check lacak: kode dari CSPRNG, ±1 miliar kombinasi, rate-limit per IP, pesan gagal generik — tanpa temuan.
+
+## Polish UI & Teks (2026-09-30, branch `polish`)
+
+> Permintaan User setelah mencoba fitur antar. Ringan, tanpa perubahan alur uang.
+
+- [x] Halaman menu: "Sudah pernah pesan? Lacak Pesanan" pindah ke atas, tepat di bawah kartu alamat Lapak.
+- [x] Kartu pilihan checkout: "Diantar" → "Diantar Kurir".
+- [x] Kartu Pesanan masuk (antar) dibuat ringkas: tanpa ikon lokasi & tanpa teks Ongkir (Ongkir tetap di Riwayat/Laporan).
+- [x] Field estimasi waktu antar dihapus dari pengaturan, checkout, halaman status, dan DB (migrasi `0015`, drop kolom `merchants.delivery_estimate`).
+- [x] Audit teks UI: tanpa "mis." dan tanpa tanda hubung/pisah kecuali kata ulang. Aturan dicatat di [DESAIN-SISTEM.md](DESAIN-SISTEM.md) §1 poin 6.
+- [x] Editor varian Item dirapikan: tiap grup jadi kartu dengan label "Grup N", tombol hapus berupa ikon (tempat sampah untuk grup, silang untuk pilihan), kolom "Pilihan" & "Tambahan harga" berlabel, harga pakai awalan "Rp", tombol tambah grup bergaris putus-putus.
+- [x] Test (unit + E2E) + update CHANGELOG.
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 

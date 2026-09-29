@@ -200,7 +200,7 @@ export function MerchantShowcase({
       },
       () => {
         setLocationError(
-          "Gagal mengambil lokasi -- izin lokasi mungkin ditolak.",
+          "Gagal mengambil lokasi. Izin lokasi mungkin ditolak.",
         );
         setLocating(false);
       },

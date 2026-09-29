@@ -214,7 +214,7 @@ export function CheckoutForm({
               type="text"
               value={deliveryLandmark}
               onChange={(e) => setDeliveryLandmark(e.target.value)}
-              placeholder="Mis. pagar hijau, sebelah masjid"
+              placeholder="Contoh: pagar hijau, sebelah masjid"
               maxLength={150}
             />
           </Field>

@@ -162,7 +162,6 @@ export async function getStallDeliverySettings(
       deliveryEnabled: true,
       deliveryFee: true,
       deliveryRadiusKm: true,
-      deliveryEstimate: true,
       latitude: true,
       longitude: true,
     },
@@ -178,7 +177,6 @@ export async function getStallDeliverySettings(
   return {
     fee: merchant.deliveryFee,
     radiusKm: merchant.deliveryRadiusKm,
-    estimate: merchant.deliveryEstimate,
     stallLatitude: merchant.latitude,
     stallLongitude: merchant.longitude,
   };

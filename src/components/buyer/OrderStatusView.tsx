@@ -183,12 +183,6 @@ export function OrderStatusView({
                   Patokan: {order.delivery.landmark}
                 </p>
               ) : null}
-              {order.delivery.estimate &&
-                !FINAL_ORDER_STATUSES.includes(order.status) ? (
-                <p className="text-ink-muted">
-                  Estimasi {order.delivery.estimate} setelah diproses.
-                </p>
-              ) : null}
             </div>
           </div>
           {order.status === "sedang_diantar" ? (
@@ -204,7 +198,7 @@ export function OrderStatusView({
                 ? `: ${DELIVERY_FAILURE_REASON_LABEL_ID[order.delivery.failureReason]}`
                 : ""}
               {order.delivery.failureNote
-                ? ` — ${order.delivery.failureNote}`
+                ? ` (${order.delivery.failureNote})`
                 : ""}
               . Pedagang akan menghubungimu lewat nomor HP yang kamu isi.
             </Alert>
@@ -336,8 +330,8 @@ function CopyOrderCode({ orderCode }: { orderCode: string }) {
         )}
       </Button>
       <p className="max-w-xs text-xs text-ink-muted">
-        Jangan lupa untuk simpan/salin kode ini. Kalau riwayat browser terhapus, pesananmu tetap bisa dibuka lewat Lacak
-        Pesanan dengan kode ini.
+        Jangan lupa untuk simpan/salin kode ini. Kalau riwayat browser terhapus,
+        pesananmu tetap bisa dibuka lewat Lacak Pesanan dengan kode ini.
       </p>
     </div>
   );

@@ -53,8 +53,10 @@ async function openCheckout(page: Page): Promise<void> {
 
 async function fillDeliveryForm(page: Page, name: string): Promise<void> {
   // Kartu pilihan = <label> berisi radio tersembunyi — klik teks kartunya.
-  await page.getByText("Diantar", { exact: true }).click();
-  await expect(page.getByRole("radio", { name: /Diantar/ })).toBeChecked();
+  await page.getByText("Diantar Kurir", { exact: true }).click();
+  await expect(
+    page.getByRole("radio", { name: /Diantar Kurir/ }),
+  ).toBeChecked();
   await page.getByLabel("Nama").fill(name);
   await page.getByLabel("Nomor HP/WhatsApp").fill(BUYER_PHONE_INPUT);
   await page

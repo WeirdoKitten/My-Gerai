@@ -18,8 +18,6 @@ export type OrderItemVariantSelectionView = {
 export type BuyerOrderDeliveryView = {
   address: string;
   landmark: string | null;
-  /** Teks estimasi dari pengaturan Lapak SAAT INI (bukan snapshot), mis. "±30–60 menit". */
-  estimate: string | null;
   failureReason: DeliveryFailureReason | null;
   failureNote: string | null;
 };

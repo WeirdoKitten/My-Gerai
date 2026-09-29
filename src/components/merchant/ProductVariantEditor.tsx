@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PlusIcon, TrashIcon, XIcon } from "@/components/ui/icons";
 
 // `localId` cuma buat React key (bukan dikirim ke server) — grup/opsi baru
 // belum punya id DB, dan replace-all di server tidak butuh id sama sekali.
@@ -110,35 +110,44 @@ export function ProductVariantEditor({
       {groups.map((group, groupIndex) => (
         <div
           key={group.localId}
-          className="flex flex-col gap-2.5 rounded-control border border-line p-3"
+          className="flex flex-col gap-3 rounded-card border border-line bg-bg/60 p-4"
         >
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              inputSize="sm"
-              value={group.name}
-              onChange={(e) => updateGroupName(groupIndex, e.target.value)}
-              placeholder="Nama grup, mis. Level Pedas"
-              required
-              maxLength={50}
-            />
-            <Button
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
+              Grup {groupIndex + 1}
+            </span>
+            <button
               type="button"
-              variant="dangerOutline"
-              size="sm"
               onClick={() => removeGroup(groupIndex)}
+              aria-label={`Hapus grup ${group.name || groupIndex + 1}`}
+              title="Hapus grup"
+              className="-mr-1.5 flex size-9 items-center justify-center rounded-control text-ink-muted transition-colors hover:bg-danger-bg hover:text-danger"
             >
-              Hapus Grup
-            </Button>
+              <TrashIcon className="size-4" />
+            </button>
           </div>
 
+          <Input
+            type="text"
+            value={group.name}
+            onChange={(e) => updateGroupName(groupIndex, e.target.value)}
+            placeholder="Nama grup, contoh: Level Pedas"
+            aria-label="Nama grup varian"
+            required
+            maxLength={50}
+          />
+
           <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-xs text-ink-muted">
+              <span className="flex-1">Pilihan</span>
+              <span className="w-28">Tambahan harga</span>
+              <span className="w-9" aria-hidden="true" />
+            </div>
             {group.options.map((option, optionIndex) => (
               <div key={option.localId} className="flex items-center gap-2">
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <Input
                     type="text"
-                    inputSize="sm"
                     value={option.name}
                     onChange={(e) =>
                       updateOption(
@@ -148,15 +157,15 @@ export function ProductVariantEditor({
                         e.target.value,
                       )
                     }
-                    placeholder="Nama pilihan, mis. Pedas"
+                    placeholder="Contoh: Pedas"
+                    aria-label={`Nama pilihan ${optionIndex + 1}`}
                     required
                     maxLength={50}
                   />
                 </div>
-                <div className="w-28">
+                <div className="w-28 shrink-0">
                   <Input
                     type="number"
-                    inputSize="sm"
                     inputMode="numeric"
                     value={option.priceDelta}
                     onChange={(e) =>
@@ -167,35 +176,45 @@ export function ProductVariantEditor({
                         e.target.value,
                       )
                     }
-                    placeholder="+Rp"
+                    placeholder="0"
+                    aria-label={`Tambahan harga pilihan ${optionIndex + 1}`}
+                    leftIcon={<span className="text-sm">Rp</span>}
+                    className="[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => removeOption(groupIndex, optionIndex)}
                   disabled={group.options.length <= 1}
-                  className="text-sm font-semibold text-danger transition-colors hover:text-danger-hover disabled:opacity-40"
+                  aria-label={`Hapus pilihan ${option.name || optionIndex + 1}`}
+                  title="Hapus pilihan"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-control text-ink-muted transition-colors hover:bg-danger-bg hover:text-danger disabled:pointer-events-none disabled:opacity-30"
                 >
-                  Hapus
+                  <XIcon className="size-4" />
                 </button>
               </div>
             ))}
           </div>
 
-          <Button
+          <button
             type="button"
-            variant="secondary"
-            size="sm"
             onClick={() => addOption(groupIndex)}
+            className="flex items-center gap-1.5 self-start rounded-control px-1 py-1 text-sm font-semibold text-brand-strong transition-colors hover:text-brand-strong-hover"
           >
-            + Tambah Pilihan
-          </Button>
+            <PlusIcon className="size-4" />
+            Tambah pilihan
+          </button>
         </div>
       ))}
 
-      <Button type="button" variant="secondary" size="sm" onClick={addGroup}>
-        + Tambah Grup Varian
-      </Button>
+      <button
+        type="button"
+        onClick={addGroup}
+        className="flex h-11 items-center justify-center gap-1.5 rounded-card border-2 border-dashed border-line text-sm font-semibold text-ink-muted transition-colors hover:border-brand hover:text-brand-strong"
+      >
+        <PlusIcon className="size-4" />
+        Tambah grup varian
+      </button>
     </div>
   );
 }

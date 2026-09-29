@@ -83,7 +83,7 @@ function InvoiceRowActions({
             onChange={(e) => setReason(e.target.value)}
             required
             minLength={3}
-            placeholder="Alasan pembatalan (mis. sengketa periode)..."
+            placeholder="Alasan pembatalan, contoh: sengketa periode"
           />
           <div className="flex gap-2">
             <Button
@@ -155,7 +155,7 @@ export function ServiceFeeInvoiceHistoryList({
                 {invoice.stallName}
               </p>
               <p className="text-sm text-ink-muted">
-                {formatDateTime(invoice.periodStart)} –{" "}
+                {formatDateTime(invoice.periodStart)} sampai{" "}
                 {formatDateTime(invoice.periodEnd)}
               </p>
               {invoice.voidReason ? (

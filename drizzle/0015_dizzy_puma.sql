@@ -1,0 +1,1 @@
+ALTER TABLE "merchants" DROP COLUMN "delivery_estimate";

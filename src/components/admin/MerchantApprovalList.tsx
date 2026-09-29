@@ -67,7 +67,7 @@ export function MerchantApprovalList({
                       {merchant.phone}
                       {merchant.status === "rejected" &&
                       merchant.rejectionReason
-                        ? ` — ${merchant.rejectionReason}`
+                        ? `: ${merchant.rejectionReason}`
                         : ""}
                     </p>
                   </div>
