@@ -45,7 +45,6 @@ erDiagram
         boolean delivery_enabled "default false; Terima Pesanan Antar (Fase 11). Butuh latitude/longitude + delivery_fee"
         int delivery_fee "nullable; Ongkir tarif tetap (Fase 11)"
         float delivery_radius_km "default 3; jangkauan antar maksimal (Fase 11)"
-        text delivery_estimate "nullable; teks estimasi waktu antar (Fase 11)"
         timestamp created_at
     }
 

@@ -82,12 +82,7 @@ export function MerchantOrderCard({
         </div>
       </div>
       <p className="text-sm text-ink-muted">Atas nama {order.buyerName}</p>
-      {order.delivery ? (
-        <DeliveryInfo
-          delivery={order.delivery}
-          deliveryFee={order.deliveryFeeSnapshot}
-        />
-      ) : null}
+      {order.delivery ? <DeliveryInfo delivery={order.delivery} /> : null}
       <ul className="flex flex-col gap-1 border-t border-line pt-3">
         {order.items.map((item) => (
           <li key={item.id} className="flex flex-col gap-0.5 text-sm">
@@ -95,7 +90,7 @@ export function MerchantOrderCard({
               <span className="text-ink">
                 {item.qty}× {item.productNameSnapshot}
                 {item.note ? (
-                  <span className="text-ink-muted"> — {item.note}</span>
+                  <span className="text-ink-muted"> ({item.note})</span>
                 ) : null}
               </span>
               <span className="tabular-nums text-ink-muted">
@@ -116,7 +111,7 @@ export function MerchantOrderCard({
       {order.awaitingManualConfirmation ? (
         <>
           <p className="text-xs text-ink-muted">
-            Pesanan QRIS pribadi — tandai lunas setelah kamu menerima
+            Pesanan QRIS pribadi. Tandai lunas setelah kamu menerima
             pembayarannya.
           </p>
           <Button

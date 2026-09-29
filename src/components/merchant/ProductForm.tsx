@@ -257,8 +257,8 @@ export function ProductForm({
           Varian (opsional)
         </span>
         <p className="text-xs text-ink-muted">
-          Mis. Level Pedas, Ukuran, atau Warna. Stok tetap satu untuk seluruh
-          Item, tidak dipisah per pilihan.
+          Contohnya Level Pedas, Ukuran, atau Warna. Stok tetap satu untuk
+          seluruh Item, tidak dipisah per pilihan.
         </p>
         {variantsLoading ? (
           <p className="text-sm text-ink-muted">Memuat varian...</p>

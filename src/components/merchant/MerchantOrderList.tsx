@@ -58,8 +58,8 @@ export function MerchantOrderList({
     <div className="flex flex-col gap-3">
       {hiddenCount > 0 ? (
         <Alert tone="info">
-          Menampilkan {orders.length} dari {totalActive} Pesanan aktif —
-          selesaikan yang tertua dulu supaya {hiddenCount} Pesanan lain muncul.
+          Menampilkan {orders.length} dari {totalActive} Pesanan aktif.
+          Selesaikan yang tertua dulu supaya {hiddenCount} Pesanan lain muncul.
         </Alert>
       ) : null}
       {orders.map((order) => (

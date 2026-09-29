@@ -35,7 +35,6 @@ export type MerchantDeliverySettingsView = {
   deliveryEnabled: boolean;
   deliveryFee: number | null;
   deliveryRadiusKm: number;
-  deliveryEstimate: string | null;
   /** Mode antar hanya bisa diaktifkan kalau titik GPS Lapak sudah diisi. */
   hasLocation: boolean;
 };

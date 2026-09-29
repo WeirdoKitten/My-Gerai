@@ -45,7 +45,7 @@ export function FloatingCartBar() {
           <p className="text-sm text-ink-muted">
             Kamu belum bisa checkout sekarang
             {reopensAt
-              ? ` — Lapak buka lagi ${formatDateTime(new Date(reopensAt))}`
+              ? `, Lapak buka lagi ${formatDateTime(new Date(reopensAt))}`
               : ""}
             . Coba lagi nanti.
           </p>

@@ -70,7 +70,6 @@ export type MerchantPaymentModeView = {
 export type StallDeliveryView = {
   fee: number;
   radiusKm: number;
-  estimate: string | null;
   stallLatitude: number;
   stallLongitude: number;
 } | null;

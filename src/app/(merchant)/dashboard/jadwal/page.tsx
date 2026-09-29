@@ -29,7 +29,7 @@ export default async function MerchantSchedulePage() {
       >
         Status saat ini: <strong>{status.isOpen ? "Buka" : "Tutup"}</strong>
         {!status.isOpen && status.reopensAt
-          ? ` — buka lagi ${formatDateTime(new Date(status.reopensAt))}`
+          ? `, buka lagi ${formatDateTime(new Date(status.reopensAt))}`
           : null}
       </Alert>
 

@@ -88,7 +88,7 @@ export function ServiceAreaEditor({
               inputSize="sm"
               value={area.name}
               onChange={(e) => updateArea(index, { name: e.target.value })}
-              placeholder="Nama area, mis. Baleendah"
+              placeholder="Nama area, contoh: Baleendah"
               required
               maxLength={100}
             />

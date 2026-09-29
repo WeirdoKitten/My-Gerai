@@ -69,7 +69,6 @@ async function main() {
       deliveryEnabled: true,
       deliveryFee: 5000,
       deliveryRadiusKm: 3,
-      deliveryEstimate: "±30–60 menit",
     })
     .returning();
 

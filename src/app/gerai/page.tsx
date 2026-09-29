@@ -12,7 +12,7 @@ import { listAllApprovedMerchants } from "@/server/merchants";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Semua Gerai — MyGerai",
+  title: "Semua Gerai | MyGerai",
 };
 
 export default async function GeraiPage() {

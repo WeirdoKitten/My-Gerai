@@ -64,7 +64,7 @@ export function ServiceFeeInvoiceList({
         <Card key={invoice.id} className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-ink-muted">
-              {formatDateTime(invoice.periodStart)} –{" "}
+              {formatDateTime(invoice.periodStart)} sampai{" "}
               {formatDateTime(invoice.periodEnd)}
             </p>
             <Badge tone={STATUS_TONE[invoice.status]}>

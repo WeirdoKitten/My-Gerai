@@ -83,11 +83,6 @@ export const updateMerchantDeliverySettingsSchema = z
       .number()
       .min(0.5, "Jangkauan minimal 0,5 km.")
       .max(20, "Jangkauan maksimal 20 km."),
-    deliveryEstimate: z
-      .string()
-      .trim()
-      .max(50, "Estimasi maksimal 50 karakter.")
-      .optional(),
   })
   .refine((data) => !data.deliveryEnabled || data.deliveryFee !== null, {
     message: "Isi Ongkir dulu sebelum mengaktifkan pesanan antar.",

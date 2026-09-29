@@ -39,17 +39,11 @@ export function FulfillmentMethodPicker({
           selected={value === "antar"}
           onSelect={() => onChange("antar")}
           icon={<DeliveryIcon className="size-5" />}
-          title="Diantar"
+          title="Diantar Kurir"
           description={`Maks. ${formatDistanceKm(delivery.radiusKm)}`}
           price={`+${formatRupiah(delivery.fee)}`}
         />
       </fieldset>
-      {value === "antar" && delivery.estimate ? (
-        <span className="text-xs text-ink-muted">
-          Diantar Pedagang sendiri · estimasi {delivery.estimate} setelah
-          diproses.
-        </span>
-      ) : null}
     </div>
   );
 }

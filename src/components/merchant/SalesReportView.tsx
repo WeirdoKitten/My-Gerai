@@ -77,12 +77,12 @@ function AssistantSection({
         <Card className="text-sm text-ink-muted">
           Asisten butuh setidaknya {INSIGHT_MIN_HISTORY_DAYS} hari data dan{" "}
           {INSIGHT_MIN_PAID_ORDERS} Pesanan dibayar untuk memberi rekomendasi
-          yang bisa dipercaya. Terus layani Pesanan lewat MyGerai — rekomendasi
-          muncul otomatis di sini.
+          yang bisa dipercaya. Terus layani Pesanan lewat MyGerai, nanti
+          rekomendasi muncul otomatis di sini.
         </Card>
       ) : insights.length === 0 ? (
         <Card className="text-sm text-ink-muted">
-          Belum ada rekomendasi baru — pola penjualanmu terlihat sehat. Cek lagi
+          Belum ada rekomendasi baru, pola penjualanmu terlihat sehat. Cek lagi
           beberapa hari ke depan.
         </Card>
       ) : (
@@ -227,7 +227,7 @@ function DailyBars({ daily }: { daily: DailySales[] }) {
                 />
               </span>
               <span className="w-20 shrink-0 text-right tabular-nums text-ink">
-                {day.revenue > 0 ? formatRupiah(day.revenue) : "–"}
+                {formatRupiah(day.revenue)}
               </span>
             </div>
           );

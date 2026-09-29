@@ -635,7 +635,6 @@ export async function getOrderStatus(
         ? {
             address: current.deliveryAddress ?? "",
             landmark: current.deliveryLandmark,
-            estimate: merchant?.deliveryEstimate ?? null,
             failureReason: current.deliveryFailureReason,
             failureNote: current.deliveryFailureNote,
           }
@@ -1155,7 +1154,7 @@ export async function findOrderForTracking(
 ): Promise<TrackOrderResult> {
   const notFound = {
     ok: false as const,
-    message: "Pesanan tidak ditemukan. Periksa lagi Kode Pesanan-mu.",
+    message: "Pesanan tidak ditemukan. Periksa lagi Kode Pesananmu.",
   };
 
   const ip = await getClientIp();

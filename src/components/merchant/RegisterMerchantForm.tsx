@@ -59,7 +59,7 @@ export function RegisterMerchantForm() {
           maxLength={100}
         />
       </Field>
-      <Field label="Kategori" hint="mis. Makanan, Minuman, Pakaian">
+      <Field label="Kategori" hint="Contoh: Makanan, Minuman, Pakaian">
         <Input
           type="text"
           value={category}
