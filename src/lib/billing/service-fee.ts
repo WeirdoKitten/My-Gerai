@@ -1,10 +1,21 @@
-import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  notLike,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { orders, payments, serviceFeeInvoices } from "@/lib/db/schema";
 import { getPaymentProviderName } from "@/lib/payment";
 import { createServiceFeeInvoiceCharge } from "@/lib/payment/midtrans-provider";
 import { PAID_ORDER_STATUSES } from "@/lib/utils/order-status";
 import { getActivePlatformConfig } from "@/server/config";
+import { SEED_DEMO_INVOICE_PREFIX } from "./constants";
 import { listClosedBillingPeriods } from "./period";
 
 /**
@@ -25,6 +36,11 @@ export async function isMerchantOrderingLocked(
       eq(serviceFeeInvoices.merchantId, merchantId),
       eq(serviceFeeInvoices.status, "belum_lunas"),
       lt(serviceFeeInvoices.dueAt, threshold),
+      // Tagihan contoh dari seeder demo tidak pernah mengunci Lapak.
+      or(
+        isNull(serviceFeeInvoices.referenceId),
+        notLike(serviceFeeInvoices.referenceId, `${SEED_DEMO_INVOICE_PREFIX}%`),
+      ),
     ),
   });
   return !!overdue;

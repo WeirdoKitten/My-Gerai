@@ -4,12 +4,13 @@
 
 ## 2026-09-30 — Tagihan Biaya Layanan susulan (branch `fix/tagihan-susulan`)
 
-**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (alur Fase 7 langkah 3), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`service_fee_invoices.due_at`), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (panduan Scheduled Job), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/lib/billing/period.ts`, `src/lib/billing/service-fee.ts`. Tanpa migrasi, tanpa dependency baru.
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (alur Fase 7 langkah 3), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`service_fee_invoices.due_at`), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (panduan Scheduled Job), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md). Kode: `src/lib/billing/{period,service-fee,constants}.ts`, `src/lib/db/seed-demo-invoices.ts`, `Dockerfile`, `docker-entrypoint.sh`, `package.json`. Tanpa migrasi, tanpa dependency baru.
 **Alasan:** Laporan User: tagihan Lapak QRIS pribadi tidak muncul setelah seminggu. Penyebab utama Scheduled Job belum dipasang di produksi; ditemukan juga bahwa job hanya menagih satu periode terakhir sehingga minggu yang terlewat hilang.
 **Ringkasan:**
 - Job tagihan sekarang menagih semua periode tertutup yang masih punya Pesanan belum tertagih. Pesanan yang sudah tercakup tagihan apa pun (termasuk yang dibatalkan Admin) tidak ditagih ulang.
 - `due_at` = saat tagihan terbit (sebelumnya `period_end`); praktis sama untuk job tepat waktu, mencegah Lapak langsung terkunci oleh tagihan susulan.
-- **Diverifikasi nyata**: unit 168 lulus, uji integrasi ke DB test sesuai skenario di BACKLOG.
+- Seeder contoh tagihan untuk Lapak demo `nasi-goreng-raja-rasa` (`seed-demo-invoices.ts`, ikut `SEED_DEMO=true`): 2 lunas, 1 dibatalkan, 1 belum lunas; ditandai `SEED-DEMO-` dan tidak pernah mengunci Lapak. Temuan: Pesanan hasil `seed-demo-orders.ts` tidak punya baris `payments`, jadi memang tidak pernah ikut tertagih job asli.
+- **Diverifikasi nyata**: unit 168 lulus, uji integrasi ke DB test sesuai skenario di BACKLOG, seeder idempoten + bundle esbuild jalan, kunci Lapak dicek untuk tagihan demo vs asli.
 
 ## 2026-09-30 — Polish UI & teks (branch `polish`)
 

@@ -449,6 +449,8 @@
 - [x] Test: unit +4 (168 lulus); uji integrasi nyata ke DB test (periode 3 minggu lalu tertagih, periode dengan tagihan dibatalkan dilewati, periode berjalan belum ditagih, run kedua tidak membuat tagihan dobel, Lapak tidak terkunci).
 - [x] Panduan Scheduled Job Dokploy dicatat di [TEKNOLOGI.md](TEKNOLOGI.md).
 - [ ] **User:** pasang Scheduled Job di Dokploy produksi + pastikan `CRON_SECRET` terisi, lalu jalankan sekali manual.
+- [x] Seeder contoh tagihan untuk Lapak demo `nasi-goreng-raja-rasa` (`src/lib/db/seed-demo-invoices.ts`, `pnpm db:seed:demo:invoices`, ikut jalan otomatis saat `SEED_DEMO=true`): 4 periode tertutup terakhir, 2 `lunas`, 1 `dibatalkan`, 1 `belum_lunas`. Ditandai `reference_id` berawalan `SEED-DEMO-`, idempoten, dan **dikecualikan dari penguncian Lapak** (tidak bisa dibayar sungguhan). Temuan: `seed-demo-orders.ts` membuat Pesanan tanpa baris `payments`, jadi Pesanan demo memang tidak pernah ikut tertagih oleh job asli.
+- [x] Verifikasi: seeder dijalankan 2× (tetap 4 tagihan), bundle esbuild jalan, tagihan demo lewat tenggang tidak mengunci Lapak sedangkan tagihan asli tetap mengunci, tampilan `/dashboard/pembayaran` dicek.
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 

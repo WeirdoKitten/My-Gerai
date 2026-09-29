@@ -79,6 +79,7 @@
 │   │   │   ├── seed.ts                        # Data contoh untuk dev lokal (guard: hanya boleh ke localhost, pakai TRUNCATE)
 │   │   │   ├── migrate.ts                     # Migrasi produksi (migrator drizzle-orm) — di-bundle jadi scripts/migrate.mjs oleh Dockerfile
 │   │   │   ├── seed-demo.ts                   # Seed demo server: idempoten, TANPA TRUNCATE — jalan otomatis bila SEED_DEMO=true
+│   │   │   ├── seed-demo-invoices.ts          # (2026-09-30) Contoh Tagihan Biaya Layanan Lapak demo QRIS pribadi — idempoten, marker SEED-DEMO-, bila SEED_DEMO=true
 │   │   │   ├── seed-orders.ts                 # DEV: ±150 Pesanan historis 30 hari untuk halaman Laporan (pnpm db:seed:orders, guard localhost, idempoten)
 │   │   │   └── create-admin.ts                # Buat 1 akun Admin manual (pnpm admin:create / node scripts/create-admin.mjs)
 │   │   ├── payment/                           # Payment Provider abstraction
