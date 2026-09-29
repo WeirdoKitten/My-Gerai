@@ -225,7 +225,7 @@ export function MerchantProfileForm({
         />
       </Field>
       <Field
-        label="Info Rekening atau Dompet Digital Pencairan"
+        label="Info Rekening atau E-Wallet Pencairan"
         hint="Ke mana Admin mengirim uang saat pencairan. Opsional."
       >
         <Textarea

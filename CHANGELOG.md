@@ -10,7 +10,7 @@
 - Link "Lacak Pesanan" di halaman menu pindah ke bawah kartu alamat Lapak. Kartu pilihan checkout "Diantar" jadi "Diantar Kurir".
 - Kartu Pesanan masuk (antar) lebih ringkas: tanpa ikon lokasi & teks Ongkir.
 - Estimasi waktu antar dihapus total (pengaturan, checkout, halaman status, DB).
-- Seluruh teks UI diaudit: "mis." diganti "contoh:"/"contohnya", tanda hubung/pisah diganti koma/titik/"sampai"/kurung (kecuali kata ulang). "Real-Time" → "Secara Langsung", "E-wallet" → "Dompet Digital".
+- Seluruh teks UI diaudit: "mis." diganti "contoh:"/"contohnya", tanda hubung/pisah diganti koma/titik/"sampai"/kurung (kecuali kata ulang). Istilah bahasa Inggris yang lebih umum tetap dipakai ("E-Wallet", "Real Time").
 - Editor varian Item dirapikan (kartu per grup, tombol hapus ikon, kolom berlabel, awalan "Rp", tombol tambah grup bergaris putus-putus).
 - **Diverifikasi nyata**: unit 164 lulus, E2E 12/12 lulus, screenshot mobile dicek.
 

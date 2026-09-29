@@ -81,7 +81,7 @@ const BUYER_FEATURES = [
   },
   {
     icon: ClockIcon,
-    title: "Pantau Status Secara Langsung",
+    title: "Pantau Status Real Time",
     text: "Tahu persis kapan Pesanan diproses sampai siap diambil, tanpa perlu nanya-nanya.",
   },
 ];

@@ -11,7 +11,7 @@
 3. **Terang saja.** Tidak ada dark mode. Semua kelas `dark:` dihapus. Lebih mudah dijaga konsisten & lebih terbaca saat scan QR di luar ruangan.
 4. **Mobile lebih dulu.** Halaman Pembeli dirancang untuk HP kecil + jaringan lambat; desktop = kolom yang sama, di tengah, di atas latar hangat. Tombol & teks cukup besar untuk diketuk/dibaca ([BEST-PRACTICES.md §Aksesibilitas](BEST-PRACTICES.md#aksesibilitas-praktis)).
 5. **Konsisten lewat komponen, bukan hafalan.** Semua elemen berulang (tombol, input, kartu, label status) dibuat sekali di `src/components/ui/` dan dipakai ulang — jangan tulis ulang kelas Tailwind panjang di tiap halaman.
-6. **Teks UI umum & mudah dimengerti** (permintaan User 2026-09-30). Jangan pakai singkatan "mis." (tulis "contoh:" / "contohnya"). Jangan pakai tanda "-", "–", atau "—" di teks yang dibaca pengguna, **kecuali** untuk kata ulang (kira-kira, rata-rata). Ganti dengan koma, titik, "sampai" (rentang), atau tanda kurung. Istilah asing bertanda hubung juga dihindari ("Real-Time" → "Secara Langsung", "E-wallet" → "Dompet Digital").
+6. **Teks UI umum & mudah dimengerti** (permintaan User 2026-09-30). Jangan pakai singkatan "mis." (tulis "contoh:" / "contohnya"). Jangan pakai tanda "-", "–", atau "—" di teks yang dibaca pengguna, **kecuali** untuk kata ulang (kira-kira, rata-rata). Ganti dengan koma, titik, "sampai" (rentang), atau tanda kurung. Pengecualian: istilah bahasa Inggris yang lebih umum dipakai dipertahankan apa adanya (contoh: "E-Wallet", "Real Time"), tidak dipaksa diterjemahkan.
 
 ## 2. Token (didefinisikan di `src/app/globals.css` via `@theme`)
 
