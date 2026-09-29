@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-30 — Tagihan Biaya Layanan susulan (branch `fix/tagihan-susulan`)
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (alur Fase 7 langkah 3), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`service_fee_invoices.due_at`), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (panduan Scheduled Job), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/lib/billing/period.ts`, `src/lib/billing/service-fee.ts`. Tanpa migrasi, tanpa dependency baru.
+**Alasan:** Laporan User: tagihan Lapak QRIS pribadi tidak muncul setelah seminggu. Penyebab utama Scheduled Job belum dipasang di produksi; ditemukan juga bahwa job hanya menagih satu periode terakhir sehingga minggu yang terlewat hilang.
+**Ringkasan:**
+- Job tagihan sekarang menagih semua periode tertutup yang masih punya Pesanan belum tertagih. Pesanan yang sudah tercakup tagihan apa pun (termasuk yang dibatalkan Admin) tidak ditagih ulang.
+- `due_at` = saat tagihan terbit (sebelumnya `period_end`); praktis sama untuk job tepat waktu, mencegah Lapak langsung terkunci oleh tagihan susulan.
+- **Diverifikasi nyata**: unit 168 lulus, uji integrasi ke DB test sesuai skenario di BACKLOG.
+
 ## 2026-09-30 — Polish UI & teks (branch `polish`)
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§1 poin 6: aturan teks UI tanpa "mis." & tanda hubung, §7), [docs/BACKLOG.md](docs/BACKLOG.md) (seksi Polish), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (kolom `merchants.delivery_estimate` dihapus). Migrasi `drizzle/0015_dizzy_puma.sql` (DROP COLUMN). Tanpa dependency baru.

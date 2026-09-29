@@ -439,6 +439,17 @@
 - [x] Editor varian Item dirapikan: tiap grup jadi kartu dengan label "Grup N", tombol hapus berupa ikon (tempat sampah untuk grup, silang untuk pilihan), kolom "Pilihan" & "Tambahan harga" berlabel, harga pakai awalan "Rp", tombol tambah grup bergaris putus-putus.
 - [x] Test (unit + E2E) + update CHANGELOG.
 
+## Tagihan Biaya Layanan susulan (2026-09-30, branch `fix/tagihan-susulan`)
+
+> User melapor: sudah seminggu memakai Lapak QRIS pribadi ("Nasi Goreng Raja Rasa") tapi tagihan tidak muncul. Penyebab utama: Scheduled Job `POST /api/cron/bill-service-fee` belum dipasang di Dokploy produksi. Ditemukan juga celah di kode: tiap run hanya menagih **satu** periode terakhir, jadi minggu yang terlewat tidak pernah tertagih.
+
+- [x] `listClosedBillingPeriods` (`src/lib/billing/period.ts`): daftar semua periode tertutup sejak Pesanan tertua yang belum tertagih (maks. 104).
+- [x] `runWeeklyServiceFeeBilling`: tagih semua periode itu; Pesanan yang sudah tercakup tagihan apa pun (termasuk `dibatalkan`) tidak ditagih ulang, aman walau panjang siklus diubah Admin.
+- [x] `due_at` = saat tagihan terbit, supaya tagihan susulan tidak langsung mengunci Lapak.
+- [x] Test: unit +4 (168 lulus); uji integrasi nyata ke DB test (periode 3 minggu lalu tertagih, periode dengan tagihan dibatalkan dilewati, periode berjalan belum ditagih, run kedua tidak membuat tagihan dobel, Lapak tidak terkunci).
+- [x] Panduan Scheduled Job Dokploy dicatat di [TEKNOLOGI.md](TEKNOLOGI.md).
+- [ ] **User:** pasang Scheduled Job di Dokploy produksi + pastikan `CRON_SECRET` terisi, lalu jalankan sekali manual.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

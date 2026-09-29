@@ -88,6 +88,12 @@ IRIS_IS_PRODUCTION=false
 CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse, bill-service-fee, dst — di-set di tiap Scheduled Job Dokploy)
 ```
 
+**Scheduled Job tagihan Biaya Layanan (wajib di produksi, 2026-09-30).** Tanpa job ini tagihan QRIS pribadi tidak pernah terbit. Dokploy → aplikasi MyGerai → **Schedules**:
+
+- Cron `0 18 * * 0` (Minggu 18:00 UTC = **Senin 01:00 WIB**, ±1 jam setelah periode Senin 00:00 WIB tutup).
+- Perintah (di dalam container): `wget -qO- --post-data="" --header="Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/bill-service-fee`
+- Kalau job sempat terlewat, run berikutnya otomatis menagih periode yang bolong (tagihan susulan).
+
 `MIDTRANS_CLIENT_KEY` boleh terekspos ke klien (dipakai Snap.js kalau nanti perlu); **Server Key & Iris API Key TIDAK PERNAH** ke klien — hanya dipakai di Server Action/Route Handler.
 
 ### Setup Midtrans sandbox (ringkas — langkah lengkap diberikan ke User per sesi)
