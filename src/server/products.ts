@@ -210,10 +210,6 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     where: eq(products.merchantId, session.merchantId),
     orderBy: [asc(products.name)],
   });
-  const variantGroupsByProductId = await fetchVariantGroupsByProductId(
-    merchantProducts.map((product) => product.id),
-  );
-
   return merchantProducts.map((product) => ({
     id: product.id,
     name: product.name,
@@ -223,7 +219,6 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     stock: product.stock,
     photoUrl: product.photoUrl,
     status: product.status,
-    variantGroupCount: variantGroupsByProductId.get(product.id)?.length ?? 0,
   }));
 }
 

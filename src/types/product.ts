@@ -86,8 +86,6 @@ export type MerchantProductView = {
   stock: number | null;
   photoUrl: string | null;
   status: "available" | "sold_out";
-  /** Jumlah grup varian Item ini (badge di daftar Item) — 0 = tidak ada varian. */
-  variantGroupCount: number;
 };
 
 export type CreateProductResult =
