@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/Card";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
+import { formatSchedule } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
 import { orderGrandTotal } from "@/lib/utils/order-calc";
 import { DELIVERY_FAILURE_REASON_LABEL_ID } from "@/lib/utils/order-status";
@@ -47,6 +48,11 @@ export function TransactionList({ orders }: { orders: AdminOrderListItem[] }) {
                 ? ` · Ongkir ${formatRupiah(order.deliveryFeeSnapshot)}`
                 : ""}
             </p>
+            {order.scheduledFor ? (
+              <p className="text-xs font-semibold text-info">
+                Pre-order · {formatSchedule(new Date(order.scheduledFor))}
+              </p>
+            ) : null}
           </div>
         </Card>
       ))}

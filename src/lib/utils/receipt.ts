@@ -125,6 +125,11 @@ export function buildReceiptLines(
   plain(leftRight("No. Pesanan", receipt.orderCode, width));
   plain(leftRight("Atas nama", ascii(receipt.buyerName), width));
   plain([formatReceiptDateTime(receipt.paidAt)]);
+  if (receipt.scheduledFor) {
+    lines.push(divider(width));
+    lines.push({ text: "PRE-ORDER", bold: true });
+    plain([`Jadwal: ${formatReceiptDateTime(receipt.scheduledFor)}`]);
+  }
   if (receipt.delivery) {
     lines.push(divider(width));
     lines.push({ text: "DIANTAR", bold: true });

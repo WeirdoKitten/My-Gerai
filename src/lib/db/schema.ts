@@ -200,6 +200,14 @@ export const products = pgTable("products", {
   costPrice: integer(),
   /** Sisa stok. `null` = tidak dibatasi. Berkurang saat Pesanan `dibayar`. */
   stock: integer(),
+  /**
+   * Pre-order: waktu pembuatan minimal (hari). `null` = Item biasa (siap
+   * jual hari itu). Terisi = Item pre-order, dibuat sesuai pesanan, stok
+   * diabaikan, Pembeli wajib memilih jadwal >= hari ini + nilai ini.
+   */
+  preOrderMinDays: integer(),
+  /** Pre-order: batas terjauh jadwal yang boleh dipilih (hari ke depan). Terisi bersamaan dengan `preOrderMinDays`. */
+  preOrderMaxDays: integer(),
   photoUrl: text(),
   status: productStatusEnum().notNull().default("available"),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -267,6 +275,8 @@ export const orders = pgTable(
     deliveryLandmark: text(),
     deliveryLatitude: doublePrecision(),
     deliveryLongitude: doublePrecision(),
+    /** Jadwal ambil/antar Pesanan pre-order (dipilih Pembeli). `null` = Pesanan biasa. */
+    scheduledFor: timestamp({ withTimezone: true }),
     /** Snapshot Ongkir saat Pesanan dibuat (0 untuk Ambil sendiri). */
     deliveryFeeSnapshot: integer().notNull().default(0),
     /** Jarak garis lurus Lapak -> pin Pembeli saat Pesanan dibuat. */

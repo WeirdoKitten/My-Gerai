@@ -72,6 +72,8 @@ export type BuyerOrderStatusView = {
   fulfillmentMethod: FulfillmentMethod;
   /** `null` untuk Ambil sendiri. */
   delivery: BuyerOrderDeliveryView | null;
+  /** Jadwal ambil/antar Pesanan pre-order. `null` = Pesanan biasa. */
+  scheduledFor: Date | null;
   /** `true` kalau Pesanan ini dibayar lewat QRIS pribadi Pedagang (bukan gateway). */
   isQrisPribadi: boolean;
   createdAt: Date;
@@ -119,6 +121,10 @@ export type MerchantOrderListItem = {
   deliveryFeeSnapshot: number;
   /** `null` untuk Ambil sendiri. */
   delivery: MerchantOrderDeliveryView | null;
+  /** Jadwal ambil/antar Pesanan pre-order. `null` = Pesanan biasa. */
+  scheduledFor: Date | null;
+  /** Nomor HP Pembeli (`62...`) -- terisi untuk Pesanan Antar & pre-order. */
+  buyerPhone: string | null;
   /**
    * `true` = Pesanan QRIS pribadi yang masih `menunggu_pembayaran`, tampilkan
    * tombol "Tandai Lunas" (markQrisPribadiOrderPaid) alih-alih tombol status
@@ -159,6 +165,8 @@ export type MerchantOrderHistoryItem = {
   deliveryFeeSnapshot: number;
   fulfillmentMethod: FulfillmentMethod;
   delivery: MerchantOrderDeliveryView | null;
+  /** Jadwal ambil/antar Pesanan pre-order. `null` = Pesanan biasa. */
+  scheduledFor: Date | null;
 };
 
 /**
@@ -180,6 +188,8 @@ export type OrderReceiptView = {
   deliveryFee: number;
   /** Yang benar-benar dibayar Pembeli = `subtotal + serviceFeePaid + deliveryFee`. */
   amountPaid: number;
+  /** Jadwal ambil/antar Pesanan pre-order. `null` = Pesanan biasa. */
+  scheduledFor: Date | null;
   /** `null` untuk Ambil sendiri. */
   delivery: {
     buyerPhone: string;
@@ -206,6 +216,8 @@ export type AdminOrderListItem = {
   createdAt: Date;
   paidAt: Date | null;
   fulfillmentMethod: FulfillmentMethod;
+  /** Jadwal ambil/antar Pesanan pre-order. `null` = Pesanan biasa. */
+  scheduledFor: Date | null;
   deliveryFailureReason: DeliveryFailureReason | null;
   deliveryFailureNote: string | null;
 };

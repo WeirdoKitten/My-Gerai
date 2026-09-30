@@ -1,3 +1,5 @@
+import type { PreOrderRange } from "@/lib/schedule/pre-order-slots";
+
 /** Satu pilihan varian yang sudah dipilih Pembeli untuk baris Keranjang ini — `priceDelta` cuma tampilan, lihat catatan di `CartItem`. */
 export type CartItemVariantSelection = {
   groupId: string;
@@ -22,6 +24,12 @@ export type CartItem = {
   note: string;
   /** `[]` untuk Item tanpa varian. */
   variantSelections: CartItemVariantSelection[];
+  /**
+   * Terisi = Item pre-order (tampilan & pilihan jadwal saja, server membaca
+   * ulang dari DB). Opsional: Keranjang lama di localStorage belum punya
+   * field ini dan dianggap Item biasa.
+   */
+  preOrder?: PreOrderRange | null;
 };
 
 export type CartState = {

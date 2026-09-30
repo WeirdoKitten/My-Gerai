@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/icons";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { rememberRecentOrder } from "@/lib/buyer/storage";
+import { formatSchedule } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
 import {
   DELIVERY_FAILURE_REASON_LABEL_ID,
@@ -170,6 +171,20 @@ export function OrderStatusView({
         <OrderStatusBadge status={order.status} />
         <CopyOrderCode orderCode={order.orderCode} />
       </Card>
+
+      {order.scheduledFor ? (
+        <Card className="flex flex-col gap-1 text-sm">
+          <p className="font-semibold text-ink">
+            Pre-order ·{" "}
+            {order.fulfillmentMethod === "antar" ? "Diantar" : "Diambil"}{" "}
+            {formatSchedule(new Date(order.scheduledFor))}
+          </p>
+          <p className="text-ink-muted">
+            Pesananmu dibuat khusus dan siap pada jadwal di atas. Simpan Kode
+            Pesanan untuk ditunjukkan ke Pedagang.
+          </p>
+        </Card>
+      ) : null}
 
       {order.delivery ? (
         <Card className="flex flex-col gap-2">

@@ -64,6 +64,8 @@ erDiagram
         int price
         int cost_price "nullable; harga modal (HPP) per unit, dipakai untuk hitung Keuntungan di Laporan Penjualan (2026-09-14)"
         int stock "nullable; null = tak terbatas. Berkurang GREATEST(stock-qty,0) saat Pesanan dibayar (2026-09-08)."
+        int pre_order_min_days "nullable (2026-09-30). Terisi = Item pre-order: waktu pembuatan minimal (hari)."
+        int pre_order_max_days "nullable (2026-09-30). Batas terjauh jadwal pre-order (hari ke depan)."
         string photo_url "nullable; path /uploads/products/<uuid>.<ext> hasil upload Pedagang (Fase Foto Item, 2026-09-08). Disimpan di volume Docker, bukan di DB."
         string status "available|sold_out"
         timestamp created_at
@@ -112,6 +114,7 @@ erDiagram
         timestamp paid_at
         timestamp expires_at
         timestamp completed_at
+        timestamp scheduled_for "nullable (2026-09-30). Jadwal ambil/antar Pesanan pre-order."
     }
 
     ORDER_ITEMS {
@@ -236,6 +239,7 @@ erDiagram
 - `password_hash`: sama seperti `merchants.password_hash`, dibuat manual oleh Admin lain lewat proses internal (bukan self-service).
 
 ### `products` (Item)
+- `pre_order_min_days` / `pre_order_max_days` (nullable, 2026-09-30, migrasi `0016`): terisi berdua = Item **pre-order** (dibuat sesuai pesanan, mis. nasi tumpeng). Jadwal paling cepat = hari ini (WIB) + `min`, paling jauh + `max`. Item pre-order **tidak memakai stok** (`stock` dipaksa `null` saat simpan) dan tidak bisa dicampur Item biasa dalam satu Pesanan.
 - `status = sold_out` dipakai Pedagang untuk menyembunyikan Item yang habis tanpa menghapus datanya (histori pesanan lama tetap valid lewat snapshot di `order_items`).
 - `cost_price` (nullable, 2026-09-14): harga modal (HPP) per unit, diisi opsional oleh Pedagang di `ProductForm`. **Tidak pernah** dikirim ke Pembeli (`getStallCatalog`/`BuyerProductView` tidak menyertakannya). Dipakai `getMerchantSalesReport` untuk menghitung `summary.profit`; kalau ada Item terjual yang belum punya `cost_price`, `summary.profitIncomplete = true`.
 
@@ -245,6 +249,7 @@ erDiagram
 - `price_delta` (default 0) opsional per opsi (mis. "Jumbo" = +2000) — dijumlahkan ke `products.price` jadi harga efektif per unit, disimpan sebagai `order_items.price_snapshot` (lihat di bawah). Dikelola Pedagang lewat `saveProductVariantGroups` — pola **replace-all** (hapus semua grup lama Item itu, insert ulang sesuai form), sama seperti `merchant_operating_hours`.
 
 ### `orders` (Pesanan)
+- `scheduled_for` (nullable, 2026-09-30, migrasi `0016`): jadwal ambil/antar yang dipilih Pembeli untuk Pesanan **pre-order**; `null` = Pesanan biasa. Divalidasi ulang di `createOrder` terhadap rentang hari Item + Jadwal Operasional Lapak (`src/lib/schedule/pre-order-slots.ts`, slot 30 menit). Pesanan pre-order wajib `buyer_phone` (juga untuk Ambil sendiri) dan boleh dibuat walau Lapak sedang tutup.
 - `order_code` (revisi 2026-09-29, migrasi `0013`/`0014`): 8 karakter acak dari CSPRNG (`crypto.randomInt`, charset tanpa 0/O/1/I), mis. `K7QX9MB4`. **Unik global** lewat unique index parsial `orders_order_code_v2_idx` (`WHERE length(order_code) = 8`) karena kode ini jadi kunci Lacak Pesanan. Kode lama 4 karakter (unik per hari per Lapak saja) tetap tersimpan apa adanya dan tidak bisa dilacak.
 - `platform_fee_snapshot`: **wajib** diisi dari nilai `platform_config` yang berlaku **saat Pesanan dibuat**, bukan dihitung ulang saat laporan ditarik — ini yang membuat histori tidak berubah kalau Admin ubah Biaya Layanan di kemudian hari (lihat [RULES.md](RULES.md#6-uang--konfigurasi-bisnis)).
 - `expires_at` dihitung saat Pesanan dibuat = `created_at + order_expiry_minutes` (dari `platform_config`). Sebuah job/cron (atau pengecekan lazy saat halaman dibuka) mengubah status jadi `kedaluwarsa` jika lewat waktu & masih `menunggu_pembayaran`.

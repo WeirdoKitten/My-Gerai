@@ -7,9 +7,11 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { ClockIcon } from "@/components/ui/icons";
 import { Textarea } from "@/components/ui/Textarea";
 import { loadBuyerProfile, saveBuyerProfile } from "@/lib/buyer/storage";
 import { useCart } from "@/lib/cart/cart-context";
+import { formatSchedule } from "@/lib/utils/datetime";
 import {
   type Coordinates,
   formatDistanceKm,
@@ -20,6 +22,7 @@ import type { FulfillmentMethod } from "@/lib/utils/order-status";
 import { createOrder } from "@/server/orders";
 import type { StallDeliveryView } from "@/types/product";
 import { FulfillmentMethodPicker } from "./FulfillmentMethodPicker";
+import { PreOrderSchedulePicker } from "./PreOrderSchedulePicker";
 
 // Leaflet cuma dimuat kalau Pembeli memilih "Diantar" — halaman checkout mode
 // Ambil sendiri tetap ringan (prioritas performa halaman Pembeli).
@@ -50,6 +53,7 @@ export function CheckoutForm({
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryLandmark, setDeliveryLandmark] = useState("");
   const [location, setLocation] = useState<Coordinates | null>(null);
+  const [scheduledFor, setScheduledFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -74,6 +78,8 @@ export function CheckoutForm({
   }, []);
 
   const isDelivery = method === "antar" && delivery !== null;
+  const isPreOrder = cart.isPreOrderCart;
+  const needsPhone = isDelivery || isPreOrder;
   const stallLocation: Coordinates | null = delivery
     ? { latitude: delivery.stallLatitude, longitude: delivery.stallLongitude }
     : null;
@@ -98,6 +104,14 @@ export function CheckoutForm({
       setError("Pasang titik lokasi pengantaran di peta.");
       return;
     }
+    if (isPreOrder && !scheduledFor) {
+      setError(
+        isDelivery
+          ? "Pilih tanggal dan jam antar."
+          : "Pilih tanggal dan jam ambil.",
+      );
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -117,6 +131,7 @@ export function CheckoutForm({
           optionId: s.optionId,
         })),
       })),
+      scheduledFor: isPreOrder && scheduledFor ? scheduledFor : undefined,
     };
 
     const result =
@@ -130,7 +145,11 @@ export function CheckoutForm({
             deliveryLatitude: location.latitude,
             deliveryLongitude: location.longitude,
           })
-        : await createOrder({ ...base, fulfillmentMethod: "ambil_sendiri" });
+        : await createOrder({
+            ...base,
+            fulfillmentMethod: "ambil_sendiri",
+            buyerPhone: isPreOrder ? buyerPhone : undefined,
+          });
 
     if (!result.ok) {
       setError(result.message);
@@ -148,7 +167,9 @@ export function CheckoutForm({
             deliveryLatitude: location.latitude,
             deliveryLongitude: location.longitude,
           }
-        : { buyerName },
+        : isPreOrder
+          ? { buyerName, buyerPhone }
+          : { buyerName },
     );
     cart.clearCart();
     router.push(`/pesanan/${result.orderId}`);
@@ -162,6 +183,41 @@ export function CheckoutForm({
           onChange={onMethodChange}
           delivery={delivery}
         />
+      ) : null}
+      {isPreOrder && cart.stallSlug ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+          <div className="flex items-start gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand-strong">
+              <ClockIcon className="size-5" />
+            </span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-semibold text-ink">
+                {isDelivery ? "Jadwal antar" : "Jadwal ambil"}
+              </span>
+              <p className="text-xs text-ink-muted">
+                Pesanan pre-order dibuat khusus. Pilih kapan pesanan siap.
+              </p>
+            </div>
+          </div>
+          {cart.preOrderRange ? (
+            <PreOrderSchedulePicker
+              stallSlug={cart.stallSlug}
+              range={cart.preOrderRange}
+              onChange={setScheduledFor}
+            />
+          ) : (
+            <p className="text-sm font-medium text-danger">
+              Item di Keranjang tidak punya tanggal pre-order yang sama. Pesan
+              terpisah.
+            </p>
+          )}
+          {scheduledFor ? (
+            <p className="rounded-control bg-brand-tint px-3 py-2 text-sm font-semibold text-brand-strong">
+              {isDelivery ? "Diantar" : "Diambil"}{" "}
+              {formatSchedule(new Date(scheduledFor))}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       <Field
         label="Nama"
@@ -181,23 +237,29 @@ export function CheckoutForm({
           autoComplete="name"
         />
       </Field>
+      {needsPhone ? (
+        <Field
+          label="Nomor HP/WhatsApp"
+          hint={
+            isDelivery
+              ? "Pedagang menghubungimu lewat nomor ini saat mengantar."
+              : "Pedagang menghubungimu lewat nomor ini kalau ada kabar soal pesanan."
+          }
+        >
+          <Input
+            type="tel"
+            inputMode="tel"
+            value={buyerPhone}
+            onChange={(e) => setBuyerPhone(e.target.value)}
+            placeholder="0812 3456 7890"
+            required
+            maxLength={20}
+            autoComplete="tel"
+          />
+        </Field>
+      ) : null}
       {isDelivery && delivery ? (
         <>
-          <Field
-            label="Nomor HP/WhatsApp"
-            hint="Pedagang menghubungimu lewat nomor ini saat mengantar."
-          >
-            <Input
-              type="tel"
-              inputMode="tel"
-              value={buyerPhone}
-              onChange={(e) => setBuyerPhone(e.target.value)}
-              placeholder="0812 3456 7890"
-              required
-              maxLength={20}
-              autoComplete="tel"
-            />
-          </Field>
           <Field label="Alamat pengantaran">
             <Textarea
               value={deliveryAddress}

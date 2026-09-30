@@ -458,6 +458,25 @@
 - [x] Halaman menu Pembeli: varian Item tidak lagi tampil langsung di kartu; kartu Item bervarian cuma punya tombol "Tambah", pilihan varian + catatan + jumlah muncul di popup. Item tanpa varian tidak berubah. E2E baru `tests/e2e/menu-variant.spec.ts` (varian disuntik ke DB test, tanpa login).
 - [x] Revisi User: stepper jumlah dikembalikan ke kartu Item bervarian; jumlahnya terbawa ke popup (branch `fix/kuantitas-varian`).
 
+## Pre-order (2026-09-30, branch `feat/pre-order`)
+
+> Permintaan User: jual Item yang dibuat sesuai pesanan dan butuh waktu (mis. nasi tumpeng). Keputusan (AskUserQuestion): ditandai per Item dengan **waktu pembuatan minimal N hari** + **maks. pesan N hari ke depan**; keranjang pre-order **tidak bisa dicampur** Item biasa; Pembeli pilih **tanggal + jam**; **lunas di depan**; **No. HP wajib**; Pencairan sama seperti biasa; tanpa kuota harian; **boleh dipesan saat Lapak tutup**. Asumsi: bisa Ambil sendiri/Diantar, Item pre-order tanpa stok, slot jam 30 menit di dalam Jadwal Operasional.
+
+- [x] Data model: `products.pre_order_min_days`/`pre_order_max_days`, `orders.scheduled_for` (migrasi `0016`).
+- [x] Form Item Pedagang: toggle Pre-order + dua field hari, Stok disembunyikan; badge di daftar Item.
+- [x] Menu & keranjang Pembeli: badge pre-order, keranjang tidak bisa campur, boleh ditambah saat Lapak tutup.
+- [x] Checkout: pilih tanggal + jam (`src/lib/schedule/pre-order-slots.ts`), No. HP wajib.
+- [x] Revisi User: pemilih jadwal jadi dua dropdown (Tanggal; Jam dikelompokkan Pagi/Siang/Sore/Malam), komponen baru `src/components/ui/Select.tsx`.
+- [x] `createOrder`: mode ditentukan dari DB, validasi jadwal di server, lewati cek buka & stok untuk pre-order.
+- [x] Dashboard Pedagang: bagian "Pre-order" urut jadwal; jadwal di kartu, struk, riwayat, Admin.
+- [x] Halaman status/Lacak Pembeli: tampilkan jadwal.
+- [x] Unit test slot (`tests/unit/pre-order-slots.test.ts`), struk, format tanggal.
+- [ ] E2E `tests/e2e/pre-order.spec.ts` sudah ditulis, **belum dijalankan** (server dev User sedang aktif).
+- [ ] `/security-review` (menyentuh `createOrder`).
+- [ ] Uji manual User.
+- [x] Update DATA-MODEL, CHANGELOG.
+- [ ] Update PRD §4/§7, GLOSSARY ("Pre-order"), DESAIN-SISTEM (`Select`).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

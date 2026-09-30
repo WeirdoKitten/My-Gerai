@@ -36,6 +36,12 @@ const baseOrderSchema = z.object({
     .min(1, "Nama wajib diisi.")
     .max(100, "Nama maksimal 100 karakter."),
   items: z.array(checkoutItemSchema).min(1, "Keranjang masih kosong."),
+  /**
+   * Jadwal ambil/antar Pesanan pre-order (ISO). Wajib/terlarang ditentukan
+   * `createOrder` dari Item di DB, bukan dari klaim klien; slot divalidasi
+   * ulang di server (lihat pre-order-slots.ts).
+   */
+  scheduledFor: z.iso.datetime().optional(),
 });
 
 /** Nomor HP Indonesia, dinormalisasi ke `62...` (lihat normalizeIndonesianPhone). */
@@ -59,25 +65,40 @@ export const buyerPhoneSchema = z
  * Ongkir/jarak — keduanya selalu dihitung ulang di server dari pengaturan
  * Lapak & koordinat, tidak pernah dipercaya dari klien.
  */
-export const createOrderSchema = z.discriminatedUnion("fulfillmentMethod", [
-  baseOrderSchema.extend({ fulfillmentMethod: z.literal("ambil_sendiri") }),
-  baseOrderSchema.extend({
-    fulfillmentMethod: z.literal("antar"),
-    buyerPhone: buyerPhoneSchema,
-    deliveryAddress: z
-      .string()
-      .trim()
-      .min(5, "Alamat pengantaran wajib diisi.")
-      .max(300, "Alamat maksimal 300 karakter."),
-    deliveryLandmark: z
-      .string()
-      .trim()
-      .max(150, "Patokan maksimal 150 karakter.")
-      .optional(),
-    deliveryLatitude: z.number().min(-90).max(90),
-    deliveryLongitude: z.number().min(-180).max(180),
-  }),
-]);
+export const createOrderSchema = z
+  .discriminatedUnion("fulfillmentMethod", [
+    baseOrderSchema.extend({
+      fulfillmentMethod: z.literal("ambil_sendiri"),
+      // Wajib untuk pre-order (dicek di superRefine), selain itu tidak dipakai.
+      buyerPhone: buyerPhoneSchema.optional(),
+    }),
+    baseOrderSchema.extend({
+      fulfillmentMethod: z.literal("antar"),
+      buyerPhone: buyerPhoneSchema,
+      deliveryAddress: z
+        .string()
+        .trim()
+        .min(5, "Alamat pengantaran wajib diisi.")
+        .max(300, "Alamat maksimal 300 karakter."),
+      deliveryLandmark: z
+        .string()
+        .trim()
+        .max(150, "Patokan maksimal 150 karakter.")
+        .optional(),
+      deliveryLatitude: z.number().min(-90).max(90),
+      deliveryLongitude: z.number().min(-180).max(180),
+    }),
+  ])
+  // Pre-order: Pedagang perlu bisa menghubungi Pembeli (jarak pesan-ambil bisa berhari-hari).
+  .superRefine((data, ctx) => {
+    if (data.scheduledFor && !data.buyerPhone) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["buyerPhone"],
+        message: "Nomor HP/WhatsApp wajib diisi untuk pre-order.",
+      });
+    }
+  });
 
 export type CreateOrderInput = z.input<typeof createOrderSchema>;
 

@@ -6,7 +6,14 @@ import { Modal } from "@/components/ui/Modal";
 import { formatDateTime } from "@/lib/utils/datetime";
 
 /** Pop up saat halaman menu Lapak tutup pertama kali diakses — muncul lagi tiap kunjungan. */
-export function ClosedStallNotice({ reopensAt }: { reopensAt: string | null }) {
+export function ClosedStallNotice({
+  reopensAt,
+  hasPreOrderItems = false,
+}: {
+  reopensAt: string | null;
+  /** Lapak punya Item pre-order -- Item itu tetap bisa dipesan walau tutup. */
+  hasPreOrderItems?: boolean;
+}) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -20,7 +27,9 @@ export function ClosedStallNotice({ reopensAt }: { reopensAt: string | null }) {
           {reopensAt
             ? `Buka lagi ${formatDateTime(new Date(reopensAt))}. `
             : ""}
-          Kamu masih bisa lihat menu, tapi belum bisa checkout sekarang.
+          {hasPreOrderItems
+            ? "Item pre-order tetap bisa dipesan sekarang. Item lainnya bisa dilihat, tapi belum bisa dipesan."
+            : "Kamu masih bisa lihat menu, tapi belum bisa checkout sekarang."}
         </p>
         <Button type="button" fullWidth onClick={() => setOpen(false)}>
           Mengerti

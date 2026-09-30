@@ -10,7 +10,8 @@ import { formatDateTime } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
 
 export function FloatingCartBar() {
-  const { itemCount, subtotalDisplay, isOpen, reopensAt } = useCart();
+  const { itemCount, subtotalDisplay, isOpen, reopensAt, isPreOrderCart } =
+    useCart();
   const [showClosedNotice, setShowClosedNotice] = useState(false);
 
   if (itemCount === 0) return null;
@@ -20,7 +21,7 @@ export function FloatingCartBar() {
       <Link
         href="/checkout"
         onClick={(e) => {
-          if (isOpen) return;
+          if (isOpen || isPreOrderCart) return;
           e.preventDefault();
           setShowClosedNotice(true);
         }}

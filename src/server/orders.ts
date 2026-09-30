@@ -9,6 +9,7 @@ import { getMerchantSession } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { db } from "@/lib/db/client";
 import {
+  merchantOperatingHours,
   merchants,
   orderItems,
   orderItemVariantSelections,
@@ -25,7 +26,12 @@ import {
 } from "@/lib/payment/midtrans-provider";
 import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
+import type { OperatingHoursRow } from "@/lib/schedule/evaluate";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
+import {
+  combinePreOrderRanges,
+  isValidPreOrderSlot,
+} from "@/lib/schedule/pre-order-slots";
 import { formatDistanceKm, haversineDistanceKm } from "@/lib/utils/geo";
 import {
   calculateOrderTotals,
@@ -270,14 +276,6 @@ export async function createOrder(
     };
   }
 
-  // Defense-in-depth sama seperti cek lock di atas: halaman menu yang
-  // ke-cache stale (atau CheckoutGate yang belum sempat termuat) tidak
-  // boleh lolos submit Pesanan saat Lapak sedang tutup.
-  const { isOpen } = await getMerchantOpenState(merchant.id);
-  if (!isOpen) {
-    return { ok: false, message: "Lapak sedang tutup, coba lagi nanti." };
-  }
-
   // Pesanan Antar (Fase 11): Ongkir & jarak SELALU dihitung di sini dari
   // pengaturan Lapak + koordinat — tidak ada field harga/ongkir dari klien.
   let delivery: {
@@ -336,6 +334,70 @@ export async function createOrder(
     availableProducts.map((product) => [product.id, product]),
   );
   const variantGroupsByProductId = await fetchVariantGroupsForOrder(productIds);
+
+  // Pre-order: jenis Pesanan ditentukan dari Item di DB, bukan klaim klien.
+  // Item pre-order & biasa tidak boleh campur (1 Pesanan = 1 jadwal).
+  const orderedProducts = items.flatMap((item) => {
+    const product = productById.get(item.productId);
+    return product ? [product] : [];
+  });
+  const preOrderRanges = orderedProducts.flatMap((product) =>
+    product.preOrderMinDays !== null && product.preOrderMaxDays !== null
+      ? [{ minDays: product.preOrderMinDays, maxDays: product.preOrderMaxDays }]
+      : [],
+  );
+  const isPreOrder = preOrderRanges.length > 0;
+  let scheduledFor: Date | null = null;
+  if (isPreOrder) {
+    if (preOrderRanges.length !== orderedProducts.length) {
+      return {
+        ok: false,
+        message:
+          "Item pre-order harus dipesan terpisah dari Item biasa, silakan perbarui Keranjang.",
+      };
+    }
+    if (!checkout.scheduledFor) {
+      return { ok: false, message: "Pilih tanggal dan jam pre-order." };
+    }
+    // Pre-order untuk hari lain -- boleh dipesan walau Lapak tutup sekarang,
+    // tapi slotnya wajib sah menurut jadwal & rentang hari Item saat ini.
+    const range = combinePreOrderRanges(preOrderRanges);
+    const hours = await db.query.merchantOperatingHours.findMany({
+      where: eq(merchantOperatingHours.merchantId, merchant.id),
+      columns: { dayOfWeek: true, openTime: true, closeTime: true },
+    });
+    const requested = new Date(checkout.scheduledFor);
+    if (
+      !range ||
+      !isValidPreOrderSlot(
+        hours as OperatingHoursRow[],
+        range,
+        new Date(),
+        requested,
+      )
+    ) {
+      return {
+        ok: false,
+        message: "Jadwal yang dipilih sudah tidak tersedia, pilih ulang.",
+      };
+    }
+    scheduledFor = requested;
+  } else {
+    if (checkout.scheduledFor) {
+      return {
+        ok: false,
+        message:
+          "Jadwal hanya untuk Item pre-order, silakan perbarui Keranjang.",
+      };
+    }
+    // Defense-in-depth sama seperti cek lock di atas: halaman menu yang
+    // ke-cache stale (atau CheckoutGate yang belum sempat termuat) tidak
+    // boleh lolos submit Pesanan saat Lapak sedang tutup.
+    const { isOpen } = await getMerchantOpenState(merchant.id);
+    if (!isOpen) {
+      return { ok: false, message: "Lapak sedang tutup, coba lagi nanti." };
+    }
+  }
 
   const orderItemRows: Array<{
     id: string;
@@ -511,6 +573,10 @@ export async function createOrder(
       expiresAt,
       fulfillmentMethod: checkout.fulfillmentMethod,
       deliveryFeeSnapshot,
+      scheduledFor,
+      // Pre-order Ambil sendiri: HP wajib (schema) supaya Pedagang bisa
+      // menghubungi Pembeli. Mode Antar menimpa lewat spread di bawah.
+      buyerPhone: isPreOrder ? (checkout.buyerPhone ?? null) : null,
       ...(delivery
         ? {
             buyerPhone: delivery.buyerPhone,
@@ -628,6 +694,7 @@ export async function getOrderStatus(
     amountToPay: orderAmountToPay(current, isQrisPribadi),
     isQrisPribadi,
     fulfillmentMethod: current.fulfillmentMethod,
+    scheduledFor: current.scheduledFor,
     // Sengaja tanpa nomor Pedagang (nomor login tidak boleh tampil publik)
     // dan tanpa nomor HP/koordinat Pembeli (tidak dibutuhkan di halaman ini).
     delivery:
@@ -833,6 +900,8 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
       fulfillmentMethod: order.fulfillmentMethod,
       deliveryFeeSnapshot: order.deliveryFeeSnapshot,
       delivery: toMerchantDeliveryView(order),
+      scheduledFor: order.scheduledFor,
+      buyerPhone: order.buyerPhone,
       items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
         id: item.id,
         productNameSnapshot: item.productNameSnapshot,
@@ -896,6 +965,7 @@ export async function listMerchantOrderHistory(): Promise<
     paidAt: order.paidAt,
     completedAt: order.completedAt,
     fulfillmentMethod: order.fulfillmentMethod,
+    scheduledFor: order.scheduledFor,
     delivery: toMerchantDeliveryView(order),
     items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
       id: item.id,
@@ -983,6 +1053,7 @@ export async function getOrderReceipt(
       serviceFeePaid,
       deliveryFee: order.deliveryFeeSnapshot,
       amountPaid: orderAmountToPay(order, isQrisPribadi),
+      scheduledFor: order.scheduledFor,
       delivery: delivery
         ? {
             buyerPhone: delivery.buyerPhone,
@@ -1204,6 +1275,7 @@ export async function listOrdersForAdmin(): Promise<AdminOrderListItem[]> {
     createdAt: order.createdAt,
     paidAt: order.paidAt,
     fulfillmentMethod: order.fulfillmentMethod,
+    scheduledFor: order.scheduledFor,
     deliveryFailureReason: order.deliveryFailureReason,
     deliveryFailureNote: order.deliveryFailureNote,
   }));

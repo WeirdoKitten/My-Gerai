@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
 import { useToast } from "@/components/ui/Toast";
+import { formatSchedule } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
 import {
   MERCHANT_ACTION_LABEL_ID,
   nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
 } from "@/lib/utils/order-status";
+import { formatIndonesianPhone } from "@/lib/utils/phone";
 import { markQrisPribadiOrderPaid, updateOrderStatus } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
 import { DeliveryFailedButton } from "./DeliveryFailedButton";
@@ -75,6 +77,7 @@ export function MerchantOrderCard({
           {order.orderCode}
         </p>
         <div className="flex items-center gap-1.5">
+          {order.scheduledFor ? <Badge tone="info">Pre-order</Badge> : null}
           {order.fulfillmentMethod === "antar" ? (
             <Badge tone="primary">Diantar</Badge>
           ) : null}
@@ -82,6 +85,28 @@ export function MerchantOrderCard({
         </div>
       </div>
       <p className="text-sm text-ink-muted">Atas nama {order.buyerName}</p>
+      {order.scheduledFor ? (
+        <div className="flex flex-col gap-1 rounded-control bg-info-bg p-3 text-sm">
+          <p className="font-semibold text-info">
+            {order.fulfillmentMethod === "antar" ? "Antar" : "Diambil"}{" "}
+            {formatSchedule(new Date(order.scheduledFor))}
+          </p>
+          {/* Pesanan Antar sudah menampilkan HP + WhatsApp di DeliveryInfo. */}
+          {!order.delivery && order.buyerPhone ? (
+            <p className="text-ink-muted">
+              {formatIndonesianPhone(order.buyerPhone)} ·{" "}
+              <a
+                href={`https://wa.me/${order.buyerPhone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand-strong"
+              >
+                WhatsApp
+              </a>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {order.delivery ? <DeliveryInfo delivery={order.delivery} /> : null}
       <ul className="flex flex-col gap-1 border-t border-line pt-3">
         {order.items.map((item) => (

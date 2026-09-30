@@ -18,7 +18,8 @@ export function CheckoutGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!cart.isOpen) {
+  // Pre-order untuk hari lain -- tetap bisa dipesan walau Lapak tutup sekarang.
+  if (!cart.isOpen && !cart.isPreOrderCart) {
     return (
       <EmptyState
         icon={<StoreIcon className="size-10" />}

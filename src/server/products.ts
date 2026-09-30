@@ -6,13 +6,16 @@ import { getMerchantSession } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { db } from "@/lib/db/client";
 import {
+  merchantOperatingHours,
   merchants,
   products,
   productVariantGroups,
   productVariantOptions,
 } from "@/lib/db/schema";
 import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit/limiter";
+import type { OperatingHoursRow } from "@/lib/schedule/evaluate";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
+import type { PreOrderRange } from "@/lib/schedule/pre-order-slots";
 import { detectImage, saveProductPhoto } from "@/lib/upload/storage";
 import {
   type CreateProductInput,
@@ -34,6 +37,29 @@ import type {
 } from "@/types/product";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+
+function toPreOrderRange(product: {
+  preOrderMinDays: number | null;
+  preOrderMaxDays: number | null;
+}): PreOrderRange | null {
+  return product.preOrderMinDays !== null && product.preOrderMaxDays !== null
+    ? { minDays: product.preOrderMinDays, maxDays: product.preOrderMaxDays }
+    : null;
+}
+
+/** Item pre-order dibuat sesuai pesanan -- stok selalu `null` (diabaikan). */
+function stockAndPreOrderColumns(data: {
+  stock?: number | null;
+  preOrderMinDays?: number | null;
+  preOrderMaxDays?: number | null;
+}) {
+  const isPreOrder = data.preOrderMinDays != null;
+  return {
+    stock: isPreOrder ? null : (data.stock ?? null),
+    preOrderMinDays: isPreOrder ? (data.preOrderMinDays ?? null) : null,
+    preOrderMaxDays: isPreOrder ? (data.preOrderMaxDays ?? null) : null,
+  };
+}
 
 /** Batch-fetch grup+opsi varian sejumlah Item sekaligus (2 query, bukan N+1). */
 async function fetchVariantGroupsByProductId(
@@ -131,6 +157,7 @@ export async function getStallCatalog(
         price: product.price,
         photoUrl: product.photoUrl,
         variantGroups: variantGroupsByProductId.get(product.id) ?? [],
+        preOrder: toPreOrderRange(product),
       })),
     },
   };
@@ -201,6 +228,27 @@ export async function getStallOpenState(
   return { isOpen, reopensAt: reopensAt ? reopensAt.toISOString() : null };
 }
 
+/**
+ * Jadwal Operasional Lapak untuk pilihan jadwal pre-order di checkout
+ * (tanpa sesi -- jam buka memang informasi publik). `null` kalau Lapak
+ * tidak ada/belum aktif. Server tetap memvalidasi ulang slot di `createOrder`.
+ */
+export async function getStallOperatingHours(
+  slug: string,
+): Promise<OperatingHoursRow[] | null> {
+  const merchant = await db.query.merchants.findFirst({
+    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
+    columns: { id: true },
+  });
+  if (!merchant) return null;
+
+  const hours = await db.query.merchantOperatingHours.findMany({
+    where: eq(merchantOperatingHours.merchantId, merchant.id),
+    columns: { dayOfWeek: true, openTime: true, closeTime: true },
+  });
+  return hours as OperatingHoursRow[];
+}
+
 /** Daftar Item milik Lapak sendiri (dashboard Pedagang) — identitas dari sesi login. */
 export async function listMerchantProducts(): Promise<MerchantProductView[]> {
   const session = await getMerchantSession();
@@ -219,6 +267,7 @@ export async function listMerchantProducts(): Promise<MerchantProductView[]> {
     stock: product.stock,
     photoUrl: product.photoUrl,
     status: product.status,
+    preOrder: toPreOrderRange(product),
   }));
 }
 
@@ -257,7 +306,7 @@ export async function createProduct(
       description: parsed.data.description ?? null,
       price: parsed.data.price,
       costPrice: parsed.data.costPrice ?? null,
-      stock: parsed.data.stock ?? null,
+      ...stockAndPreOrderColumns(parsed.data),
       photoUrl: parsed.data.photoUrl ?? null,
     })
     .returning();
@@ -314,7 +363,7 @@ export async function updateProduct(
       message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
     };
   }
-  const { productId, name, description, price, costPrice, stock, photoUrl } =
+  const { productId, name, description, price, costPrice, photoUrl } =
     parsed.data;
 
   const [updated] = await db
@@ -324,7 +373,7 @@ export async function updateProduct(
       description: description ?? null,
       price,
       costPrice: costPrice ?? null,
-      stock: stock ?? null,
+      ...stockAndPreOrderColumns(parsed.data),
       photoUrl: photoUrl ?? null,
     })
     .where(
