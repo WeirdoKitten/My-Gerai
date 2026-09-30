@@ -36,7 +36,10 @@
       "Bash(git checkout -b *)",
       "Bash(git fetch *)",
       "Bash(git pull)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(git commit -q -m 'fix\\(seed\\): seeder tagihan demo crash di container \\(dotenv di bundle ESM\\) *)",
+      "Bash(git checkout *)",
+      "Bash(git merge --no-ff -q hotfix/seed-demo-invoices-bundle -m 'Merge branch '\\\\''hotfix/seed-demo-invoices-bundle'\\\\'' into main *)"
     ],
     "ask": [
       "Bash(git push*)",
