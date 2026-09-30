@@ -2,6 +2,12 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-30 — Stepper jumlah kembali di kartu Item bervarian
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 Kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/buyer/AddToCartControls.tsx`, `tests/e2e/menu-variant.spec.ts`.
+**Alasan:** Revisi User: kartu Item bervarian kehilangan tombol jumlah setelah varian dipindah ke popup.
+**Ringkasan:** Kartu Item bervarian kembali punya stepper jumlah di samping tombol "Tambah" (catatan tetap di popup). Jumlah dari kartu terbawa ke popup; menutup popup tanpa menambah tidak mengubah jumlah. **Diverifikasi**: E2E 13/13 lulus, screenshot dicek.
+
 ## 2026-09-30 — Varian Item lewat popup di menu Pembeli, badge varian dashboard dihapus
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 Kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/buyer/AddToCartControls.tsx`, `src/components/merchant/ProductListItem.tsx`, `src/server/products.ts`, `src/types/product.ts`. Test baru `tests/e2e/menu-variant.spec.ts`.

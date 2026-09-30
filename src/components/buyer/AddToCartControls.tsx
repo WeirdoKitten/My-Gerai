@@ -14,9 +14,10 @@ import type { BuyerProductView } from "@/types/product";
 
 /**
  * Kontrol tambah ke Keranjang di kartu Item halaman menu. Item TANPA varian:
- * catatan + jumlah + tombol langsung di kartu. Item DENGAN varian: kartu cuma
- * menampilkan tombol "Tambah", pilihan varian muncul di popup saat ditekan
- * (2026-09-30) supaya kartu menu tetap ringkas.
+ * catatan + jumlah + tombol langsung di kartu. Item DENGAN varian: kartu
+ * menampilkan jumlah + tombol "Tambah"; pilihan varian & catatan muncul di
+ * popup saat ditekan (2026-09-30) supaya kartu menu tetap ringkas. Jumlah
+ * yang dipilih di kartu terbawa ke popup dan masih bisa diubah di sana.
  */
 export function AddToCartControls({
   product,
@@ -124,19 +125,24 @@ export function AddToCartControls({
 
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
-        fullWidth
-        onClick={() => setPickerOpen(true)}
-      >
-        Tambah
-      </Button>
+      <div className="flex items-center gap-2">
+        {qtyStepper}
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setPickerOpen(true)}
+          className="flex-1"
+        >
+          Tambah
+        </Button>
+      </div>
       <Modal
         open={pickerOpen}
         onClose={() => {
+          // Batal: jumlah di kartu dipertahankan, pilihan & catatan dikosongkan.
           setPickerOpen(false);
-          reset();
+          setSelections({});
+          setNote("");
         }}
         title={product.name}
       >
