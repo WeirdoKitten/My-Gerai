@@ -1,5 +1,3 @@
-// Dev: baca DATABASE_URL dari .env (di server tidak ada file .env, env dari Dokploy).
-import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, like, lte } from "drizzle-orm";
 import { SEED_DEMO_INVOICE_PREFIX } from "../billing/constants";
