@@ -47,6 +47,11 @@ test("varian tidak tampil di kartu menu, baru muncul di popup saat Tambah", asyn
   await expect(card.getByText("Level Pedas")).toBeHidden();
   await expect(card.getByPlaceholder("Catatan (opsional)")).toBeHidden();
 
+  // Jumlah dipilih di kartu (sama seperti Item tanpa varian), terbawa ke popup.
+  await card
+    .getByRole("button", { name: `Tambah jumlah ${PRODUCT_NAME}` })
+    .first()
+    .click();
   await card.getByRole("button", { name: "Tambah", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Level Pedas")).toBeVisible();
@@ -55,9 +60,6 @@ test("varian tidak tampil di kartu menu, baru muncul di popup saat Tambah", asyn
   ).toBeDisabled();
 
   await dialog.getByRole("button", { name: /^Pedas/ }).click();
-  await dialog
-    .getByRole("button", { name: `Tambah jumlah ${PRODUCT_NAME}` })
-    .click();
   // (15.000 + 2.000) × 2
   const submit = dialog.getByRole("button", { name: /Tambah ke Keranjang/ });
   await expect(submit).toContainText("34.000");

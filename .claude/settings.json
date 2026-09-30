@@ -39,7 +39,9 @@
       "Bash(git pull *)",
       "Bash(git commit -q -m 'fix\\(seed\\): seeder tagihan demo crash di container \\(dotenv di bundle ESM\\) *)",
       "Bash(git checkout *)",
-      "Bash(git merge --no-ff -q hotfix/seed-demo-invoices-bundle -m 'Merge branch '\\\\''hotfix/seed-demo-invoices-bundle'\\\\'' into main *)"
+      "Bash(git merge --no-ff -q hotfix/seed-demo-invoices-bundle -m 'Merge branch '\\\\''hotfix/seed-demo-invoices-bundle'\\\\'' into main *)",
+      "Bash(python __TRACKED_VAR__/edit.py __TRACKED_VAR__/d8.py)",
+      "Bash(git commit -q -m 'polish\\(menu\\): stepper jumlah kembali di kartu Item bervarian *)"
     ],
     "ask": [
       "Bash(git push*)",

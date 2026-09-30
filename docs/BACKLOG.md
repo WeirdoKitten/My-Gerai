@@ -456,6 +456,7 @@
 
 - [x] Dashboard `/dashboard/produk`: badge "n varian" di kartu Item dihapus (field `variantGroupCount` + query-nya ikut dihapus karena tidak dipakai lagi).
 - [x] Halaman menu Pembeli: varian Item tidak lagi tampil langsung di kartu; kartu Item bervarian cuma punya tombol "Tambah", pilihan varian + catatan + jumlah muncul di popup. Item tanpa varian tidak berubah. E2E baru `tests/e2e/menu-variant.spec.ts` (varian disuntik ke DB test, tanpa login).
+- [x] Revisi User: stepper jumlah dikembalikan ke kartu Item bervarian; jumlahnya terbawa ke popup (branch `fix/kuantitas-varian`).
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
