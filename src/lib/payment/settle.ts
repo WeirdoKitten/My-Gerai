@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { revalidateStallByMerchantId } from "@/lib/cache/stall";
 import { db } from "@/lib/db/client";
 import { orderItems, orders, payments, products } from "@/lib/db/schema";
 
@@ -13,6 +14,7 @@ import { orderItems, orders, payments, products } from "@/lib/db/schema";
  */
 export async function settleOrderPayment(orderId: string): Promise<void> {
   const paidAt = new Date();
+  let settledMerchantId: string | null = null;
   await db.transaction(async (tx) => {
     await tx
       .update(payments)
@@ -28,6 +30,7 @@ export async function settleOrderPayment(orderId: string): Promise<void> {
       .returning({ id: orders.id, merchantId: orders.merchantId });
 
     if (!paidOrder) return;
+    settledMerchantId = paidOrder.merchantId;
 
     const lines = await tx.query.orderItems.findMany({
       where: eq(orderItems.orderId, orderId),
@@ -47,6 +50,10 @@ export async function settleOrderPayment(orderId: string): Promise<void> {
         );
     }
   });
+
+  // Stok Item berkurang -> segarkan cache katalog Lapak (Item yang habis
+  // stok hilang dari menu Pembeli).
+  if (settledMerchantId) await revalidateStallByMerchantId(settledMerchantId);
 }
 
 /** Tandai `payments` sebagai gagal/kedaluwarsa (dari notifikasi gateway). */

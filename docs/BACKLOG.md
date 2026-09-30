@@ -458,6 +458,19 @@
 - [x] Halaman menu Pembeli: varian Item tidak lagi tampil langsung di kartu; kartu Item bervarian cuma punya tombol "Tambah", pilihan varian + catatan + jumlah muncul di popup. Item tanpa varian tidak berubah. E2E baru `tests/e2e/menu-variant.spec.ts` (varian disuntik ke DB test, tanpa login).
 - [x] Revisi User: stepper jumlah dikembalikan ke kartu Item bervarian; jumlahnya terbawa ke popup (branch `fix/kuantitas-varian`).
 
+## Performa — Cache katalog menu (2026-09-30, branch `perf/cache-menu`) ✅
+
+> Tindak lanjut stress test (`test/stress-load`): baca menu mentok ~140 req/s (SSR CPU 1-core + 6–8 query DB/request). User pilih **cache** sebagai langkah berdampak-tertinggi/usaha-terendah, strategi **tag-based, katalog saja** (AskUserQuestion) — status buka/tutup tetap live.
+
+- [x] `src/lib/cache/stall.ts` — `getCachedStallData(slug)` (`unstable_cache`, tag `stall-catalog:<slug>`) + helper `revalidateStall`/`revalidateStallByMerchantId`.
+- [x] `getStallCatalog` refactor: data dari cache, `isOpen`/lock tetap dihitung live.
+- [x] `getActivePlatformConfig` di-cache (tag `platform-config`).
+- [x] Invalidasi (`revalidateTag`, Next 16 `{ expire: 0 }`) di: createProduct/updateProduct/setProductStatus, saveProductVariantGroups, updateMerchantProfile, updatePlatformConfig, settleOrderPayment (stok).
+- [x] Seam E2E guarded `POST /api/test-hooks/revalidate-stall` (`ALLOW_TEST_HOOKS=1`) + globalSetup bersihkan `.next/cache`.
+- [x] Verifikasi: unit 168, **E2E 13/13** (server prod lokal + DB test), cache terbukti serve-stale-until-purge, load test baca ~140 → ~215 req/s/proses + offload DB (2 query/request).
+- [x] Update ARSITEKTUR-SISTEM (ADR + caveat multi-instance), CHANGELOG.
+- [ ] Lanjutan (belum): cache open-state (jam operasional) untuk turunkan 2 query live; **shared cacheHandler (Redis) WAJIB sebelum scale multi-instance**; scale horizontal + PgBouncer.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

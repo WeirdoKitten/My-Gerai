@@ -13,6 +13,16 @@ const { parsed } = dotenv.config({
   path: path.resolve(__dirname, "../../.env.test"),
 });
 const sql = postgres(parsed?.DATABASE_URL ?? "");
+const BASE = parsed?.APP_URL ?? "http://localhost:3100";
+
+/** Purge cache katalog lewat seam E2E (fixture SQL mentah tidak memicu invalidasi server action). */
+async function revalidateStall() {
+  await fetch(`${BASE}/api/test-hooks/revalidate-stall`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ slug: MERCHANT_SLUG }),
+  });
+}
 let groupId: string;
 
 test.beforeAll(async () => {
@@ -24,10 +34,12 @@ test.beforeAll(async () => {
   await sql`
     insert into product_variant_options (group_id, name, price_delta, sort_order)
     values (${groupId}, 'Sedang', 0, 0), (${groupId}, 'Pedas', 2000, 1)`;
+  await revalidateStall();
 });
 
 test.afterAll(async () => {
   await sql`delete from product_variant_groups where id = ${groupId}`;
+  await revalidateStall();
   await sql.end();
 });
 

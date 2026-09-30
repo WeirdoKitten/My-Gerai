@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 
@@ -25,6 +26,14 @@ export default function globalSetup(): void {
       "DATABASE_URL di .env.test harus mengarah ke localhost (guard yang sama dengan seed.ts).",
     );
   }
+
+  // Data cache (unstable_cache) persist ke .next/cache antar-run. Karena seed
+  // memakai UUID baru tiap run, cache lama bisa menyajikan ID Item basi ->
+  // "Item tidak tersedia" saat checkout. Bersihkan sebelum mulai.
+  rmSync(path.resolve(__dirname, "../../.next/cache"), {
+    recursive: true,
+    force: true,
+  });
 
   const env = { ...process.env, DATABASE_URL: databaseUrl };
   execSync("pnpm run db:migrate", { stdio: "inherit", env });

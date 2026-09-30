@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq, lte } from "drizzle-orm";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { db } from "@/lib/db/client";
 import { platformConfig } from "@/lib/db/schema";
@@ -41,7 +42,15 @@ async function readConfigValue(
  * Dipakai bareng alur Pembeli (`src/server/orders.ts`) & Admin — satu-satunya
  * sumber kebenaran, tidak diduplikasi.
  */
+const PLATFORM_CONFIG_TAG = "platform-config";
+
 export async function getActivePlatformConfig(): Promise<PlatformConfigView> {
+  return unstable_cache(fetchActivePlatformConfig, ["platform-config"], {
+    tags: [PLATFORM_CONFIG_TAG],
+  })();
+}
+
+async function fetchActivePlatformConfig(): Promise<PlatformConfigView> {
   const [
     platformFeeAmount,
     orderExpiryMinutes,
@@ -147,5 +156,6 @@ export async function updatePlatformConfig(
   }
 
   await db.insert(platformConfig).values(rows);
+  revalidateTag(PLATFORM_CONFIG_TAG, { expire: 0 });
   return { ok: true };
 }

@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-30 — Performa: cache katalog menu (branch `perf/cache-menu`)
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR cache menu + caveat multi-instance), [docs/BACKLOG.md](docs/BACKLOG.md). Kode baru: `src/lib/cache/stall.ts`, `src/app/api/test-hooks/revalidate-stall/route.ts` (guarded). Kode ubah: `src/server/products.ts` (getStallCatalog), `src/server/config.ts`, `src/server/merchants.ts`, `src/server/product-variants.ts`, `src/lib/payment/settle.ts`, `tests/e2e/global-setup.ts`, `tests/e2e/menu-variant.spec.ts`, `playwright.config.ts`.
+**Alasan:** Stress test menunjukkan baca menu mentok ~140 req/s (SSR 1-core + 6–8 query DB/request). User pilih cache sebagai langkah performa paling berdampak; strategi tag-based katalog-saja (status buka/tutup tetap live supaya tidak basi).
+**Ringkasan:**
+- Data katalog (Item, varian, info statis Lapak) & `platform_config` di-cache (`unstable_cache`), di-purge lewat cache tag saat Pedagang ubah Item/varian/profil/konfigurasi & saat stok berkurang (Pesanan dibayar). Status buka/tutup & kunci tagihan tetap dihitung live tiap request.
+- Beban baca menu turun ~6–8 → ~2 query DB/request; throughput baca 1 proses ~140 → ~215 req/s. Untung terbesar = offload DB (prasyarat scale horizontal efektif).
+- **Caveat multi-instance**: `revalidateTag` cuma purge cache instance yang menangani mutasi — WAJIB shared cacheHandler (Redis) sebelum pindah multi-instance. Dicatat di ADR.
+- **Diverifikasi**: unit 168/168, E2E 13/13 (server prod lokal + DB test), cache terbukti serve-stale-until-purge.
+
 ## 2026-09-30 — Stepper jumlah kembali di kartu Item bervarian
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 Kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/buyer/AddToCartControls.tsx`, `tests/e2e/menu-variant.spec.ts`.

@@ -10,6 +10,7 @@ import {
   getMerchantSession,
 } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
+import { revalidateStallByMerchantId } from "@/lib/cache/stall";
 import { db } from "@/lib/db/client";
 import { merchantOperatingHours, merchants } from "@/lib/db/schema";
 import {
@@ -268,6 +269,7 @@ export async function updateMerchantProfile(
     })
     .where(eq(merchants.id, session.merchantId));
 
+  await revalidateStallByMerchantId(session.merchantId);
   return { ok: true, message: "Profil diperbarui." };
 }
 

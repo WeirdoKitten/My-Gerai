@@ -40,6 +40,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: databaseUrl,
       APP_URL: baseURL,
+      ALLOW_TEST_HOOKS: "1",
     },
   },
 });

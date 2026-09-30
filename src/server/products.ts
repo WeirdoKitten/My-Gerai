@@ -1,16 +1,15 @@
 "use server";
 
-import { and, asc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getMerchantSession } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
-import { db } from "@/lib/db/client";
 import {
-  merchants,
-  products,
-  productVariantGroups,
-  productVariantOptions,
-} from "@/lib/db/schema";
+  getCachedStallData,
+  revalidateStallByMerchantId,
+} from "@/lib/cache/stall";
+import { db } from "@/lib/db/client";
+import { merchants, products } from "@/lib/db/schema";
 import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit/limiter";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import { detectImage, saveProductPhoto } from "@/lib/upload/storage";
@@ -25,7 +24,6 @@ import type {
   CreateProductResult,
   MerchantPaymentModeView,
   MerchantProductView,
-  ProductVariantGroupView,
   SetProductStatusResult,
   StallCatalogResult,
   StallDeliveryView,
@@ -34,47 +32,6 @@ import type {
 } from "@/types/product";
 
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
-
-/** Batch-fetch grup+opsi varian sejumlah Item sekaligus (2 query, bukan N+1). */
-async function fetchVariantGroupsByProductId(
-  productIds: string[],
-): Promise<Map<string, ProductVariantGroupView[]>> {
-  if (productIds.length === 0) return new Map();
-
-  const groups = await db.query.productVariantGroups.findMany({
-    where: inArray(productVariantGroups.productId, productIds),
-    orderBy: [asc(productVariantGroups.sortOrder)],
-  });
-  if (groups.length === 0) return new Map();
-
-  const groupIds = groups.map((group) => group.id);
-  const options = await db.query.productVariantOptions.findMany({
-    where: inArray(productVariantOptions.groupId, groupIds),
-    orderBy: [asc(productVariantOptions.sortOrder)],
-  });
-  const optionsByGroupId = new Map<string, typeof options>();
-  for (const option of options) {
-    const list = optionsByGroupId.get(option.groupId) ?? [];
-    list.push(option);
-    optionsByGroupId.set(option.groupId, list);
-  }
-
-  const groupsByProductId = new Map<string, ProductVariantGroupView[]>();
-  for (const group of groups) {
-    const list = groupsByProductId.get(group.productId) ?? [];
-    list.push({
-      id: group.id,
-      name: group.name,
-      options: (optionsByGroupId.get(group.id) ?? []).map((option) => ({
-        id: option.id,
-        name: option.name,
-        priceDelta: option.priceDelta,
-      })),
-    });
-    groupsByProductId.set(group.productId, list);
-  }
-  return groupsByProductId;
-}
 
 /**
  * Katalog publik sebuah Lapak. `{ok:false}` membedakan slug yang memang
@@ -85,53 +42,35 @@ async function fetchVariantGroupsByProductId(
 export async function getStallCatalog(
   slug: string,
 ): Promise<StallCatalogResult> {
-  const merchant = await db.query.merchants.findFirst({
-    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
-  });
-  if (!merchant) return { ok: false, reason: "not_found" };
+  // Data katalog (Item, varian, info statis Lapak) dari cache tag-based —
+  // bagian termahal & jarang berubah. Lihat src/lib/cache/stall.ts.
+  const data = await getCachedStallData(slug);
+  if (!data) return { ok: false, reason: "not_found" };
 
+  // Bagian bergantung waktu SELALU dihitung live (bukan dari cache): kunci
+  // tagihan & status buka/tutup harus akurat detik ini.
   const { serviceFeeGracePeriodDays } = await getActivePlatformConfig();
-  if (await isMerchantOrderingLocked(merchant.id, serviceFeeGracePeriodDays)) {
-    return { ok: false, reason: "locked" };
-  }
-
-  const [merchantProducts, { isOpen, reopensAt }] = await Promise.all([
-    db.query.products.findMany({
-      where: and(
-        eq(products.merchantId, merchant.id),
-        eq(products.status, "available"),
-        or(isNull(products.stock), gt(products.stock, 0)),
-      ),
-      orderBy: [asc(products.name)],
-    }),
-    getMerchantOpenState(merchant.id),
+  const [locked, { isOpen, reopensAt }] = await Promise.all([
+    isMerchantOrderingLocked(data.merchantId, serviceFeeGracePeriodDays),
+    getMerchantOpenState(data.merchantId),
   ]);
-  const variantGroupsByProductId = await fetchVariantGroupsByProductId(
-    merchantProducts.map((product) => product.id),
-  );
+  if (locked) return { ok: false, reason: "locked" };
 
   return {
     ok: true,
     catalog: {
       merchant: {
-        slug: merchant.slug,
-        stallName: merchant.stallName,
-        category: merchant.category,
-        photoUrl: merchant.photoUrl,
+        slug: data.slug,
+        stallName: data.stallName,
+        category: data.category,
+        photoUrl: data.photoUrl,
         isOpen,
         reopensAt: reopensAt ? reopensAt.toISOString() : null,
-        address: merchant.address,
-        latitude: merchant.latitude,
-        longitude: merchant.longitude,
+        address: data.address,
+        latitude: data.latitude,
+        longitude: data.longitude,
       },
-      products: merchantProducts.map((product) => ({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        photoUrl: product.photoUrl,
-        variantGroups: variantGroupsByProductId.get(product.id) ?? [],
-      })),
+      products: data.products,
     },
   };
 }
@@ -262,6 +201,7 @@ export async function createProduct(
     })
     .returning();
 
+  await revalidateStallByMerchantId(session.merchantId);
   return { ok: true, productId: product.id };
 }
 
@@ -338,6 +278,7 @@ export async function updateProduct(
   if (!updated) {
     return { ok: false, message: "Item tidak ditemukan." };
   }
+  await revalidateStallByMerchantId(session.merchantId);
   return { ok: true };
 }
 
@@ -370,5 +311,6 @@ export async function setProductStatus(
   if (!updated) {
     return { ok: false, message: "Item tidak ditemukan." };
   }
+  await revalidateStallByMerchantId(session.merchantId);
   return { ok: true };
 }
