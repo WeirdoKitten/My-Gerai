@@ -458,6 +458,18 @@
 - [x] Halaman menu Pembeli: varian Item tidak lagi tampil langsung di kartu; kartu Item bervarian cuma punya tombol "Tambah", pilihan varian + catatan + jumlah muncul di popup. Item tanpa varian tidak berubah. E2E baru `tests/e2e/menu-variant.spec.ts` (varian disuntik ke DB test, tanpa login).
 - [x] Revisi User: stepper jumlah dikembalikan ke kartu Item bervarian; jumlahnya terbawa ke popup (branch `fix/kuantitas-varian`).
 
+## Cari Alamat + Map Picker gaya ojol ✅ (2026-09-30, branch `feat/cari-alamat-peta`)
+
+> Permintaan User: sulit mencari titik hanya dengan tap/geser peta. Versi pertama (kotak cari Nominatim + tombol Cari) direvisi setelah diskusi: Nominatim melarang autocomplete dan datanya kurang untuk alamat spesifik; Google Places dipertimbangkan tapi ditolak (hasilnya wajib di peta Google = ganti seluruh peta + billing). Dipilih User (AskUserQuestion): **LocationIQ** (gratis 5.000/hari, boleh autocomplete di Leaflet) + empat perbaikan di ketiga pemakai `LocationMapPicker` (Profil Pedagang, Admin Area, Checkout Pembeli Diantar).
+
+- [x] `src/server/geocoding.ts` — pindah ke LocationIQ (`LOCATIONIQ_API_KEY`, server-only): `searchAddress` (autocomplete) + `reverseGeocodeAddress` (sekarang publik, dulu khusus sesi Pedagang). Rate limit per IP + global 2/detik, singkatan `Jl.`/`Gg.` dikembangkan, gagal → `null`.
+- [x] `AddressAutocomplete.tsx` baru — saran muncul saat mengetik (debounce 350 ms), Enter memilih saran teratas tanpa submit form induk.
+- [x] `LocationMapPicker.tsx` — pin tetap di tengah (peta yang digeser), tombol "Pilih titik ini" saat titik belum dipilih, label "Pin di: <alamat>", mode layar penuh (Esc/Selesai untuk keluar).
+- [x] `MerchantProfileForm.tsx` — auto-isi "Alamat Lapak" lewat prop `onAddressResolved` picker (tidak lagi panggil reverse-geocode sendiri).
+- [x] `.env.example`/`.env.test.example` — `LOCATIONIQ_API_KEY`. **Produksi: isi env ini di Dokploy.**
+- [x] Update `docs/TEKNOLOGI.md`, `docs/DATA-MODEL.md`, `CHANGELOG.md`.
+- [x] Verifikasi: `tsc`, Biome, Vitest, E2E penuh + skrip Playwright sementara di ketiga layar (desktop & lebar HP 390 px).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

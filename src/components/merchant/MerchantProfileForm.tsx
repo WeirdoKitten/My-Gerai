@@ -12,7 +12,6 @@ import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { Textarea } from "@/components/ui/Textarea";
 import { resizeImage } from "@/lib/upload/resize-image";
 import type { Coordinates } from "@/lib/utils/geo";
-import { reverseGeocodeAddress } from "@/server/geocoding";
 import { updateMerchantProfile, uploadMerchantPhoto } from "@/server/merchants";
 import type { MerchantProfileView } from "@/types/merchant";
 
@@ -51,28 +50,9 @@ export function MerchantProfileForm({
       ? { latitude: profile.latitude, longitude: profile.longitude }
       : null,
   );
-  const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  /**
-   * Sinkronkan alamat teks ke titik pin -- begitu Pedagang taruh/geser pin,
-   * alamat otomatis terisi lewat reverse-geocode (tetap bisa diedit manual
-   * sesudahnya). "Hapus lokasi" (coords null) SENGAJA tidak ikut mengosongkan
-   * alamat -- teksnya mungkin sudah diedit manual oleh Pedagang.
-   */
-  async function handleLocationChange(coords: Coordinates | null) {
-    setLocation(coords);
-    if (!coords) return;
-    setGeocoding(true);
-    const result = await reverseGeocodeAddress(
-      coords.latitude,
-      coords.longitude,
-    );
-    if (result) setAddress(result);
-    setGeocoding(false);
-  }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -203,19 +183,23 @@ export function MerchantProfileForm({
         <span className="text-sm font-semibold text-ink">
           Lokasi Lapak (GPS)
         </span>
-        <LocationMapPicker value={location} onChange={handleLocationChange} />
+        {/* Alamat teks disinkronkan ke pin: setiap Pedagang mengubah titik,
+            "Alamat Lapak" otomatis terisi hasil reverse-geocode (tetap bisa
+            diedit manual). "Hapus lokasi" SENGAJA tidak mengosongkan alamat
+            -- teksnya mungkin sudah diedit manual. */}
+        <LocationMapPicker
+          value={location}
+          onChange={setLocation}
+          onAddressResolved={setAddress}
+        />
         <span className="text-xs text-ink-muted">
-          Taruh atau geser pin ke lokasi Lapak, alamat di bawah otomatis terisi.
-          Opsional.
+          Geser peta sampai pin tepat di lokasi Lapak, alamat di bawah otomatis
+          terisi. Opsional.
         </span>
       </div>
       <Field
         label="Alamat Lapak (opsional)"
-        hint={
-          geocoding
-            ? "Mengambil nama alamat dari peta..."
-            : "Otomatis terisi dari pin di atas. Boleh diubah sendiri, contohnya untuk menambah patokan."
-        }
+        hint="Otomatis terisi dari pin di atas. Boleh diubah sendiri, contohnya untuk menambah patokan."
       >
         <Textarea
           value={address}

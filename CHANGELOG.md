@@ -2,6 +2,19 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-09-30 — Cari alamat (LocationIQ) + map picker gaya ojol (branch `feat/cari-alamat-peta`)
+
+**Dampak:** [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (baris Peta: geocoding pindah dari Nominatim ke LocationIQ, autocomplete disediakan, pin tengah), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`merchants.address`), [docs/BACKLOG.md](docs/BACKLOG.md). Env baru `LOCATIONIQ_API_KEY`. Kode: `src/server/geocoding.ts`, `src/components/merchant/LocationMapPicker.tsx`, `src/components/merchant/AddressAutocomplete.tsx` (baru), `src/components/merchant/MerchantProfileForm.tsx`, `.env.example`, `.env.test.example`.
+**Alasan:** Permintaan User: sulit menemukan titik hanya dengan tap/geser peta. Nominatim melarang autocomplete dan datanya kurang untuk alamat spesifik (contoh "Jl. Patrol 3"). Google Places dipertimbangkan tapi ditolak: hasilnya wajib ditampilkan di peta Google (ganti seluruh peta + akun billing). Dipilih User: LocationIQ (data OSM, gratis 5.000 request/hari, boleh autocomplete di Leaflet).
+**Ringkasan:**
+- Kotak "Cari alamat" dengan saran otomatis saat mengetik, di Profil Pedagang, Admin Area, dan checkout Pembeli Diantar. Pilih saran → peta pindah ke titik itu.
+- Pin selalu di tengah peta: pengguna menggeser peta, bukan menyeret pin. Kalau titik belum dipilih, ada tombol "Pilih titik ini" (menggeser peta saja tidak memilih titik, supaya lokasi Lapak di checkout tidak terpakai diam-diam).
+- Label "Pin di: <alamat>" di bawah peta (reverse-geocode). Di Profil Pedagang, "Alamat Lapak" tetap terisi otomatis dari pin.
+- Tombol "Layar penuh" untuk memilih titik dengan peta besar di HP.
+- Singkatan `Jl.`/`Jln.`/`Gg.` dikembangkan sebelum dicari. Rate limit per IP (Pembeli tanpa login) + global 2/detik. Gagal/kuota habis tidak pernah memblokir: geser peta & GPS tetap jalan.
+- Batas yang diketahui: jalan kecil/gang yang belum ada di data OSM tetap tidak ditemukan; pencarian membawa ke area terdekat, lalu peta digeser.
+- **Diverifikasi nyata**: skrip Playwright sementara di ketiga layar (autocomplete "Jl. Braga Bandung", pilih titik tengah, geser peta di profil mengisi alamat, lingkaran radius Admin, layar penuh di lebar 390 px tanpa pencarian ulang). E2E penuh 13/13, Vitest 168/168, `tsc` & Biome lulus.
+
 ## 2026-09-30 — Stepper jumlah kembali di kartu Item bervarian
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (§5 Kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/buyer/AddToCartControls.tsx`, `tests/e2e/menu-variant.spec.ts`.
