@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { formatRupiah } from "@/lib/utils/money";
@@ -16,6 +17,11 @@ export function ProductCard({
       <PhotoThumb src={product.photoUrl} alt={product.name} bordered={false} />
       <div className="flex min-w-0 flex-1 flex-col">
         <p className="font-semibold text-ink">{product.name}</p>
+        {product.preOrder ? (
+          <Badge tone="info" className="mt-1 self-start">
+            Pre-order · siap min. {product.preOrder.minDays} hari
+          </Badge>
+        ) : null}
         {product.description ? (
           <p className="mt-0.5 line-clamp-2 text-sm text-ink-muted">
             {product.description}

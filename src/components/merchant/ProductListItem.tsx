@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
@@ -38,7 +39,14 @@ export function ProductListItem({
     >
       <PhotoThumb src={product.photoUrl} alt={product.name} size="sm" />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold text-ink">{product.name}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate font-semibold text-ink">{product.name}</p>
+          {product.preOrder ? (
+            <Badge tone="info" className="shrink-0">
+              Pre-order · H+{product.preOrder.minDays}
+            </Badge>
+          ) : null}
+        </div>
         <p className="text-sm tabular-nums text-ink-muted">
           {formatRupiah(product.price)}
           {product.stock !== null ? (

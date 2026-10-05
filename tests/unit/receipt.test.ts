@@ -17,6 +17,7 @@ const baseReceipt: OrderReceiptView = {
   buyerNote: null,
   // 14:32 WIB
   paidAt: new Date("2026-09-25T07:32:00Z"),
+  scheduledFor: null,
   items: [
     {
       id: "1",
@@ -117,6 +118,23 @@ describe("buildReceiptLines", () => {
     const lines = texts({ ...baseReceipt, stallAddress: null });
     expect(lines[0]).toBe("BAKSO PAK BUDI");
     expect(lines[1]).toBe("-".repeat(RECEIPT_WIDTH));
+  });
+});
+
+describe("buildReceiptLines pre-order", () => {
+  it("mencetak jadwal pre-order dalam WIB", () => {
+    const texts = buildReceiptLines({
+      ...baseReceipt,
+      // 03.00 UTC = 10.00 WIB.
+      scheduledFor: new Date("2026-10-03T03:00:00Z"),
+    }).map((line) => line.text);
+    expect(texts).toContain("PRE-ORDER");
+    expect(texts).toContain("Jadwal: 03/10/2026 10:00");
+  });
+
+  it("Pesanan biasa tidak mencetak baris pre-order", () => {
+    const texts = buildReceiptLines(baseReceipt).map((line) => line.text);
+    expect(texts).not.toContain("PRE-ORDER");
   });
 });
 

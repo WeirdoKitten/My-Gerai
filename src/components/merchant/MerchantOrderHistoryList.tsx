@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HistoryIcon } from "@/components/ui/icons";
 import { OrderStatusBadge } from "@/components/ui/OrderStatusBadge";
-import { formatDateTime } from "@/lib/utils/datetime";
+import { formatDateTime, formatSchedule } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
 import { orderGrandTotal } from "@/lib/utils/order-calc";
 import type { MerchantOrderHistoryItem } from "@/types/order";
@@ -53,6 +53,11 @@ function MerchantOrderHistoryCard({
       <p className="text-sm text-ink-muted">
         Atas nama {order.buyerName} · {formatDateTime(timestamp)}
       </p>
+      {order.scheduledFor ? (
+        <p className="text-sm font-semibold text-info">
+          Pre-order · jadwal {formatSchedule(new Date(order.scheduledFor))}
+        </p>
+      ) : null}
       {order.delivery ? (
         <DeliveryInfo delivery={order.delivery} showActions={false} />
       ) : null}

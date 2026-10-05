@@ -92,6 +92,9 @@ Props: `variant`, `size`, `fullWidth` (→ `w-full`), `loading` (tampilkan `Spin
 (Textarea: ganti `h-11` → `min-h-24 py-2.5`.) State error: tambahkan `border-danger`.
 Prop opsional `leftIcon`/`onClear` (2026-09-22, kotak cari `/gerai`) — ikon di kiri (`pl-10`) + tombol hapus × di kanan (`pr-10`) saat `value` terisi, dibungkus otomatis di `<div className="relative">`. Dipakai lewat komponen, jangan salin ulang wrapper-nya ke halaman.
 
+### `Select.tsx`
+Dropdown `<select>` bawaan browser dengan gaya sama seperti `Input` (`rounded-control`, border, fokus `outline-brand`), ikon `ChevronDownIcon` di kanan, prop `selectSize` (`md`/`sm`) dan `invalid`. Sengaja native: di HP tampil sebagai pemilih sistem yang nyaman satu tangan. Dipakai untuk pemilih jadwal pre-order (Tanggal; Jam dikelompokkan `<optgroup>` Pagi/Siang/Sore/Malam).
+
 ### `Field.tsx`
 Bungkus label + kontrol:
 ```
@@ -151,7 +154,7 @@ Peta status → tone (pakai label dari `ORDER_STATUS_LABEL_ID` yang sudah ada):
 Notifikasi ringan sekali-lewat (`ToastProvider` + `useToast()`). Pil `bg-ink text-white` di `fixed top-4` tengah, `pointer-events-none`, slide-in dari atas + fade-out (`@keyframes toast-in`/`toast-out` di globals.css, `motion-safe:`), auto-hilang ~2,1 dtk. Satu toast aktif. Dipakai untuk "Item ditambahkan" di sisi Pembeli (tombol "Tambah" **tidak** berubah label) dan konfirmasi ubah status Pesanan di dashboard Pedagang ("Pesanan XXXX ditandai Diproses"). `ToastProvider` dimount di `(buyer)/layout.tsx` dan `(merchant)/dashboard/layout.tsx`.
 
 ### `Modal.tsx`
-Dialog berbasis `<dialog>` bawaan (Esc + focus-trap + backdrop gratis). Panel `max-w-lg`, header (judul + tombol ✕), body `max-h-[75vh] overflow-y-auto`. Klik backdrop menutup. Dipakai untuk form Tambah/Ubah Item (bukan inline lagi).
+Dialog berbasis `<dialog>` bawaan (Esc + focus-trap + backdrop gratis). Panel `max-w-lg`, header (judul + tombol ✕), body `max-h-[75vh] overflow-y-auto`. Klik backdrop menutup. Dialog diberi nama aksesibel dari judulnya (`aria-labelledby` → `<h2>`). Dipakai untuk form Tambah/Ubah Item (bukan inline lagi).
 
 ### `EmptyState.tsx`
 Tengah, `py-12`, ikon SVG `size-10 text-ink-muted`, judul `font-semibold text-ink`, keterangan `text-sm text-ink-muted`, opsional tombol. Ganti teks polos "Belum ada Pesanan masuk." / "Belum ada Item tersedia." dll.

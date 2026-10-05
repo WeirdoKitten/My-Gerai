@@ -12,6 +12,7 @@
 | **Pembeli** | Orang yang memindai QR dan memesan. **Tidak punya akun/login** — hanya mengisi **Nama Pembeli** saat checkout. |
 | **Item** | Barang/menu yang dijual sebuah Lapak (istilah netral, mencakup makanan maupun non-makanan seperti baju). Setara "produk". |
 | **Harga Modal** | Biaya pokok (HPP) per unit Item, diisi **opsional** oleh Pedagang saat tambah/ubah Item. Dipakai untuk menghitung **Keuntungan** di **Laporan Penjualan**; tidak pernah ditampilkan ke Pembeli. Di-snapshot per Pesanan (sama seperti harga jual) supaya Keuntungan Pesanan lama tidak berubah kalau harga modal diedit belakangan. |
+| **Pre-order** | Item yang dibuat sesuai pesanan dan butuh waktu (mis. nasi tumpeng). Pedagang mengatur **waktu pembuatan minimal** dan **batas pesan ke depan** (hari). Pembeli memilih jadwal ambil/antar (**Jadwal Pre-order**, kolom `orders.scheduled_for`), wajib isi No. HP/WA, dan bayar lunas di depan. Tidak bisa dicampur Item biasa dalam satu Keranjang. Identifier kode: `preOrder`, `pre_order_min_days`/`pre_order_max_days`. |
 | **Keranjang** | Kumpulan Item yang dipilih Pembeli sebelum checkout. Tersimpan sementara di sisi browser Pembeli (belum jadi Pesanan resmi). |
 | **Pesanan** | Transaksi resmi yang tercipta saat Pembeli checkout. Setara "order". Punya **Kode Pesanan** dan **Status Pesanan**. |
 | **Kode Pesanan** | Kode unik 8 karakter acak, mis. `K7QX9MB4` (sejak 2026-09-29; Pesanan lama memakai 4 karakter, mis. `B231`). Ditunjukkan/disebutkan ke Pedagang saat serah terima, dan jadi satu-satunya kunci **Lacak Pesanan**. |

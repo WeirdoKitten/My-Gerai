@@ -78,7 +78,10 @@ export default async function StallMenuPage(
       </p>
 
       {!catalog.merchant.isOpen ? (
-        <ClosedStallNotice reopensAt={catalog.merchant.reopensAt} />
+        <ClosedStallNotice
+          reopensAt={catalog.merchant.reopensAt}
+          hasPreOrderItems={catalog.products.some((p) => !!p.preOrder)}
+        />
       ) : null}
 
       {catalog.products.length === 0 ? (

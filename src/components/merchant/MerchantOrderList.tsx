@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ReceiptIcon } from "@/components/ui/icons";
+import { wibDayKey } from "@/lib/report/period";
 import { useSound } from "@/lib/sound/sound-context";
+import { formatShortDayKey } from "@/lib/utils/datetime";
 import { listMerchantOrders } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
 import { MerchantOrderCard } from "./MerchantOrderCard";
@@ -53,6 +55,24 @@ export function MerchantOrderList({
   }
 
   const hiddenCount = totalActive - orders.length;
+  const nowOrders = orders.filter((order) => !order.scheduledFor);
+  // Pre-order diurut jadwal terdekat (bukan urutan masuk) dan dikelompokkan
+  // per tanggal -- yang dikerjakan duluan yang jadwalnya paling dekat.
+  const preOrders = orders
+    .filter((order) => order.scheduledFor)
+    .sort(
+      (a, b) =>
+        new Date(a.scheduledFor ?? 0).getTime() -
+        new Date(b.scheduledFor ?? 0).getTime(),
+    );
+  const preOrderGroups: Array<{ dayKey: string; orders: typeof preOrders }> =
+    [];
+  for (const order of preOrders) {
+    const dayKey = wibDayKey(new Date(order.scheduledFor ?? 0));
+    const last = preOrderGroups.at(-1);
+    if (last?.dayKey === dayKey) last.orders.push(order);
+    else preOrderGroups.push({ dayKey, orders: [order] });
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -62,8 +82,32 @@ export function MerchantOrderList({
           Selesaikan yang tertua dulu supaya {hiddenCount} Pesanan lain muncul.
         </Alert>
       ) : null}
-      {orders.map((order) => (
+      {preOrders.length > 0 && nowOrders.length > 0 ? (
+        <h2 className="text-sm font-semibold text-ink-muted">
+          Pesanan sekarang
+        </h2>
+      ) : null}
+      {nowOrders.map((order) => (
         <MerchantOrderCard key={order.id} order={order} onUpdated={refresh} />
+      ))}
+      {preOrderGroups.length > 0 ? (
+        <h2 className="mt-2 text-sm font-semibold text-ink-muted">
+          Pre-order ({preOrders.length})
+        </h2>
+      ) : null}
+      {preOrderGroups.map((group) => (
+        <div key={group.dayKey} className="flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-info">
+            {formatShortDayKey(group.dayKey)}
+          </p>
+          {group.orders.map((order) => (
+            <MerchantOrderCard
+              key={order.id}
+              order={order}
+              onUpdated={refresh}
+            />
+          ))}
+        </div>
       ))}
     </div>
   );

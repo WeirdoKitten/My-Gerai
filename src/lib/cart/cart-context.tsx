@@ -9,6 +9,10 @@ import {
   useReducer,
   useState,
 } from "react";
+import {
+  combinePreOrderRanges,
+  type PreOrderRange,
+} from "@/lib/schedule/pre-order-slots";
 import { getMerchantPaymentMode, getStallOpenState } from "@/server/products";
 import { cartLineKey } from "./line-key";
 import { loadCart, saveCart } from "./storage";
@@ -109,6 +113,13 @@ type CartContextValue = {
   isOpen: boolean;
   /** Jadwal Lapak aktif buka lagi (ISO string) — null kalau tidak diketahui. */
   reopensAt: string | null;
+  /**
+   * Keranjang berisi Item pre-order (tidak pernah campur Item biasa, lihat
+   * AddToCartControls). Keranjang pre-order boleh checkout saat Lapak tutup.
+   */
+  isPreOrderCart: boolean;
+  /** Gabungan rentang hari pre-order semua Item — `null` untuk Keranjang biasa atau rentang tanpa irisan. */
+  preOrderRange: PreOrderRange | null;
   addItem: (stallSlug: string, item: CartItem) => void;
   updateQty: (lineKey: string, qty: number) => void;
   updateNote: (lineKey: string, note: string) => void;
@@ -184,9 +195,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       (sum, item) => sum + item.price * item.qty,
       0,
     );
+    const isPreOrderCart = state.items.some((item) => !!item.preOrder);
+    const preOrderRange = isPreOrderCart
+      ? combinePreOrderRanges(
+          state.items.flatMap((item) => (item.preOrder ? [item.preOrder] : [])),
+        )
+      : null;
     return {
       stallSlug: state.stallSlug,
       items: state.items,
+      isPreOrderCart,
+      preOrderRange,
       itemCount,
       subtotalDisplay,
       paymentMode,

@@ -26,13 +26,21 @@ export function AddToCartControls({
   product: BuyerProductView;
   stallSlug: string;
 }) {
-  const { addItem } = useCart();
+  const cart = useCart();
+  const { addItem, clearCart } = cart;
   const { showToast } = useToast();
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState("");
   // groupId -> optionId
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Keranjang pre-order & biasa tidak boleh dicampur (1 Pesanan = 1 jadwal).
+  const [mixConfirmOpen, setMixConfirmOpen] = useState(false);
+  const isPreOrder = !!product.preOrder;
+  const conflictsWithCart =
+    cart.stallSlug === stallSlug &&
+    cart.items.length > 0 &&
+    cart.isPreOrderCart !== isPreOrder;
 
   const hasVariants = product.variantGroups.length > 0;
   const allGroupsSelected = product.variantGroups.every(
@@ -51,6 +59,15 @@ export function AddToCartControls({
   }
 
   function handleAdd() {
+    if (conflictsWithCart) {
+      setPickerOpen(false);
+      setMixConfirmOpen(true);
+      return;
+    }
+    commitAdd();
+  }
+
+  function commitAdd() {
     const variantSelections: CartItemVariantSelection[] =
       product.variantGroups.map((group) => {
         const option = group.options.find((o) => o.id === selections[group.id]);
@@ -72,6 +89,7 @@ export function AddToCartControls({
       qty,
       note,
       variantSelections,
+      preOrder: product.preOrder,
     });
     showToast(
       qty > 1
@@ -104,6 +122,42 @@ export function AddToCartControls({
     />
   );
 
+  const mixConfirm = (
+    <Modal
+      open={mixConfirmOpen}
+      onClose={() => setMixConfirmOpen(false)}
+      title="Ganti isi Keranjang?"
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-ink-muted">
+          {isPreOrder
+            ? "Item pre-order dipesan terpisah dari Item biasa. Kosongkan Keranjang lalu tambahkan Item ini?"
+            : "Keranjang berisi Item pre-order, yang dipesan terpisah dari Item biasa. Kosongkan Keranjang lalu tambahkan Item ini?"}
+        </p>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            fullWidth
+            onClick={() => {
+              clearCart();
+              setMixConfirmOpen(false);
+              commitAdd();
+            }}
+          >
+            Kosongkan & Tambah
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setMixConfirmOpen(false)}
+          >
+            Batal
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+
   if (!hasVariants) {
     return (
       <div className="flex flex-col gap-3">
@@ -119,6 +173,7 @@ export function AddToCartControls({
             Tambah
           </Button>
         </div>
+        {mixConfirm}
       </div>
     );
   }
@@ -191,6 +246,7 @@ export function AddToCartControls({
           </Button>
         </div>
       </Modal>
+      {mixConfirm}
     </>
   );
 }

@@ -1,3 +1,5 @@
+import type { PreOrderRange } from "@/lib/schedule/pre-order-slots";
+
 export type ProductVariantOptionView = {
   id: string;
   name: string;
@@ -20,6 +22,8 @@ export type BuyerProductView = {
   photoUrl: string | null;
   /** `[]` = Item ini tidak punya varian, tampil & dipesan seperti biasa. */
   variantGroups: ProductVariantGroupView[];
+  /** Terisi = Item pre-order (dibuat sesuai pesanan). `null` = Item biasa. */
+  preOrder: PreOrderRange | null;
 };
 
 /**
@@ -86,6 +90,8 @@ export type MerchantProductView = {
   stock: number | null;
   photoUrl: string | null;
   status: "available" | "sold_out";
+  /** Terisi = Item pre-order. `null` = Item biasa. */
+  preOrder: PreOrderRange | null;
 };
 
 export type CreateProductResult =

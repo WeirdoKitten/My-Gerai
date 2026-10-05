@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PhotoThumb } from "@/components/ui/PhotoThumb";
+import { Toggle } from "@/components/ui/Toggle";
 import { resizeImage } from "@/lib/upload/resize-image";
 import {
   getProductVariantGroups,
@@ -40,6 +41,13 @@ export function ProductForm({
   );
   const [stock, setStock] = useState(
     product?.stock != null ? String(product.stock) : "",
+  );
+  const [isPreOrder, setIsPreOrder] = useState(!!product?.preOrder);
+  const [preOrderMinDays, setPreOrderMinDays] = useState(
+    product?.preOrder ? String(product.preOrder.minDays) : "1",
+  );
+  const [preOrderMaxDays, setPreOrderMaxDays] = useState(
+    product?.preOrder ? String(product.preOrder.maxDays) : "30",
   );
   const [photoUrl, setPhotoUrl] = useState<string | null>(
     product?.photoUrl ?? null,
@@ -111,7 +119,13 @@ export function ProductForm({
 
     const priceNumber = Number(price);
     const costPriceValue = costPrice.trim() === "" ? null : Number(costPrice);
-    const stockValue = stock.trim() === "" ? null : Number(stock);
+    const stockValue = isPreOrder || stock.trim() === "" ? null : Number(stock);
+    const preOrderFields = isPreOrder
+      ? {
+          preOrderMinDays: Number(preOrderMinDays),
+          preOrderMaxDays: Number(preOrderMaxDays),
+        }
+      : { preOrderMinDays: null, preOrderMaxDays: null };
 
     let productId: string;
     if (product) {
@@ -122,6 +136,7 @@ export function ProductForm({
         price: priceNumber,
         costPrice: costPriceValue,
         stock: stockValue,
+        ...preOrderFields,
         photoUrl,
       });
       if (!result.ok) {
@@ -137,6 +152,7 @@ export function ProductForm({
         price: priceNumber,
         costPrice: costPriceValue,
         stock: stockValue,
+        ...preOrderFields,
         photoUrl,
       });
       if (!result.ok) {
@@ -201,16 +217,67 @@ export function ProductForm({
           placeholder="Belum diisi"
         />
       </Field>
-      <Field label="Stok" hint="Kosongkan kalau tidak dibatasi.">
-        <Input
-          type="number"
-          inputMode="numeric"
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
-          min={0}
-          placeholder="Tidak dibatasi"
-        />
-      </Field>
+      <div className="flex flex-col gap-3 rounded-xl border border-line p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-ink">Pre-order</span>
+            <span className="text-xs text-ink-muted">
+              Untuk Item yang dibuat sesuai pesanan, misalnya nasi tumpeng.
+              Pembeli memilih tanggal & jam ambil, dan tetap bisa memesan saat
+              Lapak tutup.
+            </span>
+          </div>
+          <Toggle
+            checked={isPreOrder}
+            onChange={setIsPreOrder}
+            label="Pre-order"
+          />
+        </div>
+        {isPreOrder ? (
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label="Waktu pembuatan (hari)"
+              hint="Pesanan paling cepat diambil H+ sekian."
+            >
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={preOrderMinDays}
+                onChange={(e) => setPreOrderMinDays(e.target.value)}
+                required
+                min={1}
+                max={30}
+              />
+            </Field>
+            <Field
+              label="Bisa dipesan maks. (hari)"
+              hint="Sejauh apa ke depan Pembeli boleh memesan."
+            >
+              <Input
+                type="number"
+                inputMode="numeric"
+                value={preOrderMaxDays}
+                onChange={(e) => setPreOrderMaxDays(e.target.value)}
+                required
+                min={1}
+                max={90}
+              />
+            </Field>
+          </div>
+        ) : null}
+      </div>
+      {isPreOrder ? null : (
+        <Field label="Stok" hint="Kosongkan kalau tidak dibatasi.">
+          <Input
+            type="number"
+            inputMode="numeric"
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            min={0}
+            placeholder="Tidak dibatasi"
+          />
+        </Field>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-semibold text-ink">Foto (opsional)</span>
