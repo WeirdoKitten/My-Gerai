@@ -115,6 +115,14 @@ CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse
 - **Pembeli**: tidak ada autentikasi sama sekali (sesuai [PRD.md](PRD.md)).
 - **Rate-limiting** (Fase 5, lihat [src/lib/rate-limit/limiter.ts](../src/lib/rate-limit/limiter.ts)): fixed-window counter **in-memory** (satu `Map`, tanpa dependency/infra baru — sesuai izin eksplisit [BEST-PRACTICES.md §Keamanan](BEST-PRACTICES.md#keamanan) untuk "solusi ringan dulu"). Diterapkan di 4 titik: `loginMerchant`/`loginAdmin` (5 percobaan/5 menit, dicek **dua key** — per-IP DAN per-nomor-HP, karena brute-force satu akun vs spam banyak akun dari satu sumber adalah dua ancaman berbeda), `registerMerchant` (5/60 menit per-IP), `createOrder` (20 Pesanan/10 menit per-IP, dibuat longgar karena CGNAT operator seluler Indonesia bisa membuat beberapa Pembeli sah terlihat satu IP). Pesan saat limit tercapai generik (tidak membocorkan apakah batas per-IP/per-akun, menjaga pola anti-enumeration). IP klien diambil dari header `cf-connecting-ip` (di-set Cloudflare di edge, **tidak bisa dipalsukan klien** — beda dengan `x-forwarded-for` yang cuma di-*append* jadi segmen pertamanya bisa disisipi klien untuk melompati limit; ditemukan & diperbaiki lewat `/security-review` Fase 5), fallback ke segmen terakhir `x-forwarded-for` untuk dev lokal tanpa Cloudflare. **Keterbatasan yang diketahui/diterima**: state in-memory reset saat restart proses & tidak sinkron lintas instance — aman untuk deployment single-instance Docker (Dokploy) saat ini; kalau nanti pindah ke multi-instance, ganti ke store bersama (mis. Redis).
 
+## Performa & Cache (2026-10-05)
+
+Dasar keputusan & angka: [STRESS-TEST.md](STRESS-TEST.md). Ringkas:
+
+- **Pool DB**: `DATABASE_POOL_MAX` (default 20 koneksi per proses) dan `DATABASE_STATEMENT_TIMEOUT_MS` (default 15000) di [src/lib/db/client.ts](../src/lib/db/client.ts). Jaga `DATABASE_POOL_MAX` × jumlah instance di bawah `max_connections` Postgres.
+- **Cache in-memory** ([src/lib/cache/memory.ts](../src/lib/cache/memory.ts)): `createTtlCache` menyimpan Promise per key (request bersamaan cukup satu query), tanpa dependency/infra baru. Cache data memakai `productionTtl()` sehingga hanya aktif saat `NODE_ENV=production` — `next dev` dan E2E selalu membaca DB. Yang di-cache: config platform, katalog menu (`src/lib/cache/stall-catalog.ts`, dikosongkan oleh Server Action Item/varian/profil/status Lapak), daftar Gerai publik, Laporan, render QR, poster pendaftaran. Keterbatasan sama dengan rate-limiter: per proses, tidak sinkron lintas instance.
+- **Alat ukur**: `tests/stress/` (lihat STRESS-TEST.md §7). Jalankan `compare.mjs` sebelum & sesudah perubahan yang menyentuh query/polling.
+
 ## Batasan Biaya (estimasi, untuk kesadaran User)
 
 - Hosting app & database: **tanpa biaya tambahan** — pakai server Garuda yang sudah ada, sama seperti proyek User lainnya (MyPlaza).

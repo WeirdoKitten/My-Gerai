@@ -2,6 +2,7 @@
 
 import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { getMerchantSession } from "@/lib/auth/session";
+import { createTtlCache, productionTtl } from "@/lib/cache/memory";
 import { db } from "@/lib/db/client";
 import { orderItems, orders, products } from "@/lib/db/schema";
 import {
@@ -391,12 +392,34 @@ export async function getMerchantSalesReport(
   if (!session) return null;
 
   const resolved: ReportPeriod = isReportPeriod(period) ? period : "7_hari";
+  return reportCache.get(`${session.merchantId}:${resolved}`, () =>
+    buildMerchantSalesReport(session.merchantId, resolved),
+  );
+}
+
+/**
+ * Satu laporan = ±16 query agregat (±500 ms, docs/STRESS-TEST.md P2-1).
+ * Di-cache 30 dtk per Lapak+periode; rekomendasi asisten (jendela tetap 30
+ * hari, bagian terberat) di-cache 5 menit per Lapak.
+ */
+const reportCache = createTtlCache<string, MerchantSalesReport>({
+  ttlMs: productionTtl(30_000),
+  maxEntries: 500,
+});
+const insightInputCache = createTtlCache<string, InsightInput>({
+  ttlMs: productionTtl(5 * 60_000),
+  maxEntries: 500,
+});
+
+async function buildMerchantSalesReport(
+  merchantId: string,
+  resolved: ReportPeriod,
+): Promise<MerchantSalesReport> {
   const now = new Date();
   const { start, end, prevStart, prevEnd, dayKeys } = resolvePeriod(
     resolved,
     now,
   );
-  const merchantId = session.merchantId;
 
   const [
     summary,
@@ -413,7 +436,7 @@ export async function getMerchantSalesReport(
     profitInRange(merchantId, prevStart, prevEnd),
     dailyInRange(merchantId, start, end, dayKeys),
     topItemsInRange(merchantId, start, end),
-    buildInsightInput(merchantId, now),
+    insightInputCache.get(merchantId, () => buildInsightInput(merchantId, now)),
   ]);
 
   return {

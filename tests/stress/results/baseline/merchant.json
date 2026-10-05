@@ -1,0 +1,122 @@
+[
+  {
+    "name": "listMerchantOrders (Lapak ramai, 6018 aktif)",
+    "concurrency": 1,
+    "thinkMs": 0,
+    "requests": 99,
+    "ok": 99,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 4.9,
+    "durationS": 20.2,
+    "p50": 190,
+    "p90": 253,
+    "p95": 269,
+    "p99": 330,
+    "max": 330,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.15,
+      "cpuCoresMax": 0.22,
+      "rssMbMax": 1728,
+      "dbConnMax": 13,
+      "dbActiveMax": 4
+    }
+  },
+  {
+    "name": "listMerchantOrders (Lapak ramai, 6018 aktif)",
+    "concurrency": 10,
+    "thinkMs": 0,
+    "requests": 276,
+    "ok": 276,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 13.4,
+    "durationS": 20.5,
+    "p50": 728,
+    "p90": 905,
+    "p95": 973,
+    "p99": 1059,
+    "max": 1175,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.38,
+      "cpuCoresMax": 0.41,
+      "rssMbMax": 1728,
+      "dbConnMax": 14,
+      "dbActiveMax": 14
+    }
+  },
+  {
+    "name": "listMerchantOrders (Lapak ramai, 6018 aktif)",
+    "concurrency": 50,
+    "thinkMs": 0,
+    "requests": 250,
+    "ok": 250,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 11.9,
+    "durationS": 21.1,
+    "p50": 4149,
+    "p90": 4422,
+    "p95": 4481,
+    "p99": 4541,
+    "max": 4553,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.35,
+      "cpuCoresMax": 0.43,
+      "rssMbMax": 1728,
+      "dbConnMax": 16,
+      "dbActiveMax": 15
+    }
+  },
+  {
+    "name": "listMerchantOrders (Lapak ramai, 6018 aktif)",
+    "concurrency": 200,
+    "thinkMs": 0,
+    "requests": 400,
+    "ok": 400,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 11.5,
+    "durationS": 34.7,
+    "p50": 17051,
+    "p90": 17681,
+    "p95": 17798,
+    "p99": 17965,
+    "max": 18223,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.28,
+      "cpuCoresMax": 0.69,
+      "rssMbMax": 1734,
+      "dbConnMax": 16,
+      "dbActiveMax": 16
+    }
+  },
+  {
+    "name": "200 Lapak polling dashboard tiap 5 dtk",
+    "concurrency": 200,
+    "thinkMs": 5000,
+    "requests": 929,
+    "ok": 929,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 19.4,
+    "durationS": 47.8,
+    "p50": 4376,
+    "p90": 5188,
+    "p95": 5391,
+    "p99": 5640,
+    "max": 5957,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.36,
+      "cpuCoresMax": 0.51,
+      "rssMbMax": 1734,
+      "dbConnMax": 13,
+      "dbActiveMax": 13
+    }
+  }
+]

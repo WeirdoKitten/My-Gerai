@@ -1,0 +1,32 @@
+[
+  {
+    "items": 10,
+    "bodyKb": 1,
+    "ms": 42,
+    "result": true
+  },
+  {
+    "items": 100,
+    "bodyKb": 6,
+    "ms": 8,
+    "result": false
+  },
+  {
+    "items": 1000,
+    "bodyKb": 60,
+    "ms": 15,
+    "result": false
+  },
+  {
+    "items": 5000,
+    "bodyKb": 298,
+    "ms": 42,
+    "result": false
+  },
+  {
+    "items": 20000,
+    "bodyKb": 1192,
+    "ms": 40,
+    "result": "HTTP 500"
+  }
+]

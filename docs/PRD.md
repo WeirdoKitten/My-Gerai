@@ -39,7 +39,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 ## 4. Lingkup MVP (In Scope)
 
 - [ ] Pedagang daftar mandiri (nama Lapak, kategori, kontak, foto) → status `pending` → Admin approve → Lapak dapat **QR Menu** unik.
-- [ ] Pedagang kelola daftar Item (nama, harga, foto, **stok opsional**, status tersedia/habis) di dashboard sendiri. Stok `null` = tidak dibatasi; kalau diisi angka, berkurang saat Pesanan `dibayar` & Item hilang dari katalog Pembeli begitu stok 0.
+- [ ] Pedagang kelola daftar Item (nama, harga, foto, **stok opsional**, status tersedia/habis) di dashboard sendiri. Stok `null` = tidak dibatasi; kalau diisi angka, berkurang saat Pesanan `dibayar` & Item hilang dari katalog Pembeli begitu stok 0. Pesanan yang masih menunggu pembayaran **mereservasi** stoknya (2026-10-05), jadi Pembeli lain tidak bisa memesan melebihi sisa stok; reservasi lepas sendiri kalau Pesanan kedaluwarsa.
 - [ ] **Item Pre-order** (2026-09-30, [BACKLOG.md](BACKLOG.md)): Pedagang bisa menandai Item sebagai pre-order (dibuat sesuai pesanan) dengan **waktu pembuatan minimal** (1–30 hari) dan **batas pesan ke depan** (maks. 90 hari). Item pre-order tidak memakai stok. Pembeli memilih **tanggal + jam** ambil/antar (slot 30 menit di dalam Jadwal Operasional), wajib isi No. HP/WA, dan bayar lunas di depan. Item pre-order boleh dipesan walau Lapak sedang tutup.
 - [ ] Pembeli scan **QR Menu** → lihat katalog Item Lapak tsb (tanpa login).
 - [ ] Pembeli pilih Item + qty + catatan → Keranjang (di sisi browser) → Checkout.

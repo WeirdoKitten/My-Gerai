@@ -114,7 +114,8 @@
 ├── playwright.config.ts                       # Config Playwright E2E (Fase 5) — DB terpisah (mygerai_test), port 3100
 ├── tests/
 │   ├── unit/                                  # order-calc, order-status, money, datetime, report-insights, report-period, billing-period (Fase 7) — Vitest, `pnpm test`
-│   └── e2e/                                   # order-flow (checkout+alur Pedagang), rate-limit, qris-pribadi (Fase 7, + fixtures/qris.png), global-setup.ts — Playwright, `pnpm test:e2e`
+│   ├── e2e/                                   # order-flow (checkout+alur Pedagang), rate-limit, qris-pribadi (Fase 7, + fixtures/qris.png), global-setup.ts — Playwright, `pnpm test:e2e`
+│   └── stress/                                # Stress/load test manual (2026-10-05): seed.mjs, run.mjs, compare.mjs, lib.mjs, results/ — lihat docs/STRESS-TEST.md. Bukan bagian `pnpm test`
 └── public/
     └── img/menu/                              # Foto demo Item (dipakai seeder) — bakso, mie-ayam, es-teh, nasi-goreng, pangsit
 ```

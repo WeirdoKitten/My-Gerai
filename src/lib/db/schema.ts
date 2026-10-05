@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   doublePrecision,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -188,58 +189,75 @@ export const merchantOperatingHours = pgTable(
 );
 
 /** Item — produk/menu milik sebuah Lapak. */
-export const products = pgTable("products", {
-  id: uuid().primaryKey().defaultRandom(),
-  merchantId: uuid()
-    .notNull()
-    .references(() => merchants.id),
-  name: text().notNull(),
-  description: text(),
-  price: integer().notNull(),
-  /** Harga modal (HPP) per unit, dipakai untuk hitung laba di Laporan Penjualan. `null` = belum diisi. */
-  costPrice: integer(),
-  /** Sisa stok. `null` = tidak dibatasi. Berkurang saat Pesanan `dibayar`. */
-  stock: integer(),
-  /**
-   * Pre-order: waktu pembuatan minimal (hari). `null` = Item biasa (siap
-   * jual hari itu). Terisi = Item pre-order, dibuat sesuai pesanan, stok
-   * diabaikan, Pembeli wajib memilih jadwal >= hari ini + nilai ini.
-   */
-  preOrderMinDays: integer(),
-  /** Pre-order: batas terjauh jadwal yang boleh dipilih (hari ke depan). Terisi bersamaan dengan `preOrderMinDays`. */
-  preOrderMaxDays: integer(),
-  photoUrl: text(),
-  status: productStatusEnum().notNull().default("available"),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
+export const products = pgTable(
+  "products",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id),
+    name: text().notNull(),
+    description: text(),
+    price: integer().notNull(),
+    /** Harga modal (HPP) per unit, dipakai untuk hitung laba di Laporan Penjualan. `null` = belum diisi. */
+    costPrice: integer(),
+    /** Sisa stok. `null` = tidak dibatasi. Berkurang saat Pesanan `dibayar`. */
+    stock: integer(),
+    /**
+     * Pre-order: waktu pembuatan minimal (hari). `null` = Item biasa (siap
+     * jual hari itu). Terisi = Item pre-order, dibuat sesuai pesanan, stok
+     * diabaikan, Pembeli wajib memilih jadwal >= hari ini + nilai ini.
+     */
+    preOrderMinDays: integer(),
+    /** Pre-order: batas terjauh jadwal yang boleh dipilih (hari ke depan). Terisi bersamaan dengan `preOrderMinDays`. */
+    preOrderMaxDays: integer(),
+    photoUrl: text(),
+    status: productStatusEnum().notNull().default("available"),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // Index FK (Postgres tidak membuatnya otomatis) — lihat docs/STRESS-TEST.md P1-1.
+    index("products_merchant_id_idx").on(table.merchantId),
+  ],
+);
 
 /**
  * Grup varian sebuah Item (mis. "Level Pedas", "Ukuran", "Warna"). Satu Item
  * boleh punya banyak grup sekaligus. Stok TIDAK dipisah per varian — varian
  * murni preferensi/pilihan, stok tetap dihitung di `products.stock`.
  */
-export const productVariantGroups = pgTable("product_variant_groups", {
-  id: uuid().primaryKey().defaultRandom(),
-  productId: uuid()
-    .notNull()
-    .references(() => products.id, { onDelete: "cascade" }),
-  name: text().notNull(),
-  sortOrder: integer().notNull().default(0),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
+export const productVariantGroups = pgTable(
+  "product_variant_groups",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    productId: uuid()
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    sortOrder: integer().notNull().default(0),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("product_variant_groups_product_id_idx").on(table.productId),
+  ],
+);
 
 /** Satu pilihan di dalam grup varian (mis. "Pedas", "Jumbo"). */
-export const productVariantOptions = pgTable("product_variant_options", {
-  id: uuid().primaryKey().defaultRandom(),
-  groupId: uuid()
-    .notNull()
-    .references(() => productVariantGroups.id, { onDelete: "cascade" }),
-  name: text().notNull(),
-  /** Tambahan/pengurangan harga per unit terhadap products.price. Default 0. */
-  priceDelta: integer().notNull().default(0),
-  sortOrder: integer().notNull().default(0),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
+export const productVariantOptions = pgTable(
+  "product_variant_options",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    groupId: uuid()
+      .notNull()
+      .references(() => productVariantGroups.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    /** Tambahan/pengurangan harga per unit terhadap products.price. Default 0. */
+    priceDelta: integer().notNull().default(0),
+    sortOrder: integer().notNull().default(0),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("product_variant_options_group_id_idx").on(table.groupId)],
+);
 
 /**
  * Pesanan. Halaman status Pembeli (`/pesanan/[orderId]`) tidak butuh akun —
@@ -297,25 +315,40 @@ export const orders = pgTable(
     uniqueIndex("orders_order_code_v2_idx")
       .on(table.orderCode)
       .where(sql`length(${table.orderCode}) = 8`),
+    // Dashboard, Riwayat, Laporan Pedagang: selalu difilter per Lapak + urut waktu.
+    index("orders_merchant_id_created_at_idx").on(
+      table.merchantId,
+      table.createdAt,
+    ),
+    // Antrean Pesanan aktif dashboard Pedagang (dipoll tiap 5 dtk).
+    index("orders_merchant_id_status_idx").on(table.merchantId, table.status),
   ],
 );
 
 /** Baris Item di dalam sebuah Pesanan (snapshot nama & harga saat itu). */
-export const orderItems = pgTable("order_items", {
-  id: uuid().primaryKey().defaultRandom(),
-  orderId: uuid()
-    .notNull()
-    .references(() => orders.id, { onDelete: "cascade" }),
-  productId: uuid()
-    .notNull()
-    .references(() => products.id),
-  productNameSnapshot: text().notNull(),
-  priceSnapshot: integer().notNull(),
-  /** Harga modal Item saat Pesanan dibuat (snapshot, konsisten dengan priceSnapshot). `null` = Item belum punya harga modal saat itu. */
-  costPriceSnapshot: integer(),
-  qty: integer().notNull(),
-  note: text(),
-});
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    orderId: uuid()
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    productId: uuid()
+      .notNull()
+      .references(() => products.id),
+    productNameSnapshot: text().notNull(),
+    priceSnapshot: integer().notNull(),
+    /** Harga modal Item saat Pesanan dibuat (snapshot, konsisten dengan priceSnapshot). `null` = Item belum punya harga modal saat itu. */
+    costPriceSnapshot: integer(),
+    qty: integer().notNull(),
+    note: text(),
+  },
+  (table) => [
+    index("order_items_order_id_idx").on(table.orderId),
+    // Dipakai hitung stok yang sedang direservasi Pesanan menunggu pembayaran.
+    index("order_items_product_id_idx").on(table.productId),
+  ],
+);
 
 /**
  * Snapshot pilihan varian Pembeli saat Pesanan dibuat. Sengaja TANPA FK ke
@@ -335,6 +368,11 @@ export const orderItemVariantSelections = pgTable(
     priceDeltaSnapshot: integer().notNull(),
     sortOrder: integer().notNull().default(0),
   },
+  (table) => [
+    index("order_item_variant_selections_order_item_id_idx").on(
+      table.orderItemId,
+    ),
+  ],
 );
 
 /** Catatan transaksi payment gateway (mock dev/test, Midtrans produksi). */

@@ -4,6 +4,11 @@ import { and, asc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { getMerchantSession } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
+import {
+  type CachedStallCatalog,
+  invalidateStallCatalogCache,
+  stallCatalogCache,
+} from "@/lib/cache/stall-catalog";
 import { db } from "@/lib/db/client";
 import {
   merchantOperatingHours,
@@ -111,55 +116,76 @@ async function fetchVariantGroupsByProductId(
 export async function getStallCatalog(
   slug: string,
 ): Promise<StallCatalogResult> {
-  const merchant = await db.query.merchants.findFirst({
-    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
-  });
-  if (!merchant) return { ok: false, reason: "not_found" };
+  const content = await stallCatalogCache.get(slug, () =>
+    loadStallCatalogContent(slug),
+  );
+  if (!content) return { ok: false, reason: "not_found" };
 
   const { serviceFeeGracePeriodDays } = await getActivePlatformConfig();
-  if (await isMerchantOrderingLocked(merchant.id, serviceFeeGracePeriodDays)) {
+  if (
+    await isMerchantOrderingLocked(
+      content.merchantId,
+      serviceFeeGracePeriodDays,
+    )
+  ) {
     return { ok: false, reason: "locked" };
   }
 
-  const [merchantProducts, { isOpen, reopensAt }] = await Promise.all([
-    db.query.products.findMany({
-      where: and(
-        eq(products.merchantId, merchant.id),
-        eq(products.status, "available"),
-        or(isNull(products.stock), gt(products.stock, 0)),
-      ),
-      orderBy: [asc(products.name)],
-    }),
-    getMerchantOpenState(merchant.id),
-  ]);
+  const { isOpen, reopensAt } = await getMerchantOpenState(content.merchantId);
+  return {
+    ok: true,
+    catalog: {
+      merchant: {
+        ...content.merchant,
+        isOpen,
+        reopensAt: reopensAt ? reopensAt.toISOString() : null,
+      },
+      products: content.products,
+    },
+  };
+}
+
+/** Isi katalog yang di-cache (lihat src/lib/cache/stall-catalog.ts). */
+async function loadStallCatalogContent(
+  slug: string,
+): Promise<CachedStallCatalog | null> {
+  const merchant = await db.query.merchants.findFirst({
+    where: and(eq(merchants.slug, slug), eq(merchants.status, "approved")),
+  });
+  if (!merchant) return null;
+
+  const merchantProducts = await db.query.products.findMany({
+    where: and(
+      eq(products.merchantId, merchant.id),
+      eq(products.status, "available"),
+      or(isNull(products.stock), gt(products.stock, 0)),
+    ),
+    orderBy: [asc(products.name)],
+  });
   const variantGroupsByProductId = await fetchVariantGroupsByProductId(
     merchantProducts.map((product) => product.id),
   );
 
   return {
-    ok: true,
-    catalog: {
-      merchant: {
-        slug: merchant.slug,
-        stallName: merchant.stallName,
-        category: merchant.category,
-        photoUrl: merchant.photoUrl,
-        isOpen,
-        reopensAt: reopensAt ? reopensAt.toISOString() : null,
-        address: merchant.address,
-        latitude: merchant.latitude,
-        longitude: merchant.longitude,
-      },
-      products: merchantProducts.map((product) => ({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        photoUrl: product.photoUrl,
-        variantGroups: variantGroupsByProductId.get(product.id) ?? [],
-        preOrder: toPreOrderRange(product),
-      })),
+    merchantId: merchant.id,
+    merchant: {
+      slug: merchant.slug,
+      stallName: merchant.stallName,
+      category: merchant.category,
+      photoUrl: merchant.photoUrl,
+      address: merchant.address,
+      latitude: merchant.latitude,
+      longitude: merchant.longitude,
     },
+    products: merchantProducts.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      photoUrl: product.photoUrl,
+      variantGroups: variantGroupsByProductId.get(product.id) ?? [],
+      preOrder: toPreOrderRange(product),
+    })),
   };
 }
 
@@ -311,6 +337,7 @@ export async function createProduct(
     })
     .returning();
 
+  invalidateStallCatalogCache();
   return { ok: true, productId: product.id };
 }
 
@@ -387,6 +414,7 @@ export async function updateProduct(
   if (!updated) {
     return { ok: false, message: "Item tidak ditemukan." };
   }
+  invalidateStallCatalogCache();
   return { ok: true };
 }
 
@@ -419,5 +447,6 @@ export async function setProductStatus(
   if (!updated) {
     return { ok: false, message: "Item tidak ditemukan." };
   }
+  invalidateStallCatalogCache();
   return { ok: true };
 }

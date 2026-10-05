@@ -1,0 +1,22 @@
+[
+  {
+    "run": 1,
+    "status": 200,
+    "ms": 1206,
+    "body": {
+      "ok": true,
+      "invoicesCreated": 356,
+      "chargesCreated": 356
+    }
+  },
+  {
+    "run": 2,
+    "status": 200,
+    "ms": 77,
+    "body": {
+      "ok": true,
+      "invoicesCreated": 0,
+      "chargesCreated": 0
+    }
+  }
+]

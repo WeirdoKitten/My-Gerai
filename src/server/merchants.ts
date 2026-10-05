@@ -10,6 +10,8 @@ import {
   getMerchantSession,
 } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
+import { createTtlCache, productionTtl } from "@/lib/cache/memory";
+import { invalidateStallCatalogCache } from "@/lib/cache/stall-catalog";
 import { db } from "@/lib/db/client";
 import { merchantOperatingHours, merchants } from "@/lib/db/schema";
 import {
@@ -268,6 +270,7 @@ export async function updateMerchantProfile(
     })
     .where(eq(merchants.id, session.merchantId));
 
+  invalidateStallCatalogCache();
   return { ok: true, message: "Profil diperbarui." };
 }
 
@@ -484,6 +487,7 @@ export async function uploadMerchantPhoto(
   }
 
   const url = await saveMerchantPhoto(bytes, ext);
+  invalidateStallCatalogCache();
   return { ok: true, url };
 }
 
@@ -546,7 +550,21 @@ export async function getMerchantQrMenu(): Promise<QrMenuView | null> {
  * `areaName`) dihitung lazy di sini lewat `findNearestArea` -- tidak
  * disimpan di `merchants`, jadi perubahan Area oleh Admin langsung berlaku.
  */
-async function queryApprovedMerchants(
+/**
+ * Daftar Gerai publik (landing & `/gerai`) di-cache 30 dtk — dibaca setiap
+ * kunjungan landing tanpa sesi. Badge buka/tutup paling lambat 30 dtk basi.
+ */
+const approvedMerchantsCache = createTtlCache<number, PublicMerchantListItem[]>(
+  { ttlMs: productionTtl(30_000), maxEntries: 4 },
+);
+
+function queryApprovedMerchants(
+  limit: number,
+): Promise<PublicMerchantListItem[]> {
+  return approvedMerchantsCache.get(limit, () => loadApprovedMerchants(limit));
+}
+
+async function loadApprovedMerchants(
   limit: number,
 ): Promise<PublicMerchantListItem[]> {
   const [rows, areas] = await Promise.all([
@@ -728,6 +746,7 @@ export async function approveMerchant(
       message: "Pedagang ini sudah tidak berstatus menunggu persetujuan.",
     };
   }
+  invalidateStallCatalogCache();
   return { ok: true };
 }
 
@@ -766,5 +785,6 @@ export async function rejectMerchant(
       message: "Pedagang ini sudah tidak berstatus menunggu persetujuan.",
     };
   }
+  invalidateStallCatalogCache();
   return { ok: true };
 }

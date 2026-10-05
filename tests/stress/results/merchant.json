@@ -1,0 +1,122 @@
+[
+  {
+    "name": "listMerchantOrders (Lapak ramai, 318 aktif)",
+    "concurrency": 1,
+    "thinkMs": 0,
+    "requests": 1605,
+    "ok": 1605,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 80.2,
+    "durationS": 20,
+    "p50": 12,
+    "p90": 15,
+    "p95": 16,
+    "p99": 22,
+    "max": 212,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.71,
+      "cpuCoresMax": 0.95,
+      "rssMbMax": 340,
+      "dbConnMax": 2,
+      "dbActiveMax": 2
+    }
+  },
+  {
+    "name": "listMerchantOrders (Lapak ramai, 318 aktif)",
+    "concurrency": 10,
+    "thinkMs": 0,
+    "requests": 2728,
+    "ok": 2728,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 136.3,
+    "durationS": 20,
+    "p50": 72,
+    "p90": 84,
+    "p95": 90,
+    "p99": 102,
+    "max": 214,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 1.15,
+      "cpuCoresMax": 1.2,
+      "rssMbMax": 371,
+      "dbConnMax": 11,
+      "dbActiveMax": 7
+    }
+  },
+  {
+    "name": "listMerchantOrders (Lapak ramai, 318 aktif)",
+    "concurrency": 50,
+    "thinkMs": 0,
+    "requests": 2581,
+    "ok": 2581,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 126.9,
+    "durationS": 20.3,
+    "p50": 387,
+    "p90": 432,
+    "p95": 453,
+    "p99": 490,
+    "max": 595,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 1.17,
+      "cpuCoresMax": 1.32,
+      "rssMbMax": 432,
+      "dbConnMax": 21,
+      "dbActiveMax": 15
+    }
+  },
+  {
+    "name": "listMerchantOrders (Lapak ramai, 318 aktif)",
+    "concurrency": 200,
+    "thinkMs": 0,
+    "requests": 2634,
+    "ok": 2634,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 128.4,
+    "durationS": 20.5,
+    "p50": 1542,
+    "p90": 1666,
+    "p95": 1691,
+    "p99": 1787,
+    "max": 1872,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 1.2,
+      "cpuCoresMax": 1.28,
+      "rssMbMax": 587,
+      "dbConnMax": 21,
+      "dbActiveMax": 15
+    }
+  },
+  {
+    "name": "200 Lapak polling dashboard tiap 5 dtk",
+    "concurrency": 200,
+    "thinkMs": 5000,
+    "requests": 1597,
+    "ok": 1597,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 35.5,
+    "durationS": 45,
+    "p50": 10,
+    "p90": 14,
+    "p95": 15,
+    "p99": 17,
+    "max": 23,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.17,
+      "cpuCoresMax": 0.35,
+      "rssMbMax": 584,
+      "dbConnMax": 21,
+      "dbActiveMax": 2
+    }
+  }
+]

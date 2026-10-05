@@ -477,6 +477,33 @@
 - [x] Update DATA-MODEL, CHANGELOG.
 - [x] Update PRD §4/§7, GLOSSARY ("Pre-order"), DESAIN-SISTEM (`Select`, `Modal`).
 
+## Stress Test & Load Test (2026-10-05, branch `test/stress-test`)
+
+> Permintaan User: brute force puluhan ribu Pesanan + CCU sebanyak mungkin, hasil dirangkum sebagai referensi peningkatan performa. Hasil lengkap: [STRESS-TEST.md](STRESS-TEST.md).
+
+- [x] Alat uji tanpa dependency di `tests/stress/` (seeder 200 Lapak + 200.000 Pesanan, 12 skenario, pembanding sebelum/sesudah).
+- [x] Dijalankan ke server produksi lokal: ±60.000 Pesanan via HTTP, CCU hingga 10.000, soak 5 menit, race stok, rate-limit, payload besar, job tagihan.
+- [x] Eksperimen index sementara (tanpa ubah kode): throughput +60–80%.
+- [x] Dokumen hasil [STRESS-TEST.md](STRESS-TEST.md).
+
+Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & angka A/B di [STRESS-TEST.md §8](STRESS-TEST.md#8-hasil-setelah-optimasi-2026-10-05)):
+
+- [x] **P0** `/admin/payouts`: Daftar Transaksi per halaman (50), 45 dtk → <0,2 dtk.
+- [x] **P0** Oversell stok: **reservasi saat pesan** (keputusan User), `SELECT … FOR UPDATE` di transaksi `createOrder`. Uji race 300 Pembeli vs stok 50: tepat 50 lunas, oversell 0.
+- [x] **P0** QR: data URI di-cache per payload + polling ringkas `getOrderStatusSummary` (data lengkap hanya saat status berubah).
+- [x] **P1** Migrasi `0017`: 8 index (FK + `orders(merchant_id, created_at)` + `orders(merchant_id, status)`).
+- [x] **P1** Query Kode Pesanan & Lacak memakai index parsial (`length(order_code) = 8`).
+- [x] **P1** Pool DB `DATABASE_POOL_MAX` (default 20) + `DATABASE_STATEMENT_TIMEOUT_MS` (default 15000).
+- [x] **P1** Dashboard Pedagang: antrean aktif lewat 2 query ber-index (60 ms → 0,2 ms per poll).
+- [x] **P1** Tanya-status Midtrans dari polling di-cache 15 dtk per Pesanan.
+- [x] **P2** Cache in-memory: config platform, katalog menu, daftar Gerai, Laporan + rekomendasi; batas 50 baris `items`; sapu bucket rate-limiter.
+- [x] Unit test cache + batas `items`; E2E 15/15; `/security-review` tanpa temuan.
+- [ ] **P2 (butuh keputusan User)** Landing `/` statis: perlu `APP_URL` tersedia saat build (build arg Dokploy) — QR pendaftaran saat ini dibuat saat request.
+- [ ] **P2** Halaman menu masih dirender penuh tiap request (batas CPU 1 proses). Opsi: full-route cache/ISR dengan revalidasi tag.
+- [ ] **P2** Multi-instance (replica/cluster) — butuh rate-limiter & cache di store bersama (mis. Redis), keputusan infra User.
+- [ ] **P2** Cek konfigurasi Postgres produksi + aktifkan `pg_stat_statements`; HTTP 413 rapi untuk body > 1 MB.
+- [ ] **User:** uji manual (checkout, stok terbatas, dashboard, Laporan, halaman Admin Saldo & Pencairan) lalu jalankan migrasi `0017` di produksi (otomatis saat container start).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

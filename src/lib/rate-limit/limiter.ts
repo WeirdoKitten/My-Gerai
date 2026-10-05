@@ -11,16 +11,30 @@ const buckets = new Map<string, Bucket>();
 /**
  * Fixed-window rate limiter in-memory. State per-proses (tidak sinkron
  * lintas instance), diterima karena deployment saat ini single-instance
- * (lihat docs/TEKNOLOGI.md §Autentikasi). Bucket kedaluwarsa tidak
- * di-cleanup aktif — cukup ditimpa saat diakses ulang (pola sama dengan
- * lazy-check kedaluwarsa Pesanan/sesi login), aman di skala pedagang kaki lima.
+ * (lihat docs/TEKNOLOGI.md §Autentikasi). Bucket kedaluwarsa ditimpa saat
+ * diakses ulang; selain itu disapu sekali-sekali saat jumlahnya melewati
+ * {@link SWEEP_THRESHOLD}, supaya Map tidak tumbuh terus oleh IP unik
+ * (docs/STRESS-TEST.md P2-7).
  */
+const SWEEP_THRESHOLD = 10_000;
+let lastSweepAt = 0;
+
+/** Maks. sekali per menit, supaya tidak jadi O(n) di setiap panggilan saat bucket aktif memang banyak. */
+function sweepExpiredBuckets(now: number): void {
+  if (now - lastSweepAt < 60_000) return;
+  lastSweepAt = now;
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= now) buckets.delete(key);
+  }
+}
+
 export function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,
 ): boolean {
   const now = Date.now();
+  if (buckets.size >= SWEEP_THRESHOLD) sweepExpiredBuckets(now);
   const bucket = buckets.get(key);
 
   if (!bucket || bucket.resetAt <= now) {

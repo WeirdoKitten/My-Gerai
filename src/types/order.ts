@@ -51,6 +51,9 @@ export type BuyerOrderItemView = {
  * Tidak pernah membawa field internal (merchantId, dst) — lihat
  * docs/CODING-STYLE.md#struktur-fungsi-server-action.
  */
+/** Respons polling ringan halaman status Pembeli (lihat getOrderStatusSummary). */
+export type BuyerOrderStatusSummary = { status: Order["status"] };
+
 export type BuyerOrderStatusView = {
   id: string;
   orderCode: string;
@@ -220,6 +223,13 @@ export type AdminOrderListItem = {
   scheduledFor: Date | null;
   deliveryFailureReason: DeliveryFailureReason | null;
   deliveryFailureNote: string | null;
+};
+
+/** Satu halaman Daftar Transaksi Admin (lihat listOrdersForAdmin). */
+export type AdminOrderListPage = {
+  orders: AdminOrderListItem[];
+  page: number;
+  hasNextPage: boolean;
 };
 
 export type TrackOrderResult =

@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { createTtlCache } from "@/lib/cache/memory";
 
 /** Path StoreIcon (lucide-style, viewBox 24x24) — dipakai sebagai lambang di tengah QR, sinkron dengan `Wordmark`/`icons.tsx`. */
 const STORE_ICON_PATHS = [
@@ -133,13 +134,21 @@ function escapeXml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Poster pendaftaran isinya tetap per URL — dirender sekali, bukan tiap buka landing (docs/STRESS-TEST.md P2-2). */
+const registrationPosterCache = createTtlCache<string, string>({
+  ttlMs: 24 * 60 * 60_000,
+  maxEntries: 4,
+});
+
 export async function buildRegistrationQrPoster(url: string): Promise<string> {
-  return buildQrPoster({
-    url,
-    headerText: "MyGerai",
-    captionTitle: "Scan & Daftar Gratis",
-    captionSubtitle: "100% harga jual milikmu",
-  });
+  return registrationPosterCache.get(url, () =>
+    buildQrPoster({
+      url,
+      headerText: "MyGerai",
+      captionTitle: "Scan & Daftar Gratis",
+      captionSubtitle: "100% harga jual milikmu",
+    }),
+  );
 }
 
 export async function buildMenuQrPoster(
