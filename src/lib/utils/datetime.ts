@@ -11,6 +11,16 @@ export function formatDateTime(value: Date): string {
   return dateTimeFormatter.format(value);
 }
 
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeZone: "Asia/Jakarta",
+});
+
+/** Tanggal saja, mis. "9 Sep 2026" (WIB). */
+export function formatDate(value: Date): string {
+  return dateFormatter.format(value);
+}
+
 const scheduleFormatter = new Intl.DateTimeFormat("id-ID", {
   weekday: "long",
   day: "numeric",

@@ -1,4 +1,5 @@
 import type { PreOrderRange } from "@/lib/schedule/pre-order-slots";
+import type { PublicReviewView, RatingSummary } from "@/types/review";
 
 export type ProductVariantOptionView = {
   id: string;
@@ -47,6 +48,8 @@ export type StallCatalogView = {
     longitude: number | null;
   };
   products: BuyerProductView[];
+  /** Rating & Ulasan Gerai — ringkasan + ulasan terbaru (nama Pembeli disamarkan). */
+  reviews: { summary: RatingSummary; recent: PublicReviewView[] };
 };
 
 /**

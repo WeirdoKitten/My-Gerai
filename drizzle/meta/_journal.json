@@ -127,6 +127,13 @@
       "when": 1791187655631,
       "tag": "0017_perf_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791191116835,
+      "tag": "0018_merchant_reviews",
+      "breakpoints": true
     }
   ]
 }

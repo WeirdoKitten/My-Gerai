@@ -27,6 +27,7 @@ import {
 import { qrDataUrl } from "@/lib/payment/qr-image";
 import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
+import { fetchOrderReview } from "@/lib/review/queries";
 import type { OperatingHoursRow } from "@/lib/schedule/evaluate";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import {
@@ -823,11 +824,12 @@ export async function getOrderStatus(
       current;
   }
 
-  const [merchant, items] = await Promise.all([
+  const [merchant, items, review] = await Promise.all([
     db.query.merchants.findFirst({
       where: eq(merchants.id, current.merchantId),
     }),
     db.query.orderItems.findMany({ where: eq(orderItems.orderId, current.id) }),
+    current.status === "selesai" ? fetchOrderReview(current.id) : null,
   ]);
   const variantSelectionsByOrderItemId =
     await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
@@ -897,6 +899,7 @@ export async function getOrderStatus(
       payment?.provider === "mock" &&
       current.status === "menunggu_pembayaran",
     sandboxQrUrl,
+    review,
   };
 }
 

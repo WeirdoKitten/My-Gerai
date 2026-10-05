@@ -1,3 +1,5 @@
+import type { RatingSummary } from "@/types/review";
+
 export type RegisterMerchantResult =
   | { ok: true; message: string }
   | { ok: false; message: string };
@@ -107,4 +109,6 @@ export type PublicMerchantListItem = {
   areaName: string | null;
   /** Status buka/tutup saat ini — sama logikanya dengan `getMerchantOpenState`. */
   isOpen: boolean;
+  /** Rating & Ulasan Gerai (ringkasan). */
+  rating: RatingSummary;
 };

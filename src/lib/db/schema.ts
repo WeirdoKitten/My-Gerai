@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -371,6 +372,43 @@ export const orderItemVariantSelections = pgTable(
   (table) => [
     index("order_item_variant_selections_order_item_id_idx").on(
       table.orderItemId,
+    ),
+  ],
+);
+
+/**
+ * Rating & Ulasan Gerai (2026-10-05). Hanya Pembeli Pesanan `selesai` yang
+ * boleh menulis, maksimal satu per Pesanan (`UNIQUE(order_id)`) — link status
+ * Pesanan (UUID) jadi bukti beli, tanpa akun. Final: tidak bisa diubah/dihapus
+ * Pembeli. `merchant_id` diduplikasi dari Pesanan supaya agregat per Lapak
+ * tidak perlu JOIN ke `orders`. Nama Pembeli diambil dari `orders.buyer_name`.
+ */
+export const merchantReviews = pgTable(
+  "merchant_reviews",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    orderId: uuid()
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    /** 1-5 bintang. */
+    rating: integer().notNull(),
+    /** Komentar opsional (maks 500 karakter, divalidasi Zod). */
+    comment: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("merchant_reviews_order_id_idx").on(table.orderId),
+    // Daftar ulasan terbaru per Lapak + agregat rata-rata per Lapak.
+    index("merchant_reviews_merchant_id_created_at_idx").on(
+      table.merchantId,
+      table.createdAt,
+    ),
+    check(
+      "merchant_reviews_rating_range",
+      sql`${table.rating} between 1 and 5`,
     ),
   ],
 );

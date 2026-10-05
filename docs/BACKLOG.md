@@ -504,6 +504,20 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [ ] **P2** Cek konfigurasi Postgres produksi + aktifkan `pg_stat_statements`; HTTP 413 rapi untuk body > 1 MB.
 - [ ] **User:** uji manual (checkout, stok terbatas, dashboard, Laporan, halaman Admin Saldo & Pencairan) lalu jalankan migrasi `0017` di produksi (otomatis saat container start).
 
+## Rating & Ulasan Gerai (2026-10-05, branch `feat/rating-ulasan`)
+
+> Permintaan User: Pembeli bisa memberi rating & ulasan untuk Gerai. Keputusan (AskUserQuestion 2026-10-05): **hanya Pembeli dengan Pesanan `selesai`** yang boleh mengulas (form di halaman status Pesanan, 1 ulasan per Pesanan — link status jadi bukti beli, tanpa akun); format **bintang 1–5 wajib + komentar opsional**; ditampilkan di **halaman menu**, **kartu Gerai** (landing & `/gerai`), dan **dashboard Pedagang**; **tanpa moderasi** dulu (tidak ada balasan Pedagang / sembunyikan oleh Admin).
+
+- [x] Data model: tabel `merchant_reviews` (`UNIQUE(order_id)`, `CHECK rating 1–5`, index `(merchant_id, created_at)`), migrasi `0018_merchant_reviews.sql`.
+- [x] `src/server/reviews.ts`: `submitOrderReview` (tanpa sesi; rate-limit 10/10 menit per IP; status Pesanan wajib `selesai`; insert `ON CONFLICT DO NOTHING`), `listMerchantReviews` (sesi Pedagang, maks 100 + distribusi bintang). Query baca bersama di `src/lib/review/queries.ts` (bukan Server Action).
+- [x] Halaman status Pesanan: `OrderReviewSection` (pilih bintang + komentar, final setelah dikirim). `getOrderStatus` menyertakan `review` saat `selesai`.
+- [x] Halaman menu: ringkasan rating di header + bagian "Rating & Ulasan" (10 terbaru, nama Pembeli disamarkan `maskBuyerName`, mis. "Budi S."). Ikut cache katalog 15 dtk, dikosongkan saat ulasan baru masuk.
+- [x] Kartu Gerai (landing & `/gerai`): chip "★ 4,7 (12)" — agregat dibatch satu query `GROUP BY`.
+- [x] Dashboard Pedagang: `/dashboard/ulasan` (rata-rata, distribusi 1–5, daftar ulasan dengan nama lengkap + Kode Pesanan), ditautkan dari `/dashboard/profil`.
+- [x] Komponen `ui/StarRating`, ikon `StarIcon`, `formatDate`.
+- [x] Unit test `tests/unit/review.test.ts` (8 test); E2E `order-flow.spec.ts` + 1 test (beri ulasan → tampil di menu, `/gerai`, dashboard). Suite E2E 16/16, unit 199/199, `tsc`/`build` lulus. Constraint DB (duplikat & rating 6) dibuktikan menolak. Cek visual di lebar HP.
+- [ ] Uji manual User.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.
@@ -517,3 +531,4 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [ ] PWA "Add to Home Screen" untuk halaman Pembeli.
 - [ ] Ongkir per km (jarak garis lurus × faktor koreksi, dibulatkan) — lanjutan Fase 11, saat ini tarif tetap.
 - [ ] Gratis ongkir di atas minimal belanja (Fase 11).
+- [ ] Rating & Ulasan lanjutan: balasan Pedagang, Admin menyembunyikan ulasan kasar/spam, ulasan per Item.

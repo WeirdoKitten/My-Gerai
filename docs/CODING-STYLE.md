@@ -26,6 +26,7 @@
 | Status Buka/Tutup | `isOpen` (turunan, dihitung `getMerchantOpenState` — bukan kolom) |
 | Override Manual | `manualOverride` (kolom `merchants.manual_override`, nilai `"open"`\|`"closed"`) |
 | Biaya Layanan | `platformFee` |
+| Rating & Ulasan | `Review` / `rating` (tabel `merchant_reviews`, 1 per Pesanan); ringkasan: `RatingSummary` |
 | Saldo Pedagang | `merchantBalance` (nilai turunan, bukan kolom, lihat [DATA-MODEL.md](DATA-MODEL.md#payouts-pencairan)) |
 | Pencairan | `Payout` |
 | Aplikator | `Platform` (konteks umum, jarang jadi nama entitas eksplisit) |

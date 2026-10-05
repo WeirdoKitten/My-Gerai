@@ -7,8 +7,14 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { ChevronDownIcon, SearchIcon, StoreIcon } from "@/components/ui/icons";
+import {
+  ChevronDownIcon,
+  SearchIcon,
+  StarIcon,
+  StoreIcon,
+} from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
+import { formatRating } from "@/lib/review/rating";
 import { cn } from "@/lib/utils/cn";
 import { formatDistanceKm, haversineDistanceKm } from "@/lib/utils/geo";
 import type { PublicMerchantListItem } from "@/types/merchant";
@@ -353,6 +359,18 @@ export function MerchantShowcase({
                       {merchant.isOpen ? "Buka" : "Tutup"}
                     </Badge>
                   </div>
+                  {merchant.rating.average !== null ? (
+                    <div className="absolute left-3 top-3">
+                      {/* Bukan <Badge>: warna latarnya hard-code & `cn()` tidak menimpa class (lihat DESAIN-SISTEM.md). */}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold text-ink">
+                        <StarIcon filled className="size-3.5 text-brand" />
+                        {formatRating(merchant.rating.average)}
+                        <span className="font-normal text-ink-muted">
+                          ({merchant.rating.count})
+                        </span>
+                      </span>
+                    </div>
+                  ) : null}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-5">
                     <p className="line-clamp-2 text-xl font-bold leading-tight text-white">

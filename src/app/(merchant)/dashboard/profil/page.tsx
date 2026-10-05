@@ -7,6 +7,7 @@ import {
   ArrowRightIcon,
   ClockIcon,
   MapPinIcon,
+  StarIcon,
   WalletIcon,
 } from "@/components/ui/icons";
 import { getMerchantProfile } from "@/server/merchants";
@@ -58,6 +59,11 @@ export default async function MerchantProfilePage() {
         href="/dashboard/pengantaran"
         icon={<MapPinIcon className="size-4 text-ink-muted" />}
         label="Pengantaran"
+      />
+      <SettingsLinkRow
+        href="/dashboard/ulasan"
+        icon={<StarIcon className="size-4 text-ink-muted" />}
+        label="Rating & Ulasan"
       />
       <SoundSettingRow />
       <MerchantProfileForm profile={profile} />

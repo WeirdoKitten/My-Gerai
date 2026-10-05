@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { OrderReviewSection } from "@/components/buyer/OrderReviewSection";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -179,6 +180,14 @@ export function OrderStatusView({
         <OrderStatusBadge status={order.status} />
         <CopyOrderCode orderCode={order.orderCode} />
       </Card>
+
+      {order.status === "selesai" ? (
+        <OrderReviewSection
+          orderId={order.id}
+          stallName={order.stallName}
+          initialReview={order.review}
+        />
+      ) : null}
 
       {order.scheduledFor ? (
         <Card className="flex flex-col gap-1 text-sm">

@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { ClosedStallNotice } from "@/components/buyer/ClosedStallNotice";
 import { FloatingCartBar } from "@/components/buyer/FloatingCartBar";
 import { ProductCard } from "@/components/buyer/ProductCard";
+import {
+  StallRatingSummary,
+  StallReviewList,
+} from "@/components/buyer/StallReviews";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -43,6 +47,7 @@ export default async function StallMenuPage(
             {catalog.merchant.stallName}
           </h1>
           <p className="text-sm text-ink-muted">{catalog.merchant.category}</p>
+          <StallRatingSummary summary={catalog.reviews.summary} />
         </div>
       </div>
 
@@ -101,6 +106,8 @@ export default async function StallMenuPage(
           ))}
         </div>
       )}
+
+      <StallReviewList reviews={catalog.reviews} />
 
       <FloatingCartBar />
     </div>

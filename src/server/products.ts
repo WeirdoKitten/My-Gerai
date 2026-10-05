@@ -18,6 +18,7 @@ import {
   productVariantOptions,
 } from "@/lib/db/schema";
 import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit/limiter";
+import { fetchPublicStallReviews } from "@/lib/review/queries";
 import type { OperatingHoursRow } from "@/lib/schedule/evaluate";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import type { PreOrderRange } from "@/lib/schedule/pre-order-slots";
@@ -141,6 +142,7 @@ export async function getStallCatalog(
         reopensAt: reopensAt ? reopensAt.toISOString() : null,
       },
       products: content.products,
+      reviews: content.reviews,
     },
   };
 }
@@ -162,9 +164,12 @@ async function loadStallCatalogContent(
     ),
     orderBy: [asc(products.name)],
   });
-  const variantGroupsByProductId = await fetchVariantGroupsByProductId(
-    merchantProducts.map((product) => product.id),
-  );
+  const [variantGroupsByProductId, reviews] = await Promise.all([
+    fetchVariantGroupsByProductId(
+      merchantProducts.map((product) => product.id),
+    ),
+    fetchPublicStallReviews(merchant.id),
+  ]);
 
   return {
     merchantId: merchant.id,
@@ -186,6 +191,7 @@ async function loadStallCatalogContent(
       variantGroups: variantGroupsByProductId.get(product.id) ?? [],
       preOrder: toPreOrderRange(product),
     })),
+    reviews,
   };
 }
 

@@ -19,6 +19,7 @@ import {
   getClientIp,
   RATE_LIMIT_MESSAGE,
 } from "@/lib/rate-limit/limiter";
+import { fetchRatingSummaries } from "@/lib/review/queries";
 import {
   evaluateSchedule,
   type OperatingHoursRow,
@@ -577,9 +578,9 @@ async function loadApprovedMerchants(
   ]);
 
   const merchantIds = rows.map((row) => row.id);
-  const hoursRows =
+  const [hoursRows, ratingByMerchant] = await Promise.all([
     merchantIds.length > 0
-      ? await db.query.merchantOperatingHours.findMany({
+      ? db.query.merchantOperatingHours.findMany({
           where: inArray(merchantOperatingHours.merchantId, merchantIds),
           columns: {
             merchantId: true,
@@ -588,7 +589,9 @@ async function loadApprovedMerchants(
             closeTime: true,
           },
         })
-      : [];
+      : [],
+    fetchRatingSummaries(merchantIds),
+  ]);
   const hoursByMerchant = new Map<string, OperatingHoursRow[]>();
   for (const hour of hoursRows) {
     const list = hoursByMerchant.get(hour.merchantId) ?? [];
@@ -631,6 +634,7 @@ async function loadApprovedMerchants(
       areaId: area?.id ?? null,
       areaName: area?.name ?? null,
       isOpen,
+      rating: ratingByMerchant.get(row.id) ?? { average: null, count: 0 },
     };
   });
 }
