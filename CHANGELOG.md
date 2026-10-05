@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-05 — Stress test & load test (branch `test/stress-test`)
+
+**Dampak:** [docs/STRESS-TEST.md](docs/STRESS-TEST.md) (baru), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [CLAUDE.md](CLAUDE.md). Kode baru: `tests/stress/` (alat uji, tidak ikut aplikasi).
+**Alasan:** Permintaan User: uji apakah aplikasi sanggup menangani puluhan ribu Pesanan dan CCU sebanyak mungkin, sebagai referensi peningkatan performa.
+**Ringkasan:**
+- Tidak ada Pesanan rusak/hilang (30.000 Pesanan ke satu Lapak: 0% gagal), tetapi kapasitas rendah: ±120 Pembeli menunggu bayar bersamaan, ±95 Lapak membuka dashboard bersamaan, ±67 Pesanan/dtk.
+- Temuan P0: `/admin/payouts` membuat server crash OOM pada ±260 ribu Pesanan; oversell stok 250 dari 50; render ulang QR di setiap poll.
+- Index yang hilang terbukti jadi bottleneck: uji index sementara menaikkan throughput 60–80%. Daftar perbaikan masuk BACKLOG, belum dikerjakan.
+
 ## 2026-10-05 — Pre-order: verifikasi + dokumen
 
 **Dampak:** [docs/PRD.md](docs/PRD.md) (§4, §7), [docs/GLOSSARY.md](docs/GLOSSARY.md) ("Pre-order"), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (`Select`, `Modal`), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/ui/Modal.tsx`, `tests/e2e/pre-order.spec.ts`.

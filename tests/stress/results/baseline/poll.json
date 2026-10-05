@@ -1,0 +1,135 @@
+[
+  {
+    "name": "polling getOrderStatus tiap 4 dtk",
+    "concurrency": 500,
+    "thinkMs": 4000,
+    "requests": 1757,
+    "ok": 1754,
+    "failed": 3,
+    "errorRate": 0.17,
+    "rps": 31.7,
+    "durationS": 55.4,
+    "p50": 10469,
+    "p90": 11542,
+    "p95": 11772,
+    "p99": 11983,
+    "max": 12153,
+    "errors": {
+      "ECONNRESET": 3
+    },
+    "resources": {
+      "cpuCoresAvg": 0.81,
+      "cpuCoresMax": 1.22,
+      "rssMbMax": 607,
+      "dbConnMax": 14,
+      "dbActiveMax": 13
+    }
+  },
+  {
+    "name": "polling getOrderStatus tiap 4 dtk",
+    "concurrency": 1000,
+    "thinkMs": 4000,
+    "requests": 2250,
+    "ok": 2246,
+    "failed": 4,
+    "errorRate": 0.18,
+    "rps": 33.1,
+    "durationS": 68,
+    "p50": 22458,
+    "p90": 24904,
+    "p95": 25694,
+    "p99": 26193,
+    "max": 26362,
+    "errors": {
+      "ECONNRESET": 4
+    },
+    "resources": {
+      "cpuCoresAvg": 0.83,
+      "cpuCoresMax": 1.28,
+      "rssMbMax": 603,
+      "dbConnMax": 16,
+      "dbActiveMax": 14
+    }
+  },
+  {
+    "name": "polling getOrderStatus tiap 4 dtk",
+    "concurrency": 2500,
+    "thinkMs": 4000,
+    "requests": 3385,
+    "ok": 1930,
+    "failed": 1455,
+    "errorRate": 42.98,
+    "rps": 40.8,
+    "durationS": 83,
+    "p50": 47006,
+    "p90": 60030,
+    "p95": 60041,
+    "p99": 60060,
+    "max": 60069,
+    "errors": {
+      "ECONNREFUSED": 713,
+      "TIMEOUT": 742
+    },
+    "resources": {
+      "cpuCoresAvg": 0.77,
+      "cpuCoresMax": 1.47,
+      "rssMbMax": 703,
+      "dbConnMax": 13,
+      "dbActiveMax": 13
+    }
+  },
+  {
+    "name": "polling getOrderStatus tiap 4 dtk",
+    "concurrency": 5000,
+    "thinkMs": 4000,
+    "requests": 9386,
+    "ok": 194,
+    "failed": 9192,
+    "errorRate": 97.93,
+    "rps": 86.5,
+    "durationS": 108.5,
+    "p50": 60014,
+    "p90": 60060,
+    "p95": 60068,
+    "p99": 60083,
+    "max": 60109,
+    "errors": {
+      "ECONNREFUSED": 4276,
+      "TIMEOUT": 4916
+    },
+    "resources": {
+      "cpuCoresAvg": 0.68,
+      "cpuCoresMax": 1.44,
+      "rssMbMax": 1185,
+      "dbConnMax": 15,
+      "dbActiveMax": 14
+    }
+  },
+  {
+    "name": "polling getOrderStatus tiap 4 dtk",
+    "concurrency": 10000,
+    "thinkMs": 4000,
+    "requests": 19279,
+    "ok": 0,
+    "failed": 19279,
+    "errorRate": 100,
+    "rps": 191.1,
+    "durationS": 100.9,
+    "p50": 60026,
+    "p90": 68096,
+    "p95": 69401,
+    "p99": 69914,
+    "max": 70319,
+    "errors": {
+      "ECONNREFUSED": 9279,
+      "TIMEOUT": 10000
+    },
+    "resources": {
+      "cpuCoresAvg": 1.21,
+      "cpuCoresMax": 2.03,
+      "rssMbMax": 1769,
+      "dbConnMax": 14,
+      "dbActiveMax": 13
+    }
+  }
+]

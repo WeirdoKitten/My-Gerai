@@ -1,0 +1,102 @@
+[
+  {
+    "name": "alur penuh (4 panggilan)",
+    "concurrency": 50,
+    "thinkMs": 0,
+    "requests": 248,
+    "ok": 248,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 10.2,
+    "durationS": 24.2,
+    "p50": 4795,
+    "p90": 5036,
+    "p95": 5132,
+    "p99": 5275,
+    "max": 5296,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.76,
+      "cpuCoresMax": 0.86,
+      "rssMbMax": 1350,
+      "dbConnMax": 17,
+      "dbActiveMax": 11
+    }
+  },
+  {
+    "name": "alur penuh (4 panggilan)",
+    "concurrency": 200,
+    "thinkMs": 0,
+    "requests": 400,
+    "ok": 400,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 11.2,
+    "durationS": 35.7,
+    "p50": 17560,
+    "p90": 18159,
+    "p95": 18231,
+    "p99": 18334,
+    "max": 18441,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.62,
+      "cpuCoresMax": 1.06,
+      "rssMbMax": 1350,
+      "dbConnMax": 17,
+      "dbActiveMax": 13
+    }
+  },
+  {
+    "name": "alur penuh (4 panggilan)",
+    "concurrency": 500,
+    "thinkMs": 0,
+    "requests": 1186,
+    "ok": 500,
+    "failed": 686,
+    "errorRate": 57.84,
+    "rps": 27.1,
+    "durationS": 43.7,
+    "p50": 54,
+    "p90": 43453,
+    "p95": 43517,
+    "p99": 43575,
+    "max": 43597,
+    "errors": {
+      "ECONNREFUSED": 686
+    },
+    "resources": {
+      "cpuCoresAvg": 0.61,
+      "cpuCoresMax": 1.16,
+      "rssMbMax": 1351,
+      "dbConnMax": 18,
+      "dbActiveMax": 13
+    }
+  },
+  {
+    "name": "alur penuh (4 panggilan)",
+    "concurrency": 1000,
+    "thinkMs": 0,
+    "requests": 2819,
+    "ok": 1000,
+    "failed": 1819,
+    "errorRate": 64.53,
+    "rps": 32.3,
+    "durationS": 87.3,
+    "p50": 381,
+    "p90": 86379,
+    "p95": 86535,
+    "p99": 86660,
+    "max": 86692,
+    "errors": {
+      "ECONNREFUSED": 1819
+    },
+    "resources": {
+      "cpuCoresAvg": 0.66,
+      "cpuCoresMax": 1.22,
+      "rssMbMax": 1353,
+      "dbConnMax": 19,
+      "dbActiveMax": 13
+    }
+  }
+]

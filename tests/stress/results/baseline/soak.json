@@ -1,0 +1,83 @@
+{
+  "resources": {
+    "cpuCoresAvg": 0.86,
+    "cpuCoresMax": 1.25,
+    "rssMbMax": 594,
+    "dbConnMax": 16,
+    "dbActiveMax": 15
+  },
+  "parts": [
+    {
+      "name": "soak: 1000 Pembeli polling status",
+      "concurrency": 1000,
+      "thinkMs": 4000,
+      "requests": 8926,
+      "ok": 8920,
+      "failed": 6,
+      "errorRate": 0.07,
+      "rps": 26.8,
+      "durationS": 333.7,
+      "p50": 33320,
+      "p90": 35046,
+      "p95": 35427,
+      "p99": 37230,
+      "max": 38751,
+      "errors": {
+        "ECONNRESET": 6
+      }
+    },
+    {
+      "name": "soak: Pesanan baru (~25/dtk)",
+      "concurrency": 25,
+      "thinkMs": 1000,
+      "requests": 150,
+      "ok": 50,
+      "failed": 100,
+      "errorRate": 66.67,
+      "rps": 0.5,
+      "durationS": 331,
+      "p50": 60004,
+      "p90": 60014,
+      "p95": 60016,
+      "p99": 60026,
+      "max": 60027,
+      "errors": {
+        "TIMEOUT": 100
+      }
+    },
+    {
+      "name": "soak: 200 Lapak polling dashboard",
+      "concurrency": 200,
+      "thinkMs": 5000,
+      "requests": 1477,
+      "ok": 1477,
+      "failed": 0,
+      "errorRate": 0,
+      "rps": 4.5,
+      "durationS": 331.9,
+      "p50": 42256,
+      "p90": 45690,
+      "p95": 45807,
+      "p99": 46049,
+      "max": 46880,
+      "errors": {}
+    },
+    {
+      "name": "soak: buka menu (~50/dtk)",
+      "concurrency": 50,
+      "thinkMs": 1000,
+      "requests": 400,
+      "ok": 400,
+      "failed": 0,
+      "errorRate": 0,
+      "rps": 1.2,
+      "durationS": 330.7,
+      "p50": 42296,
+      "p90": 44879,
+      "p95": 46590,
+      "p99": 47435,
+      "max": 47489,
+      "errors": {}
+    }
+  ]
+}

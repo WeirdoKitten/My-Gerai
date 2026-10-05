@@ -1,0 +1,177 @@
+[
+  {
+    "name": "createOrder",
+    "concurrency": 10,
+    "thinkMs": 0,
+    "requests": 1438,
+    "ok": 1438,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 71.3,
+    "durationS": 20.2,
+    "p50": 126,
+    "p90": 187,
+    "p95": 225,
+    "p99": 272,
+    "max": 309,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.76,
+      "cpuCoresMax": 0.85,
+      "rssMbMax": 1338,
+      "dbConnMax": 17,
+      "dbActiveMax": 11
+    }
+  },
+  {
+    "name": "createOrder",
+    "concurrency": 50,
+    "thinkMs": 0,
+    "requests": 1387,
+    "ok": 1387,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 67.2,
+    "durationS": 20.6,
+    "p50": 731,
+    "p90": 837,
+    "p95": 872,
+    "p99": 958,
+    "max": 1057,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.89,
+      "cpuCoresMax": 1.02,
+      "rssMbMax": 1338,
+      "dbConnMax": 17,
+      "dbActiveMax": 11
+    }
+  },
+  {
+    "name": "createOrder",
+    "concurrency": 100,
+    "thinkMs": 0,
+    "requests": 1380,
+    "ok": 1380,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 65.2,
+    "durationS": 21.2,
+    "p50": 1504,
+    "p90": 1630,
+    "p95": 1678,
+    "p99": 1752,
+    "max": 2081,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.74,
+      "cpuCoresMax": 0.83,
+      "rssMbMax": 1339,
+      "dbConnMax": 17,
+      "dbActiveMax": 11
+    }
+  },
+  {
+    "name": "createOrder",
+    "concurrency": 250,
+    "thinkMs": 0,
+    "requests": 1500,
+    "ok": 1500,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 68.5,
+    "durationS": 21.9,
+    "p50": 3593,
+    "p90": 3787,
+    "p95": 3891,
+    "p99": 4053,
+    "max": 4215,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.56,
+      "cpuCoresMax": 0.65,
+      "rssMbMax": 1339,
+      "dbConnMax": 16,
+      "dbActiveMax": 11
+    }
+  },
+  {
+    "name": "createOrder",
+    "concurrency": 500,
+    "thinkMs": 0,
+    "requests": 2374,
+    "ok": 1500,
+    "failed": 874,
+    "errorRate": 36.82,
+    "rps": 101.8,
+    "durationS": 23.3,
+    "p50": 7378,
+    "p90": 7891,
+    "p95": 8163,
+    "p99": 8428,
+    "max": 8897,
+    "errors": {
+      "ECONNREFUSED": 874
+    },
+    "resources": {
+      "cpuCoresAvg": 0.57,
+      "cpuCoresMax": 1.16,
+      "rssMbMax": 1339,
+      "dbConnMax": 16,
+      "dbActiveMax": 11
+    }
+  },
+  {
+    "name": "createOrder",
+    "concurrency": 1000,
+    "thinkMs": 0,
+    "requests": 4357,
+    "ok": 2000,
+    "failed": 2357,
+    "errorRate": 54.1,
+    "rps": 131.2,
+    "durationS": 33.2,
+    "p50": 297,
+    "p90": 16376,
+    "p95": 16633,
+    "p99": 17544,
+    "max": 18645,
+    "errors": {
+      "ECONNREFUSED": 2357
+    },
+    "resources": {
+      "cpuCoresAvg": 0.59,
+      "cpuCoresMax": 1.19,
+      "rssMbMax": 1333,
+      "dbConnMax": 17,
+      "dbActiveMax": 11
+    }
+  },
+  {
+    "name": "createOrder",
+    "concurrency": 2000,
+    "thinkMs": 0,
+    "requests": 4578,
+    "ok": 2473,
+    "failed": 2105,
+    "errorRate": 45.98,
+    "rps": 122.7,
+    "durationS": 37.3,
+    "p50": 12944,
+    "p90": 28995,
+    "p95": 29201,
+    "p99": 29321,
+    "max": 29485,
+    "errors": {
+      "ECONNREFUSED": 2101,
+      "ECONNRESET": 4
+    },
+    "resources": {
+      "cpuCoresAvg": 0.56,
+      "cpuCoresMax": 1.34,
+      "rssMbMax": 1337,
+      "dbConnMax": 17,
+      "dbActiveMax": 12
+    }
+  }
+]

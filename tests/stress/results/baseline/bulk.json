@@ -1,0 +1,26 @@
+[
+  {
+    "name": "createOrder x30000 ke stress-hot",
+    "concurrency": 200,
+    "thinkMs": 0,
+    "requests": 30000,
+    "ok": 30000,
+    "failed": 0,
+    "errorRate": 0,
+    "rps": 47.2,
+    "durationS": 636.2,
+    "p50": 4526,
+    "p90": 4902,
+    "p95": 5029,
+    "p99": 5227,
+    "max": 5639,
+    "errors": {},
+    "resources": {
+      "cpuCoresAvg": 0.84,
+      "cpuCoresMax": 1.09,
+      "rssMbMax": 1345,
+      "dbConnMax": 18,
+      "dbActiveMax": 13
+    }
+  }
+]

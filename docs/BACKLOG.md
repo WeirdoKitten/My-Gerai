@@ -477,6 +477,26 @@
 - [x] Update DATA-MODEL, CHANGELOG.
 - [x] Update PRD §4/§7, GLOSSARY ("Pre-order"), DESAIN-SISTEM (`Select`, `Modal`).
 
+## Stress Test & Load Test (2026-10-05, branch `test/stress-test`)
+
+> Permintaan User: brute force puluhan ribu Pesanan + CCU sebanyak mungkin, hasil dirangkum sebagai referensi peningkatan performa. Hasil lengkap: [STRESS-TEST.md](STRESS-TEST.md).
+
+- [x] Alat uji tanpa dependency di `tests/stress/` (seeder 200 Lapak + 200.000 Pesanan, 12 skenario, pembanding sebelum/sesudah).
+- [x] Dijalankan ke server produksi lokal: ±60.000 Pesanan via HTTP, CCU hingga 10.000, soak 5 menit, race stok, rate-limit, payload besar, job tagihan.
+- [x] Eksperimen index sementara (tanpa ubah kode): throughput +60–80%.
+- [x] Dokumen hasil [STRESS-TEST.md](STRESS-TEST.md).
+
+Tindak lanjut (belum dikerjakan, urut prioritas, detail di [STRESS-TEST.md §4](STRESS-TEST.md#4-temuan--rekomendasi-berprioritas)):
+
+- [ ] **P0** `/admin/payouts` memuat semua Pesanan → crash OOM di ±260 ribu Pesanan. Pagination + agregat SQL.
+- [ ] **P0** Oversell stok (stok dicek saat buat, dikurangi saat bayar tanpa penjagaan). **Butuh keputusan User**: reservasi saat buat vs cek ulang saat pelunasan.
+- [ ] **P0** QR dirender ulang (24–44 ms CPU) di setiap poll status 4 detik → plafon ±120 Pembeli menunggu bersamaan.
+- [ ] **P1** Migrasi index: `order_items(order_id)`, `orders(merchant_id, created_at)`, `order_item_variant_selections(order_item_id)`, `products(merchant_id)`.
+- [ ] **P1** Query Kode Pesanan unik & Lacak tidak memakai index parsial `orders_order_code_v2_idx`.
+- [ ] **P1** Pool DB `postgres.js` (bawaan 10) dapat dikonfigurasi + `statement_timeout`.
+- [ ] **P1** Polling ringan: status Pesanan Pembeli & dashboard Pedagang hanya kirim data penuh saat berubah.
+- [ ] **P2** Laporan: agregat seluruh histori tiap buka halaman; landing `/` statis; cache katalog menu; batas maks `items` per Pesanan; perilaku overload; multi-instance; konfigurasi Postgres produksi + `pg_stat_statements`.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

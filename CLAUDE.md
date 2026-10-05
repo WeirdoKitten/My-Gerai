@@ -28,6 +28,7 @@ Semua keputusan produk/arsitektur ada di `docs/`. **Ini satu-satunya sumber kebe
 | [docs/CLAUDE-SKILLS.md](docs/CLAUDE-SKILLS.md) | Kapan pakai skill Claude Code apa | Merencanakan alur kerja sebuah task |
 | [docs/PROMPT-TIPS.md](docs/PROMPT-TIPS.md) | Tips untuk User menulis prompt efektif | (Untuk User, tapi baca juga untuk paham ekspektasi kolaborasi) |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | Istilah domain baku | Ragu istilah apa yang benar dipakai |
+| [docs/STRESS-TEST.md](docs/STRESS-TEST.md) | Hasil stress/load test: kapasitas, bottleneck, perbaikan berprioritas | Mengerjakan performa, query, polling, atau skala |
 | [CHANGELOG.md](CHANGELOG.md) | Riwayat perubahan ground truth & fitur besar | Ingin tahu histori keputusan |
 
 ## ATURAN PALING PENTING (ringkasan — detail lengkap di [docs/RULES.md](docs/RULES.md))

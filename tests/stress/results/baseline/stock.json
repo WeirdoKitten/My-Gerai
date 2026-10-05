@@ -1,0 +1,8 @@
+{
+  "stockAwal": 50,
+  "pesananDibuat": 300,
+  "pembayaranSukses": 300,
+  "itemTerjualDibayar": 300,
+  "stokAkhir": 0,
+  "oversell": 250
+}
