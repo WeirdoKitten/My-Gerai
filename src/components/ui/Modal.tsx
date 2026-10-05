@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 /**
  * Dialog modal berbasis elemen `<dialog>` bawaan — dapat Esc, focus-trap, &
@@ -19,6 +19,7 @@ export function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -31,6 +32,7 @@ export function Modal({
     // biome-ignore lint/a11y/useKeyWithClickEvents: <dialog> menangani Esc untuk keyboard; klik backdrop hanya kemudahan mouse
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       onClose={onClose}
       onClick={(e) => {
         if (e.target === ref.current) onClose();
@@ -38,7 +40,9 @@ export function Modal({
       className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-card border border-line bg-surface p-0 text-ink shadow-card backdrop:bg-ink/40"
     >
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
-        <h2 className="font-bold text-ink">{title}</h2>
+        <h2 id={titleId} className="font-bold text-ink">
+          {title}
+        </h2>
         <button
           type="button"
           onClick={onClose}

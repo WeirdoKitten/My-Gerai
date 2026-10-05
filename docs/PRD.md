@@ -40,6 +40,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 
 - [ ] Pedagang daftar mandiri (nama Lapak, kategori, kontak, foto) → status `pending` → Admin approve → Lapak dapat **QR Menu** unik.
 - [ ] Pedagang kelola daftar Item (nama, harga, foto, **stok opsional**, status tersedia/habis) di dashboard sendiri. Stok `null` = tidak dibatasi; kalau diisi angka, berkurang saat Pesanan `dibayar` & Item hilang dari katalog Pembeli begitu stok 0.
+- [ ] **Item Pre-order** (2026-09-30, [BACKLOG.md](BACKLOG.md)): Pedagang bisa menandai Item sebagai pre-order (dibuat sesuai pesanan) dengan **waktu pembuatan minimal** (1–30 hari) dan **batas pesan ke depan** (maks. 90 hari). Item pre-order tidak memakai stok. Pembeli memilih **tanggal + jam** ambil/antar (slot 30 menit di dalam Jadwal Operasional), wajib isi No. HP/WA, dan bayar lunas di depan. Item pre-order boleh dipesan walau Lapak sedang tutup.
 - [ ] Pembeli scan **QR Menu** → lihat katalog Item Lapak tsb (tanpa login).
 - [ ] Pembeli pilih Item + qty + catatan → Keranjang (di sisi browser) → Checkout.
 - [ ] Saat checkout, Pembeli **wajib isi Nama** (field lain tidak ada untuk mode Ambil sendiri). Checkout menampilkan rincian **Subtotal + Biaya Layanan = Total** yang harus dibayar (+ **Ongkir** untuk mode Diantar).
@@ -126,6 +127,7 @@ sequenceDiagram
 - **Pembeli tanpa akun**: hanya field **Nama** (bebas isi, tidak diverifikasi) — tidak ada validasi identitas. Mode Diantar (Fase 11) menambah No. HP/WA + alamat, tetap tanpa akun/OTP.
 - **Ongkir** (Fase 11): **tarif tetap per Lapak**, diatur Pedagang, **100% untuk Pedagang** (`total_for_merchant = subtotal + Ongkir`), disimpan sebagai snapshot per Pesanan dan dihitung ulang di server. Pembeli bayar `subtotal + Biaya Layanan + Ongkir` (QRIS Pribadi: `subtotal + Ongkir`). Ongkir adalah biaya jasa pengantaran, bukan surcharge MDR. MDR atas bagian Ongkir tetap ditanggung Aplikator.
 - **Pengantaran gagal** (Fase 11): Pedagang menandai `gagal_diantar` dengan alasan wajib, paling cepat ±15 menit setelah `sedang_diantar`. **Tidak ada refund** — dana tetap hak Pedagang. Pedagang yang menghubungi Pembeli (WA/telepon ke nomor Pembeli); nomor Pedagang **tidak** ditampilkan ke Pembeli karena nomor itu juga username login Pedagang.
+- **Pre-order**: 1 Pesanan = 1 jadwal, jadi Keranjang pre-order **tidak bisa dicampur** Item biasa. Jenis Pesanan dan keabsahan jadwal selalu ditentukan ulang di server dari data Item & Jadwal Operasional (bukan klaim klien). Rentang jadwal = irisan rentang hari semua Item di Keranjang. Tanpa kuota harian. Pencairan sama seperti Pesanan biasa; **tidak ada refund** kalau Pembeli tidak datang.
 
 ## 8. Risiko & Catatan
 

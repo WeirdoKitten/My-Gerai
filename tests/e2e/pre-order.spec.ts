@@ -73,12 +73,16 @@ test("pre-order: dipesan saat Lapak tutup dengan jadwal, tidak campur Item biasa
   await page.getByLabel("Nama").fill("Pembeli Pre-order");
   await page.getByLabel("Nomor HP/WhatsApp").fill("0812 3456 7890");
 
-  // Tanpa jadwal -> ditolak di browser.
-  await page.getByRole("button", { name: /Buat Pesanan/ }).click();
-  await expect(page.getByText("Pilih tanggal dan jam ambil.")).toBeVisible();
-
   const dateSelect = page.getByLabel("Tanggal", { exact: true });
   const timeSelect = page.getByLabel("Jam", { exact: true });
+
+  // Tanpa jadwal -> ditolak validasi bawaan browser (select `required`).
+  await page.getByRole("button", { name: /Buat Pesanan/ }).click();
+  await expect(page).toHaveURL(/\/checkout$/);
+  expect(
+    await dateSelect.evaluate((el: HTMLSelectElement) => el.validity.valid),
+  ).toBe(false);
+
   await expect(timeSelect).toBeDisabled();
   // Opsi pertama yang bisa dipilih = paling cepat hari ini + 2.
   const firstDay = await dateSelect
@@ -117,7 +121,15 @@ test("Item biasa tetap tidak bisa checkout saat Lapak tutup", async ({
     .getByRole("button", { name: "Tambah", exact: true })
     .click();
   await page.getByRole("link", { name: /item/i }).click();
+  // Status buka/tutup dimuat async setelah Item pertama masuk Keranjang: klik
+  // cepat bisa lolos ke /checkout (dikunci CheckoutGate), klik setelah status
+  // termuat memunculkan popup. Keduanya sama-sama menolak checkout.
   await expect(
-    page.getByRole("dialog", { name: "Lapak Sedang Tutup" }),
+    page
+      .getByRole("dialog", { name: "Lapak Sedang Tutup" })
+      .or(page.getByText("Lapak sedang tutup", { exact: true })),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Buat Pesanan/ }),
+  ).not.toBeVisible();
 });

@@ -471,11 +471,11 @@
 - [x] Dashboard Pedagang: bagian "Pre-order" urut jadwal; jadwal di kartu, struk, riwayat, Admin.
 - [x] Halaman status/Lacak Pembeli: tampilkan jadwal.
 - [x] Unit test slot (`tests/unit/pre-order-slots.test.ts`), struk, format tanggal.
-- [ ] E2E `tests/e2e/pre-order.spec.ts` sudah ditulis, **belum dijalankan** (server dev User sedang aktif).
-- [ ] `/security-review` (menyentuh `createOrder`).
+- [x] E2E `tests/e2e/pre-order.spec.ts` dijalankan (2026-10-05): suite penuh 15/15 lulus 3× berturut-turut. Perbaikan: `Modal` kini punya nama aksesibel (`aria-labelledby`); assertion test disesuaikan (validasi `required` bawaan browser; status buka/tutup dimuat async).
+- [x] `/security-review` (2026-10-05): tidak ada temuan.
 - [ ] Uji manual User.
 - [x] Update DATA-MODEL, CHANGELOG.
-- [ ] Update PRD §4/§7, GLOSSARY ("Pre-order"), DESAIN-SISTEM (`Select`).
+- [x] Update PRD §4/§7, GLOSSARY ("Pre-order"), DESAIN-SISTEM (`Select`, `Modal`).
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 

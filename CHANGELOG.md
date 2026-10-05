@@ -2,7 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
-## 2026-09-30 — Pre-order (branch `feat/pre-order`, belum selesai diverifikasi)
+## 2026-10-05 — Pre-order: verifikasi + dokumen
+
+**Dampak:** [docs/PRD.md](docs/PRD.md) (§4, §7), [docs/GLOSSARY.md](docs/GLOSSARY.md) ("Pre-order"), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (`Select`, `Modal`), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/components/ui/Modal.tsx`, `tests/e2e/pre-order.spec.ts`.
+**Alasan:** Menuntaskan sisa verifikasi fitur Pre-order sebelum merge ke `main`.
+**Ringkasan:**
+- E2E dijalankan: suite penuh 15/15 lulus 3× berturut-turut. `Modal` kini punya nama aksesibel (`aria-labelledby` ke judul); test disesuaikan dengan validasi `required` bawaan browser dan pemuatan status buka/tutup yang async.
+- `/security-review`: tidak ada temuan. Jenis Pesanan & jadwal ditentukan ulang di server; cek Lapak tutup tetap berlaku untuk Pesanan biasa.
+- PRD, GLOSSARY, DESAIN-SISTEM diperbarui. **Sisa:** uji manual User.
+
+## 2026-09-30 — Pre-order (branch `feat/pre-order`)
 
 **Dampak:** [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`products.pre_order_min_days`/`pre_order_max_days`, `orders.scheduled_for`, migrasi `0016`), [docs/BACKLOG.md](docs/BACKLOG.md). Kode baru: `src/lib/schedule/pre-order-slots.ts`, `src/components/buyer/PreOrderSchedulePicker.tsx`, `src/components/ui/Select.tsx`, `tests/unit/pre-order-slots.test.ts`, `tests/e2e/pre-order.spec.ts`. Kode ubah: form Item, keranjang, checkout, `createOrder`, dashboard Pesanan, struk, Riwayat, daftar Admin, halaman status Pembeli.
 **Alasan:** Permintaan User: jual Item yang dibuat sesuai pesanan (mis. nasi tumpeng). Keputusan lewat AskUserQuestion (lihat BACKLOG).
