@@ -35,7 +35,12 @@ const baseOrderSchema = z.object({
     .trim()
     .min(1, "Nama wajib diisi.")
     .max(100, "Nama maksimal 100 karakter."),
-  items: z.array(checkoutItemSchema).min(1, "Keranjang masih kosong."),
+  // Batas wajar baris Keranjang — tanpa ini satu request bisa membuat Pesanan
+  // berisi ribuan baris (docs/STRESS-TEST.md P2-4).
+  items: z
+    .array(checkoutItemSchema)
+    .min(1, "Keranjang masih kosong.")
+    .max(50, "Keranjang maksimal 50 baris Item."),
   /**
    * Jadwal ambil/antar Pesanan pre-order (ISO). Wajib/terlarang ditentukan
    * `createOrder` dari Item di DB, bukan dari klaim klien; slot divalidasi

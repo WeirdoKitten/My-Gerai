@@ -2,6 +2,7 @@
 
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { getMerchantSession } from "@/lib/auth/session";
+import { invalidateStallCatalogCache } from "@/lib/cache/stall-catalog";
 import { db } from "@/lib/db/client";
 import {
   products,
@@ -114,5 +115,6 @@ export async function saveProductVariantGroups(
     }
   });
 
+  invalidateStallCatalogCache();
   return { ok: true, message: "Varian Item disimpan." };
 }

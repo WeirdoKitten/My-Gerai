@@ -21,7 +21,12 @@ function request(method, urlPath, headers, body) {
   return new Promise((resolve, reject) => {
     const req = http.request(
       BASE_URL + urlPath,
-      { method, headers, agent, timeout: 60_000 },
+      {
+        method,
+        headers,
+        agent,
+        timeout: Number(process.env.STRESS_REQUEST_TIMEOUT_MS ?? 60_000),
+      },
       (res) => {
         const chunks = [];
         res.on("data", (c) => chunks.push(c));
@@ -40,11 +45,14 @@ function request(method, urlPath, headers, body) {
   });
 }
 
-/** ID Server Action dari manifest build (`.next/server/server-reference-manifest.json`). */
+/** ID Server Action dari manifest build (`<STRESS_NEXT_DIR atau .next>/server/server-reference-manifest.json`). */
 export function loadActionIds() {
   const manifest = JSON.parse(
     readFileSync(
-      path.resolve(".next/server/server-reference-manifest.json"),
+      path.resolve(
+        process.env.STRESS_NEXT_DIR ?? ".next",
+        "server/server-reference-manifest.json",
+      ),
       "utf8",
     ),
   );

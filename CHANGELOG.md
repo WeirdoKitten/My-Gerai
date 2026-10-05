@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-05 — Optimasi performa (branch `perf/optimasi`)
+
+**Dampak:** [docs/STRESS-TEST.md](docs/STRESS-TEST.md) (§8 baru), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-05), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (reservasi stok, index, migrasi `0017`), [docs/PRD.md](docs/PRD.md) (§4 stok), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (Performa & Cache), [docs/BACKLOG.md](docs/BACKLOG.md), `.env.example`. Kode baru: `src/lib/cache/`, `src/lib/payment/qr-image.ts`, `drizzle/0017_perf_indexes.sql`, `tests/unit/memory-cache.test.ts`.
+**Alasan:** Permintaan User "lakukan semuanya yang dapat meningkatkan performa" berdasarkan hasil stress test. Reservasi stok = keputusan User (AskUserQuestion).
+**Ringkasan:**
+- Kapasitas Pembeli menunggu bayar ±120 → ±2.000, pembuatan Pesanan 67 → 237/dtk, soak beban campuran dari lumpuh (p50 33–60 dtk) ke p50 90–235 ms. `/admin/payouts` 61 dtk/OOM → 129 ms (per halaman). Oversell stok 250 → 0.
+- Index FK + antrean dashboard, query Kode Pesanan pakai index parsial, pool DB & `statement_timeout` lewat env, polling status ringkas, cache in-memory (QR, config, katalog, daftar Gerai, Laporan), batas 50 baris Item.
+- **Diverifikasi**: A/B dua ronde di kondisi mesin sama, unit test 191/191, E2E 15/15, `/security-review` tanpa temuan. **Belum**: uji manual User, ukur ulang di server produksi.
+
 ## 2026-10-05 — Stress test & load test (branch `test/stress-test`)
 
 **Dampak:** [docs/STRESS-TEST.md](docs/STRESS-TEST.md) (baru), [docs/BACKLOG.md](docs/BACKLOG.md), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [CLAUDE.md](CLAUDE.md). Kode baru: `tests/stress/` (alat uji, tidak ikut aplikasi).

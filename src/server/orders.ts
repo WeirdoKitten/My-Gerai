@@ -1,12 +1,12 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
-import QRCode from "qrcode";
+import { and, asc, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
 import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
+import { createTtlCache } from "@/lib/cache/memory";
 import { db } from "@/lib/db/client";
 import {
   merchantOperatingHours,
@@ -24,6 +24,7 @@ import {
   midtransIsSandbox,
   midtransQrImageUrl,
 } from "@/lib/payment/midtrans-provider";
+import { qrDataUrl } from "@/lib/payment/qr-image";
 import { settleOrderPayment } from "@/lib/payment/settle";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit/limiter";
 import type { OperatingHoursRow } from "@/lib/schedule/evaluate";
@@ -57,7 +58,8 @@ import {
 } from "@/lib/validation/checkout.schema";
 import { getActivePlatformConfig } from "@/server/config";
 import type {
-  AdminOrderListItem,
+  AdminOrderListPage,
+  BuyerOrderStatusSummary,
   BuyerOrderStatusView,
   CreateOrderResult,
   GetOrderReceiptResult,
@@ -82,6 +84,15 @@ const MERCHANT_HISTORY_LIMIT = 50;
 const ACTIVE_ORDER_LIST_LIMIT = 100;
 
 /**
+ * Kondisi cari Pesanan by Kode Pesanan. Predikat `length = 8` WAJIB ikut
+ * supaya planner memakai index parsial `orders_order_code_v2_idx`; tanpa itu
+ * Postgres melakukan seq scan seluruh tabel `orders` (docs/STRESS-TEST.md P1-2).
+ */
+function orderCodeLookup(code: string) {
+  return and(eq(orders.orderCode, code), sql`length(${orders.orderCode}) = 8`);
+}
+
+/**
  * Kode Pesanan unik GLOBAL (dipakai Lacak Pesanan), retry maks 5x kalau
  * tabrakan. Unique index parsial `orders_order_code_v2_idx` jadi pengaman
  * terakhir kalau dua request kebetulan dapat kode sama bersamaan.
@@ -90,7 +101,7 @@ async function generateUniqueOrderCode(): Promise<string> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateOrderCode();
     const existing = await db.query.orders.findFirst({
-      where: eq(orders.orderCode, code),
+      where: orderCodeLookup(code),
       columns: { id: true },
     });
     if (!existing) return code;
@@ -229,6 +240,82 @@ async function fetchVariantSelectionsByOrderItemId(
     selectionsByOrderItemId.set(selection.orderItemId, list);
   }
   return selectionsByOrderItemId;
+}
+
+type DbExecutor =
+  | typeof db
+  | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Item berstok terbatas di sebuah Pesanan: total qty diminta per Item (bisa dari beberapa baris varian). */
+type LimitedStockRequest = Map<string, { name: string; qty: number }>;
+
+/** Batas atas umur Pesanan yang masih bisa menunggu pembayaran (maks. `order_expiry_minutes` = 1440). */
+const MAX_PENDING_ORDER_AGE = sql`now() - interval '24 hours'`;
+
+/**
+ * Reservasi stok (keputusan User 2026-10-05, docs/STRESS-TEST.md P0-2): stok
+ * yang bisa dipesan = `products.stock` dikurangi qty di Pesanan lain Lapak ini
+ * yang masih `menunggu_pembayaran` & belum lewat `expires_at`. Pesanan yang
+ * kedaluwarsa otomatis melepas reservasinya tanpa cron. `products.stock` tetap
+ * baru dikurangi saat lunas (settle.ts). Dengan `lock`, baris Item dikunci
+ * (`FOR UPDATE`) sampai transaksi selesai supaya dua Pembeli tidak bisa
+ * mengambil sisa stok yang sama. `null` = stok cukup.
+ */
+async function findStockShortage(
+  executor: DbExecutor,
+  merchantId: string,
+  requested: LimitedStockRequest,
+  lock: boolean,
+): Promise<{ name: string; available: number } | null> {
+  if (requested.size === 0) return null;
+  const productIds = [...requested.keys()].sort();
+
+  const stockQuery = executor
+    .select({ id: products.id, stock: products.stock })
+    .from(products)
+    .where(inArray(products.id, productIds))
+    .orderBy(asc(products.id));
+  const stockRows = lock ? await stockQuery.for("update") : await stockQuery;
+
+  const reservedRows = await executor
+    .select({
+      productId: orderItems.productId,
+      qty: sql<number>`coalesce(sum(${orderItems.qty}), 0)`.mapWith(Number),
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(
+      and(
+        eq(orders.merchantId, merchantId),
+        gt(orders.createdAt, MAX_PENDING_ORDER_AGE),
+        eq(orders.status, "menunggu_pembayaran"),
+        sql`${orders.expiresAt} > now()`,
+        inArray(orderItems.productId, productIds),
+      ),
+    )
+    .groupBy(orderItems.productId);
+  const reservedById = new Map(reservedRows.map((r) => [r.productId, r.qty]));
+
+  for (const row of stockRows) {
+    const want = requested.get(row.id);
+    if (!want || row.stock === null) continue;
+    const available = Math.max(0, row.stock - (reservedById.get(row.id) ?? 0));
+    if (want.qty > available) return { name: want.name, available };
+  }
+  return null;
+}
+
+function stockShortageMessage(shortage: { name: string; available: number }) {
+  return shortage.available === 0
+    ? `"${shortage.name}" sudah habis, silakan perbarui Keranjang.`
+    : `Stok "${shortage.name}" tinggal ${shortage.available}.`;
+}
+
+/** Dilempar dari dalam transaksi `createOrder` supaya insert dibatalkan. */
+class StockShortageError extends Error {
+  constructor(readonly shortage: { name: string; available: number }) {
+    super("stock-shortage");
+  }
 }
 
 export async function createOrder(
@@ -416,6 +503,7 @@ export async function createOrder(
     sortOrder: number;
   }> = [];
   const calcItems: OrderCalcItem[] = [];
+  const limitedStock: LimitedStockRequest = new Map();
 
   for (const item of items) {
     const product = productById.get(item.productId);
@@ -426,14 +514,12 @@ export async function createOrder(
           "Salah satu Item sudah tidak tersedia, silakan perbarui Keranjang.",
       };
     }
-    if (product.stock !== null && item.qty > product.stock) {
-      return {
-        ok: false,
-        message:
-          product.stock === 0
-            ? `"${product.name}" sudah habis, silakan perbarui Keranjang.`
-            : `Stok "${product.name}" tinggal ${product.stock}.`,
-      };
+    if (product.stock !== null) {
+      const line = limitedStock.get(product.id);
+      limitedStock.set(product.id, {
+        name: product.name,
+        qty: (line?.qty ?? 0) + item.qty,
+      });
     }
 
     // Varian: kalau Item punya grup varian, Pembeli wajib pilih tepat satu
@@ -490,6 +576,18 @@ export async function createOrder(
     itemVariantSnapshots.forEach((snapshot, sortOrder) => {
       variantSelectionRows.push({ orderItemId, sortOrder, ...snapshot });
     });
+  }
+
+  // Cek awal tanpa kunci supaya stok yang jelas kurang tidak sampai membuat
+  // transaksi di gateway; cek pasti (dengan kunci) ada di transaksi bawah.
+  const earlyShortage = await findStockShortage(
+    db,
+    merchant.id,
+    limitedStock,
+    false,
+  );
+  if (earlyShortage) {
+    return { ok: false, message: stockShortageMessage(earlyShortage) };
   }
 
   const {
@@ -560,55 +658,146 @@ export async function createOrder(
     }
   }
 
-  await db.transaction(async (tx) => {
-    await tx.insert(orders).values({
-      id: orderId,
-      merchantId: merchant.id,
-      orderCode,
-      buyerName,
-      status: "menunggu_pembayaran",
-      subtotal,
-      platformFeeSnapshot,
-      totalForMerchant,
-      expiresAt,
-      fulfillmentMethod: checkout.fulfillmentMethod,
-      deliveryFeeSnapshot,
-      scheduledFor,
-      // Pre-order Ambil sendiri: HP wajib (schema) supaya Pedagang bisa
-      // menghubungi Pembeli. Mode Antar menimpa lewat spread di bawah.
-      buyerPhone: isPreOrder ? (checkout.buyerPhone ?? null) : null,
-      ...(delivery
-        ? {
-            buyerPhone: delivery.buyerPhone,
-            deliveryAddress: delivery.deliveryAddress,
-            deliveryLandmark: delivery.deliveryLandmark,
-            deliveryLatitude: delivery.deliveryLatitude,
-            deliveryLongitude: delivery.deliveryLongitude,
-            deliveryDistanceKm: delivery.deliveryDistanceKm,
-          }
-        : {}),
+  try {
+    await db.transaction(async (tx) => {
+      const shortage = await findStockShortage(
+        tx,
+        merchant.id,
+        limitedStock,
+        true,
+      );
+      if (shortage) throw new StockShortageError(shortage);
+
+      await tx.insert(orders).values({
+        id: orderId,
+        merchantId: merchant.id,
+        orderCode,
+        buyerName,
+        status: "menunggu_pembayaran",
+        subtotal,
+        platformFeeSnapshot,
+        totalForMerchant,
+        expiresAt,
+        fulfillmentMethod: checkout.fulfillmentMethod,
+        deliveryFeeSnapshot,
+        scheduledFor,
+        // Pre-order Ambil sendiri: HP wajib (schema) supaya Pedagang bisa
+        // menghubungi Pembeli. Mode Antar menimpa lewat spread di bawah.
+        buyerPhone: isPreOrder ? (checkout.buyerPhone ?? null) : null,
+        ...(delivery
+          ? {
+              buyerPhone: delivery.buyerPhone,
+              deliveryAddress: delivery.deliveryAddress,
+              deliveryLandmark: delivery.deliveryLandmark,
+              deliveryLatitude: delivery.deliveryLatitude,
+              deliveryLongitude: delivery.deliveryLongitude,
+              deliveryDistanceKm: delivery.deliveryDistanceKm,
+            }
+          : {}),
+      });
+
+      await tx
+        .insert(orderItems)
+        .values(orderItemRows.map((row) => ({ ...row, orderId })));
+
+      if (variantSelectionRows.length > 0) {
+        await tx
+          .insert(orderItemVariantSelections)
+          .values(variantSelectionRows);
+      }
+
+      await tx.insert(payments).values({
+        orderId,
+        provider: paymentRow.provider,
+        referenceId: paymentRow.referenceId,
+        grossAmount: paymentRow.grossAmount,
+        qrString: paymentRow.qrString,
+        status: "pending",
+        expiresAt: paymentRow.expiresAt,
+      });
     });
-
-    await tx
-      .insert(orderItems)
-      .values(orderItemRows.map((row) => ({ ...row, orderId })));
-
-    if (variantSelectionRows.length > 0) {
-      await tx.insert(orderItemVariantSelections).values(variantSelectionRows);
+  } catch (error) {
+    // Kalah rebutan stok setelah pembayaran di gateway terlanjur dibuat:
+    // transaksi gateway itu dibiarkan kedaluwarsa sendiri (tidak ada baris DB).
+    if (error instanceof StockShortageError) {
+      return { ok: false, message: stockShortageMessage(error.shortage) };
     }
-
-    await tx.insert(payments).values({
-      orderId,
-      provider: paymentRow.provider,
-      referenceId: paymentRow.referenceId,
-      grossAmount: paymentRow.grossAmount,
-      qrString: paymentRow.qrString,
-      status: "pending",
-      expiresAt: paymentRow.expiresAt,
-    });
-  });
+    throw error;
+  }
 
   return { ok: true, orderId, orderCode };
+}
+
+/**
+ * Hasil tanya-status ke gateway di-cache 15 dtk per Pesanan: halaman status
+ * polling tiap 4 dtk, tanpa ini setiap poll = 1 panggilan HTTP ke Midtrans.
+ */
+const gatewayStatusCache = createTtlCache<string, boolean>({
+  ttlMs: 15_000,
+  maxEntries: 5000,
+});
+
+/**
+ * Backstop: kalau webhook Midtrans telat/hilang, tanyakan status langsung ke
+ * gateway setelah Pesanan berumur >10 dtk (webhook biasanya sudah datang
+ * sebelum itu). Mock tidak punya `getTransactionStatus` → dilewati. QRIS
+ * pribadi tidak punya transaksi gateway sama sekali → dilewati juga.
+ * `true` kalau Pesanan barusan dilunasi lewat jalur ini.
+ */
+async function syncGatewayPaymentIfLate(
+  order: Pick<Order, "id" | "status" | "createdAt">,
+  isQrisPribadi: boolean,
+): Promise<boolean> {
+  if (
+    order.status !== "menunggu_pembayaran" ||
+    isQrisPribadi ||
+    Date.now() - order.createdAt.getTime() <= 10_000
+  ) {
+    return false;
+  }
+  const provider = getPaymentProvider();
+  if (!provider.getTransactionStatus) return false;
+  return gatewayStatusCache.get(order.id, async () => {
+    const remote = await provider
+      .getTransactionStatus?.(order.id)
+      .catch(() => null);
+    if (remote?.status !== "success") return false;
+    await settleOrderPayment(order.id);
+    return true;
+  });
+}
+
+/**
+ * Versi ringan untuk polling halaman status (tiap 4 dtk): hanya status, tanpa
+ * Item/QR. Klien memanggil {@link getOrderStatus} lengkap hanya saat status
+ * berubah (docs/STRESS-TEST.md P1-4).
+ */
+export async function getOrderStatusSummary(
+  orderId: string,
+): Promise<BuyerOrderStatusSummary | null> {
+  if (!z.uuid().safeParse(orderId).success) return null;
+
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+  });
+  if (!order) return null;
+
+  const current = await expireOrderIfNeeded(order);
+  if (current.status === "menunggu_pembayaran") {
+    const payment = await db.query.payments.findFirst({
+      where: eq(payments.orderId, current.id),
+      columns: { provider: true },
+    });
+    if (
+      await syncGatewayPaymentIfLate(
+        current,
+        payment?.provider === "qris_pribadi",
+      )
+    ) {
+      return { status: "dibayar" };
+    }
+  }
+  return { status: current.status };
 }
 
 export async function getOrderStatus(
@@ -628,25 +817,10 @@ export async function getOrderStatus(
   });
   const isQrisPribadi = payment?.provider === "qris_pribadi";
 
-  // Backstop: kalau webhook Midtrans telat/hilang, tanyakan status langsung ke
-  // gateway setelah Pesanan berumur >10 dtk (webhook biasanya sudah datang
-  // sebelum itu). Mock tidak punya `getTransactionStatus` → dilewati. QRIS
-  // pribadi tidak punya transaksi gateway sama sekali → dilewati juga.
-  if (
-    current.status === "menunggu_pembayaran" &&
-    !isQrisPribadi &&
-    Date.now() - current.createdAt.getTime() > 10_000
-  ) {
-    const provider = getPaymentProvider();
-    const remote = await provider
-      .getTransactionStatus?.(orderId)
-      .catch(() => null);
-    if (remote?.status === "success") {
-      await settleOrderPayment(orderId);
-      current =
-        (await db.query.orders.findFirst({ where: eq(orders.id, orderId) })) ??
-        current;
-    }
+  if (await syncGatewayPaymentIfLate(current, isQrisPribadi)) {
+    current =
+      (await db.query.orders.findFirst({ where: eq(orders.id, orderId) })) ??
+      current;
   }
 
   const [merchant, items] = await Promise.all([
@@ -668,7 +842,7 @@ export async function getOrderStatus(
     } else if (payment?.qrString) {
       qrImageUrl = payment.qrString.startsWith("http")
         ? payment.qrString
-        : await QRCode.toDataURL(payment.qrString);
+        : await qrDataUrl(payment.qrString);
     }
   }
 
@@ -833,47 +1007,81 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
   const session = await getMerchantSession();
   if (!session) return { orders: [], totalActive: 0 };
 
-  // JOIN eksplisit (bukan db.query relational API — tidak ada relations()
-  // dikonfigurasi di schema.ts) supaya bisa filter dari `payments.provider`
-  // MILIK Pesanan itu sendiri (bukan `merchant.paymentMode` saat ini), supaya
-  // Pesanan gateway lama tidak salah tampil tombol "Tandai Lunas" kalau Admin
-  // sudah pindahkan mode Lapak.
-  const activeOrderFilter = and(
-    eq(orders.merchantId, session.merchantId),
-    or(
-      inArray(orders.status, [
-        "dibayar",
-        "diproses",
-        "siap_diambil",
-        "sedang_diantar",
-      ]),
-      // Pesanan QRIS pribadi yang masih menunggu Pedagang menekan
-      // "Tandai Lunas".
+  // Dua langkah ringan (bukan satu JOIN dengan OR lintas tabel, yang membuat
+  // planner men-scan seluruh `payments` — docs/STRESS-TEST.md): (1) kandidat
+  // dari `orders` saja lewat index (merchant_id, status); (2) provider
+  // `payments` hanya untuk kandidat yang masih menunggu pembayaran. Filter
+  // pakai `payments.provider` MILIK Pesanan itu sendiri (bukan
+  // `merchant.paymentMode` saat ini), supaya Pesanan gateway lama tidak salah
+  // tampil tombol "Tandai Lunas" kalau Admin sudah pindahkan mode Lapak.
+  const candidates = await db
+    .select({
+      id: orders.id,
+      status: orders.status,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(
       and(
-        eq(orders.status, "menunggu_pembayaran"),
-        eq(payments.provider, "qris_pribadi"),
+        eq(orders.merchantId, session.merchantId),
+        inArray(orders.status, [
+          "dibayar",
+          "diproses",
+          "siap_diambil",
+          "sedang_diantar",
+          "menunggu_pembayaran",
+        ]),
+        // Pesanan menunggu yang lebih tua dari batas kedaluwarsa maksimum
+        // pasti sudah kedaluwarsa (tidak bisa ditandai lunas lagi).
+        or(
+          ne(orders.status, "menunggu_pembayaran"),
+          gt(orders.createdAt, MAX_PENDING_ORDER_AGE),
+        ),
       ),
-    ),
+    );
+
+  const pendingIds = candidates
+    .filter((c) => c.status === "menunggu_pembayaran")
+    .map((c) => c.id);
+  const qrisPendingIds = new Set(
+    pendingIds.length === 0
+      ? []
+      : (
+          await db
+            .select({ orderId: payments.orderId })
+            .from(payments)
+            .where(
+              and(
+                inArray(payments.orderId, pendingIds),
+                // Pesanan QRIS pribadi yang masih menunggu Pedagang menekan
+                // "Tandai Lunas".
+                eq(payments.provider, "qris_pribadi"),
+              ),
+            )
+        ).map((row) => row.orderId),
   );
 
-  const [activeOrders, [{ totalActive }]] = await Promise.all([
-    db
-      .select({ order: orders, paymentProvider: payments.provider })
-      .from(orders)
-      .innerJoin(payments, eq(payments.orderId, orders.id))
-      .where(activeOrderFilter)
-      // Antrean FIFO: Pesanan terlama (paling lama menunggu) di atas supaya
-      // Pedagang mengerjakan sesuai urutan masuk; Pesanan baru menempel di
-      // bawah. Dibatasi ACTIVE_ORDER_LIST_LIMIT — yang tampil selalu yang
-      // paling mendesak dikerjakan.
-      .orderBy(asc(orders.createdAt))
-      .limit(ACTIVE_ORDER_LIST_LIMIT),
-    db
-      .select({ totalActive: sql<number>`count(*)`.mapWith(Number) })
-      .from(orders)
-      .innerJoin(payments, eq(payments.orderId, orders.id))
-      .where(activeOrderFilter),
-  ]);
+  // Antrean FIFO: Pesanan terlama (paling lama menunggu) di atas supaya
+  // Pedagang mengerjakan sesuai urutan masuk; Pesanan baru menempel di
+  // bawah. Dibatasi ACTIVE_ORDER_LIST_LIMIT — yang tampil selalu yang
+  // paling mendesak dikerjakan.
+  const queue = candidates
+    .filter(
+      (c) => c.status !== "menunggu_pembayaran" || qrisPendingIds.has(c.id),
+    )
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const totalActive = queue.length;
+  const shownIds = queue.slice(0, ACTIVE_ORDER_LIST_LIMIT).map((c) => c.id);
+
+  const activeOrders =
+    shownIds.length === 0
+      ? []
+      : await db
+          .select({ order: orders, paymentProvider: payments.provider })
+          .from(orders)
+          .innerJoin(payments, eq(payments.orderId, orders.id))
+          .where(inArray(orders.id, shownIds))
+          .orderBy(asc(orders.createdAt));
   if (activeOrders.length === 0) return { orders: [], totalActive: 0 };
 
   const orderIds = activeOrders.map(({ order }) => order.id);
@@ -1240,21 +1448,38 @@ export async function findOrderForTracking(
   if (!parsed.success) return notFound;
 
   const order = await db.query.orders.findFirst({
-    where: eq(orders.orderCode, parsed.data.orderCode),
+    where: orderCodeLookup(parsed.data.orderCode),
     columns: { id: true },
   });
   return order ? { ok: true, orderId: order.id } : notFound;
 }
 
-/** Daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi) — otorisasi via sesi Admin. */
-export async function listOrdersForAdmin(): Promise<AdminOrderListItem[]> {
-  const session = await getAdminSession();
-  if (!session) return [];
+/** Jumlah Pesanan per halaman Daftar Transaksi Admin. */
+const ADMIN_ORDER_PAGE_SIZE = 50;
 
-  const allOrders = await db.query.orders.findMany({
-    orderBy: (row, { desc }) => [desc(row.createdAt)],
+/**
+ * Daftar Pesanan lintas-Lapak untuk Admin (Daftar Transaksi), terbaru dulu,
+ * per halaman — otorisasi via sesi Admin. Sebelumnya memuat SEMUA Pesanan
+ * sekaligus dan membuat server kehabisan memori pada ±260 ribu Pesanan
+ * (docs/STRESS-TEST.md P0-1).
+ */
+export async function listOrdersForAdmin(
+  page = 1,
+): Promise<AdminOrderListPage> {
+  const currentPage = Number.isInteger(page) && page > 0 ? page : 1;
+  const empty = { orders: [], page: currentPage, hasNextPage: false };
+  const session = await getAdminSession();
+  if (!session) return empty;
+
+  // Ambil 1 baris lebih untuk tahu masih ada halaman berikutnya (tanpa count(*)).
+  const rows = await db.query.orders.findMany({
+    orderBy: (row, { desc }) => [desc(row.createdAt), desc(row.id)],
+    limit: ADMIN_ORDER_PAGE_SIZE + 1,
+    offset: (currentPage - 1) * ADMIN_ORDER_PAGE_SIZE,
   });
-  if (allOrders.length === 0) return [];
+  const hasNextPage = rows.length > ADMIN_ORDER_PAGE_SIZE;
+  const allOrders = rows.slice(0, ADMIN_ORDER_PAGE_SIZE);
+  if (allOrders.length === 0) return empty;
 
   const merchantIds = [...new Set(allOrders.map((order) => order.merchantId))];
   const merchantRows = await db.query.merchants.findMany({
@@ -1262,7 +1487,7 @@ export async function listOrdersForAdmin(): Promise<AdminOrderListItem[]> {
   });
   const stallNameById = new Map(merchantRows.map((m) => [m.id, m.stallName]));
 
-  return allOrders.map((order) => ({
+  const items = allOrders.map((order) => ({
     id: order.id,
     orderCode: order.orderCode,
     stallName: stallNameById.get(order.merchantId) ?? "",
@@ -1279,4 +1504,5 @@ export async function listOrdersForAdmin(): Promise<AdminOrderListItem[]> {
     deliveryFailureReason: order.deliveryFailureReason,
     deliveryFailureNote: order.deliveryFailureNote,
   }));
+  return { orders: items, page: currentPage, hasNextPage };
 }

@@ -2,6 +2,7 @@
 
 import { and, eq, lte } from "drizzle-orm";
 import { getAdminSession } from "@/lib/auth/admin-session";
+import { createTtlCache, productionTtl } from "@/lib/cache/memory";
 import { db } from "@/lib/db/client";
 import { platformConfig } from "@/lib/db/schema";
 import {
@@ -42,6 +43,20 @@ async function readConfigValue(
  * sumber kebenaran, tidak diduplikasi.
  */
 export async function getActivePlatformConfig(): Promise<PlatformConfigView> {
+  return activeConfigCache.get("active", loadActivePlatformConfig);
+}
+
+/**
+ * Config dibaca di setiap Pesanan & buka menu (4 query) padahal jarang
+ * berubah — di-cache 30 dtk, dan dibuang langsung saat Admin mengubahnya.
+ * Nilai tetap di-snapshot per Pesanan, jadi cache tidak mengubah histori.
+ */
+const activeConfigCache = createTtlCache<"active", PlatformConfigView>({
+  ttlMs: productionTtl(30_000),
+  maxEntries: 1,
+});
+
+async function loadActivePlatformConfig(): Promise<PlatformConfigView> {
   const [
     platformFeeAmount,
     orderExpiryMinutes,
@@ -147,5 +162,6 @@ export async function updatePlatformConfig(
   }
 
   await db.insert(platformConfig).values(rows);
+  activeConfigCache.clear();
   return { ok: true };
 }

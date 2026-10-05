@@ -216,22 +216,30 @@ const scenarios = {
       );
       for (const r of batch) if (r?.ok) pending.push(r.orderId);
     }
+    // Mode "ringkas" = perilaku OrderStatusView sejak 2026-10-05
+    // (getOrderStatusSummary); "lengkap" = getOrderStatus penuh tiap poll
+    // (versi lama, atau kasus terburuk Pembeli terus me-refresh halaman).
+    const mode =
+      process.env.STRESS_POLL_MODE ??
+      (A.getOrderStatusSummary ? "ringkas" : "lengkap");
+    const action =
+      mode === "ringkas" ? A.getOrderStatusSummary : A.getOrderStatus;
     for (const ccu of levels) {
       await measured("poll", {
-        name: "polling getOrderStatus tiap 4 dtk",
+        name: `polling status (${mode}) tiap 4 dtk`,
         concurrency: ccu,
         thinkMs: 4000,
         durationMs: QUICK ? 20_000 : 45_000,
         task: async (vu) => {
           const id = pending[vu];
-          const s = await callAction(A.getOrderStatus, [id], {
+          const s = await callAction(action, [id], {
             page: `/pesanan/${id}`,
           });
-          return s?.id === id;
+          return !!s?.status;
         },
       });
     }
-    save("poll");
+    save(`poll-${mode}`);
   },
 
   /** Dashboard Pedagang: Lapak ramai dengan banyak Pesanan aktif + 200 Lapak polling bersamaan. */
@@ -448,16 +456,18 @@ const scenarios = {
     const stop = startSampler({ pid, sql, dbName, intervalMs: 5000 });
     const [buyers, creators, merchants, menus] = await Promise.all([
       runLoad({
-        name: "soak: 1000 Pembeli polling status",
+        name: `soak: 1000 Pembeli polling status (${A.getOrderStatusSummary ? "ringkas" : "lengkap"})`,
         concurrency: pending.length,
         thinkMs: 4000,
         durationMs,
         task: async (vu) =>
-          (
-            await callAction(A.getOrderStatus, [pending[vu]], {
-              page: `/pesanan/${pending[vu]}`,
-            })
-          )?.id === pending[vu],
+          !!(
+            await callAction(
+              A.getOrderStatusSummary ?? A.getOrderStatus,
+              [pending[vu]],
+              { page: `/pesanan/${pending[vu]}` },
+            )
+          )?.status,
       }),
       runLoad({
         name: "soak: Pesanan baru (~25/dtk)",

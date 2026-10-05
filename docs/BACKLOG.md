@@ -486,16 +486,23 @@
 - [x] Eksperimen index sementara (tanpa ubah kode): throughput +60–80%.
 - [x] Dokumen hasil [STRESS-TEST.md](STRESS-TEST.md).
 
-Tindak lanjut (belum dikerjakan, urut prioritas, detail di [STRESS-TEST.md §4](STRESS-TEST.md#4-temuan--rekomendasi-berprioritas)):
+Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & angka A/B di [STRESS-TEST.md §8](STRESS-TEST.md#8-hasil-setelah-optimasi-2026-10-05)):
 
-- [ ] **P0** `/admin/payouts` memuat semua Pesanan → crash OOM di ±260 ribu Pesanan. Pagination + agregat SQL.
-- [ ] **P0** Oversell stok (stok dicek saat buat, dikurangi saat bayar tanpa penjagaan). **Butuh keputusan User**: reservasi saat buat vs cek ulang saat pelunasan.
-- [ ] **P0** QR dirender ulang (24–44 ms CPU) di setiap poll status 4 detik → plafon ±120 Pembeli menunggu bersamaan.
-- [ ] **P1** Migrasi index: `order_items(order_id)`, `orders(merchant_id, created_at)`, `order_item_variant_selections(order_item_id)`, `products(merchant_id)`.
-- [ ] **P1** Query Kode Pesanan unik & Lacak tidak memakai index parsial `orders_order_code_v2_idx`.
-- [ ] **P1** Pool DB `postgres.js` (bawaan 10) dapat dikonfigurasi + `statement_timeout`.
-- [ ] **P1** Polling ringan: status Pesanan Pembeli & dashboard Pedagang hanya kirim data penuh saat berubah.
-- [ ] **P2** Laporan: agregat seluruh histori tiap buka halaman; landing `/` statis; cache katalog menu; batas maks `items` per Pesanan; perilaku overload; multi-instance; konfigurasi Postgres produksi + `pg_stat_statements`.
+- [x] **P0** `/admin/payouts`: Daftar Transaksi per halaman (50), 45 dtk → <0,2 dtk.
+- [x] **P0** Oversell stok: **reservasi saat pesan** (keputusan User), `SELECT … FOR UPDATE` di transaksi `createOrder`. Uji race 300 Pembeli vs stok 50: tepat 50 lunas, oversell 0.
+- [x] **P0** QR: data URI di-cache per payload + polling ringkas `getOrderStatusSummary` (data lengkap hanya saat status berubah).
+- [x] **P1** Migrasi `0017`: 8 index (FK + `orders(merchant_id, created_at)` + `orders(merchant_id, status)`).
+- [x] **P1** Query Kode Pesanan & Lacak memakai index parsial (`length(order_code) = 8`).
+- [x] **P1** Pool DB `DATABASE_POOL_MAX` (default 20) + `DATABASE_STATEMENT_TIMEOUT_MS` (default 15000).
+- [x] **P1** Dashboard Pedagang: antrean aktif lewat 2 query ber-index (60 ms → 0,2 ms per poll).
+- [x] **P1** Tanya-status Midtrans dari polling di-cache 15 dtk per Pesanan.
+- [x] **P2** Cache in-memory: config platform, katalog menu, daftar Gerai, Laporan + rekomendasi; batas 50 baris `items`; sapu bucket rate-limiter.
+- [x] Unit test cache + batas `items`; E2E 15/15; `/security-review` tanpa temuan.
+- [ ] **P2 (butuh keputusan User)** Landing `/` statis: perlu `APP_URL` tersedia saat build (build arg Dokploy) — QR pendaftaran saat ini dibuat saat request.
+- [ ] **P2** Halaman menu masih dirender penuh tiap request (batas CPU 1 proses). Opsi: full-route cache/ISR dengan revalidasi tag.
+- [ ] **P2** Multi-instance (replica/cluster) — butuh rate-limiter & cache di store bersama (mis. Redis), keputusan infra User.
+- [ ] **P2** Cek konfigurasi Postgres produksi + aktifkan `pg_stat_statements`; HTTP 413 rapi untuk body > 1 MB.
+- [ ] **User:** uji manual (checkout, stok terbatas, dashboard, Laporan, halaman Admin Saldo & Pencairan) lalu jalankan migrasi `0017` di produksi (otomatis saat container start).
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 

@@ -4,6 +4,8 @@
 
 ## 1. Ringkasan
 
+> **Status 2026-10-05:** sebagian besar temuan di dokumen ini sudah diperbaiki di branch `perf/optimasi`. Hasil sebelum/sesudah ada di [§8](#8-hasil-setelah-optimasi-2026-10-05). §1–§7 sengaja dibiarkan sebagai catatan kondisi awal (baseline).
+
 **Kesimpulan:** aplikasi **tidak pernah kehilangan data dan tidak pernah membuat Pesanan rusak** di bawah beban berat (30.000 Pesanan beruntun ke satu Lapak: 0% gagal). Tetapi **kapasitas pengguna bersamaan rendah**, dan ada dua masalah yang bisa langsung berdampak di produksi:
 
 1. **Halaman Admin `/admin/payouts` memuat SEMUA Pesanan sekaligus.** Dengan ~260 ribu Pesanan: 1 request = 61 detik, HTML 493 MB. Beberapa request bersamaan membuat server **crash kehabisan memori** (`JavaScript heap out of memory`). Ini terjadi dalam uji.
@@ -243,3 +245,81 @@ Catatan:
 - Jalankan `poll`, `heavy`, dan `soak` **terpisah** dengan jeda, dan restart server di antaranya. Overload membuat antrean yang butuh beberapa menit untuk kosong, sehingga skenario berikutnya ikut terkontaminasi. Skenario `heavy` memuat `/admin/payouts` yang saat ini membuat server crash (P0-1).
 - `bulk` dan `poll` menambah puluhan ribu Pesanan ke DB; angka antar-run hanya sebanding pada jumlah data yang sama.
 - Hasil tersimpan di `tests/stress/results/<skenario>.json`. Hasil dokumen ini: `results/baseline/` (tanpa perbaikan) dan `results/with-index.json` (§5). Angka `heavy` di §3.6 dicatat dari log karena run-nya dihentikan setelah server crash.
+
+## 8. Hasil Setelah Optimasi (2026-10-05)
+
+Diimplementasikan di branch `perf/optimasi`. Daftar per butir ada di [BACKLOG.md](BACKLOG.md), keputusan arsitekturnya di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-10-05.
+
+| Temuan | Perbaikan |
+|---|---|
+| P0-1 `/admin/payouts` OOM | Daftar Transaksi per halaman (50), `?halaman=N` |
+| P0-2 Oversell stok | Reservasi saat pesan: stok − qty Pesanan lain yang masih menunggu bayar & belum kedaluwarsa, baris Item dikunci `FOR UPDATE` (keputusan User) |
+| P0-3 Render QR tiap poll | Data URI QR di-cache per payload; klien mem-poll `getOrderStatusSummary` (status saja) dan baru mengambil data lengkap saat status berubah |
+| P1-1 Index hilang | Migrasi `0017`: 8 index, termasuk `orders(merchant_id, status)` untuk antrean dashboard |
+| P1-2 Kode Pesanan seq scan | Query menyertakan `length(order_code) = 8` |
+| P1-3 Pool DB 10 | `DATABASE_POOL_MAX` (default 20) + `DATABASE_STATEMENT_TIMEOUT_MS` (default 15000) |
+| P1-4 Polling status mahal | Lihat P0-3; tanya-status Midtrans dari polling di-cache 15 dtk per Pesanan |
+| P1-5 Polling dashboard | Antrean aktif lewat 2 query ber-index tanpa JOIN ber-`OR` (60 ms → 0,2 ms per poll) |
+| P2-1 Laporan | Cache 30 dtk per Lapak+periode, rekomendasi asisten 5 menit |
+| P2-2/P2-3 Landing & menu | Cache poster QR, daftar Gerai (30 dtk), katalog menu (15 dtk, dikosongkan saat Item/varian/profil berubah), config platform (30 dtk) |
+| P2-4 `items` tanpa batas | Maks. 50 baris per Pesanan |
+| P2-7 Map rate-limiter | Bucket kedaluwarsa disapu maks. sekali per menit saat > 10.000 bucket |
+
+Cache data hanya aktif saat `NODE_ENV=production` (lihat [TEKNOLOGI.md](TEKNOLOGI.md#performa--cache-2026-10-05)).
+
+### 8.1 Perbandingan A/B di kondisi mesin yang sama
+
+Selama pengujian, laptop sempat melambat ±2× (halaman statis `/lacak` turun dari ±2.400 ke ±980 rps). Karena itu versi lama dan baru diuji **bergantian dua ronde** di kondisi yang sama dengan [tests/stress/compare.mjs](../tests/stress/compare.mjs). Index `0017` dihapus saat versi lama diuji. Data: ±200.000 Pesanan. Angka = rata-rata dua ronde (`results/ab-sebelum-*.json`, `results/ab-sesudah-*.json`).
+
+| Skenario | Sebelum | Sesudah | Perubahan |
+|---|---|---|---|
+| Kontrol `/lacak` (tidak diubah) | 974 rps | 998 rps | sama (validasi kondisi mesin) |
+| Menu, CCU 50 | 63 rps | 87 rps | +38% |
+| Landing, CCU 50 | 80 rps | 132 rps | +65% |
+| Status Pesanan, CCU 50 | 56 rps | 118 rps | 2,1× |
+| `createOrder`, CCU 50 | 51 rps | 164 rps | 3,2× (sudah termasuk reservasi stok) |
+| 500 Pembeli polling tiap 4 dtk | p50 9.520 ms | p50 22 ms | 430× lebih cepat |
+| 200 Lapak polling dashboard | p50 133 ms | p50 15 ms | 9× |
+| Dashboard Lapak ramai, CCU 50 | 35 rps | 64 rps* | 1,8× |
+| Laporan 7 hari, CCU 10 | 2,8 rps | 118 rps | 42× (cache) |
+| `/admin/payouts`, 1 request | 47,8 dtk | 0,17 dtk | 280× |
+
+\* Diukur sebelum perbaikan P1-5. Setelah P1-5: 637 rps, p50 78 ms (lihat §8.2).
+
+### 8.2 Hasil akhir (mesin kembali normal, sebanding dengan §3)
+
+Kontrol `/lacak` 2.572 rps (baseline §3: 2.372), jadi angka ini bisa dibandingkan langsung dengan §3. File: `results/ab-sesudah-final.json`, `results/poll-ringkas.json`, `results/soak.json`, `results/merchant.json`.
+
+| Skenario | Baseline (§3) | Sesudah |
+|---|---|---|
+| Menu, CCU 50 | 152 rps | 169 rps |
+| Landing, CCU 50 | 144 rps | 239 rps |
+| Status Pesanan, CCU 50 | 65 rps | 217 rps |
+| `createOrder`, CCU 50 | 67 rps | 237 rps |
+| Pembeli menunggu bayar, 1.000 bersamaan | p50 22,5 dtk | p50 13 ms, 0% error |
+| Pembeli menunggu bayar, 2.500 bersamaan | p50 47 dtk, 43% error | p50 545 ms, 8% koneksi ditolak |
+| 200 Lapak polling dashboard | p50 4.376 ms | p50 10 ms |
+| Dashboard Lapak ramai, CCU 50 | 11,9 rps (6.018 aktif) | 637 rps, p50 78 ms (±300 aktif) |
+| Laporan 7 hari, CCU 10 | 2,1 rps | 167 rps |
+| `/admin/payouts` | 61 dtk, 493 MB, crash OOM | 129 ms |
+| **Soak 5 menit** beban campuran (§1) | p50 33–60 dtk, praktis lumpuh | **p50 90–235 ms, p95 < 1,4 dtk, error < 1%** |
+| Race stok: 300 Pembeli vs stok 50 | 300 lunas, oversell 250 | **50 lunas, oversell 0** |
+| Payload `items` 5.000 baris | diterima | ditolak (> 50) |
+
+**Kapasitas baru (perkiraan, satu proses Node, laptop uji):**
+
+| Beban | Sebelum | Sesudah |
+|---|---|---|
+| Pembeli menunggu bayar bersamaan | ±120 | **±2.000** |
+| Lapak membuka dashboard bersamaan | ±95 | **> 200** (200 Lapak hanya p50 10 ms; belum dicari batasnya) |
+| Pembuatan Pesanan | ±67/dtk | **±237/dtk** |
+
+Di atas ±2.500 Pembeli bersamaan, laptop uji kehabisan port lokal (`EADDRINUSE`) sebelum server mencapai batasnya, jadi angka di atas itu tidak bisa diukur di mesin ini.
+
+### 8.3 Sisa pekerjaan
+
+- **Landing statis** — butuh `APP_URL` tersedia saat build (build arg Dokploy), karena QR pendaftaran dibuat dari `APP_URL`. Butuh keputusan User.
+- **Halaman menu** masih dirender penuh per request (±170 rps, batas CPU satu proses). Langkah berikutnya: full-route cache/ISR dengan revalidasi tag.
+- **Multi-instance** — melipatgandakan kapasitas CPU, tetapi rate-limiter & cache in-memory harus pindah ke store bersama (mis. Redis). Keputusan infra User.
+- **Produksi** — cek konfigurasi Postgres, aktifkan `pg_stat_statements`, ukur ulang di server Garuda dengan Midtrans & Cloudflare.
+

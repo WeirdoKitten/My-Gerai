@@ -20,7 +20,11 @@ import {
   DELIVERY_FAILURE_REASON_LABEL_ID,
   FINAL_ORDER_STATUSES,
 } from "@/lib/utils/order-status";
-import { getOrderStatus, simulatePaymentSuccess } from "@/server/orders";
+import {
+  getOrderStatus,
+  getOrderStatusSummary,
+  simulatePaymentSuccess,
+} from "@/server/orders";
 import type { BuyerOrderStatusView } from "@/types/order";
 
 const POLL_INTERVAL_MS = 4000;
@@ -58,7 +62,11 @@ export function OrderStatusView({
   useEffect(() => {
     if (FINAL_ORDER_STATUSES.includes(order.status)) return;
 
+    // Poll versi ringan (status saja); data lengkap + QR diambil ulang hanya
+    // saat status berubah — lihat docs/STRESS-TEST.md P1-4.
     const interval = window.setInterval(async () => {
+      const summary = await getOrderStatusSummary(orderIdRef.current);
+      if (!summary || summary.status === order.status) return;
       const latest = await getOrderStatus(orderIdRef.current);
       if (latest) setOrder(latest);
     }, POLL_INTERVAL_MS);

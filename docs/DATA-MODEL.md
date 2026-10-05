@@ -63,7 +63,7 @@ erDiagram
         text description
         int price
         int cost_price "nullable; harga modal (HPP) per unit, dipakai untuk hitung Keuntungan di Laporan Penjualan (2026-09-14)"
-        int stock "nullable; null = tak terbatas. Berkurang GREATEST(stock-qty,0) saat Pesanan dibayar (2026-09-08)."
+        int stock "nullable; null = tak terbatas. Berkurang GREATEST(stock-qty,0) saat Pesanan dibayar (2026-09-08). Sejak 2026-10-05 qty Pesanan menunggu bayar ikut direservasi."
         int pre_order_min_days "nullable (2026-09-30). Terisi = Item pre-order: waktu pembuatan minimal (hari)."
         int pre_order_max_days "nullable (2026-09-30). Batas terjauh jadwal pre-order (hari ke depan)."
         string photo_url "nullable; path /uploads/products/<uuid>.<ext> hasil upload Pedagang (Fase Foto Item, 2026-09-08). Disimpan di volume Docker, bukan di DB."
@@ -239,6 +239,8 @@ erDiagram
 - `password_hash`: sama seperti `merchants.password_hash`, dibuat manual oleh Admin lain lewat proses internal (bukan self-service).
 
 ### `products` (Item)
+
+- **Reservasi stok** (2026-10-05, [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-10-05): stok yang bisa dipesan = `stock` − total `order_items.qty` di Pesanan Lapak yang sama berstatus `menunggu_pembayaran` dan `expires_at > now()`. Dicek di transaksi `createOrder` dengan baris Item dikunci (`FOR UPDATE`). Tanpa kolom baru: Pesanan yang kedaluwarsa otomatis melepas reservasinya. `stock` sendiri tetap baru dikurangi saat lunas.
 - `pre_order_min_days` / `pre_order_max_days` (nullable, 2026-09-30, migrasi `0016`): terisi berdua = Item **pre-order** (dibuat sesuai pesanan, mis. nasi tumpeng). Jadwal paling cepat = hari ini (WIB) + `min`, paling jauh + `max`. Item pre-order **tidak memakai stok** (`stock` dipaksa `null` saat simpan) dan tidak bisa dicampur Item biasa dalam satu Pesanan.
 - `status = sold_out` dipakai Pedagang untuk menyembunyikan Item yang habis tanpa menghapus datanya (histori pesanan lama tetap valid lewat snapshot di `order_items`).
 - `cost_price` (nullable, 2026-09-14): harga modal (HPP) per unit, diisi opsional oleh Pedagang di `ProductForm`. **Tidak pernah** dikirim ke Pembeli (`getStallCatalog`/`BuyerProductView` tidak menyertakannya). Dipakai `getMerchantSalesReport` untuk menghitung `summary.profit`; kalau ada Item terjual yang belum punya `cost_price`, `summary.profitIncomplete = true`.
@@ -309,6 +311,10 @@ erDiagram
 ### `admin_sessions` (Sesi login Admin — Fase 4)
 - Tabel **terpisah** dari `sessions` (bukan tabel polimorfik dengan kolom nullable) — `merchants`/`admins` sudah sengaja dipisah sejak awal (bukan `users`+role tunggal), jadi sesi mereka juga dipisah supaya tidak butuh `CHECK` constraint tambahan untuk dua domain yang memang berbeda. Mekanisme identik `sessions` (token bearer acak di-hash SHA-256, cookie `HttpOnly` terpisah bernama `mygerai_admin_session` — beda dari `mygerai_session` Pedagang supaya keduanya bisa aktif berdampingan di browser yang sama). Lihat implementasi di `src/lib/auth/admin-session.ts`.
 - Admin **tidak** punya gate status seperti `merchants.status === "approved"` — begitu password cocok, sesi langsung dibuat (Admin = akun internal, dibuat manual, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)).
+
+## Index (migrasi `0017`, 2026-10-05)
+
+Postgres tidak otomatis membuat index untuk foreign key. Ditambahkan setelah stress test membuktikan seq scan ([STRESS-TEST.md](STRESS-TEST.md) P1-1): `order_items(order_id)`, `order_items(product_id)`, `orders(merchant_id, created_at)`, `orders(merchant_id, status)` (antrean dashboard Pedagang), `order_item_variant_selections(order_item_id)`, `products(merchant_id)`, `product_variant_groups(product_id)`, `product_variant_options(group_id)`. Query by Kode Pesanan wajib menyertakan `length(order_code) = 8` supaya memakai index parsial `orders_order_code_v2_idx`.
 
 ## Keamanan Multi-tenant (Isolasi Level Aplikasi)
 
