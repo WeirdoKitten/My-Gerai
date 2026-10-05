@@ -29,7 +29,7 @@
 | Monitoring error (nanti) | **Sentry** (free tier) | Ditambahkan setelah MVP jalan, bukan blocker awal. |
 | Cetak struk (Pedagang, 2026-09-25) | **Web Bluetooth + ESC/POS** buatan sendiri (`src/lib/printer/bluetooth-printer.ts` + `src/lib/utils/receipt.ts`), **tanpa dependency** | Dipilih User: HP + printer thermal Bluetooth mini 58mm, cetak langsung tanpa dialog cetak browser. Encoder ESC/POS cukup beberapa perintah dasar (reset, perataan, tebal, tinggi 2×, feed) — tidak sepadan menambah library. **Batasan**: Web Bluetooth hanya ada di browser Chromium (Chrome Android, Chrome/Edge desktop) — **tidak** di iPhone/Safari/Firefox; printer **wajib BLE** (printer yang hanya Bluetooth Classic/SPP tidak bisa diakses browser). Teks dikonversi ke ASCII (printer murah umumnya code page PC437). |
 | QR Code generator | Library `qrcode` (Node) | Generate QR Menu (server-side) sebagai gambar untuk diunduh/dicetak Pedagang. |
-| Peta (titik lokasi Lapak & Area, Fase 8-9) | **Leaflet + OpenStreetMap** (`leaflet` + `react-leaflet`) | Dipilih User (2026-09-17) atas Google Maps: gratis, tanpa API key/billing — cocok prinsip "cepat, ringan, minim biaya" untuk skala kaki lima. `src/components/merchant/LocationMapPicker.tsx` (diimpor via `next/dynamic({ssr:false})`, Leaflet butuh `window`) dipakai dua kali: Pedagang pasang titik Lapak (`/dashboard/profil`), dan Admin pasang pusat+radius Area (`/admin/areas`, prop opsional `radiusKm` menggambar `<Circle>` pratinjau cakupan) — halaman lain nol dependency peta tambahan (code-split per komponen). **Trade-off**: tile OSM gratis (`tile.openstreetmap.org`) diberi kebijakan penggunaan wajar (Tile Usage Policy) — cukup untuk traffic kaki lima, tapi kalau volume Pembeli jauh lebih besar nanti, upgrade ke tile provider berbayar (mis. MapTiler/Stadia Maps) jadi opsi. Pencarian alamat/geocoding **forward** (ketik alamat → cari pin) **tidak** disediakan — pasang pin manual (klik/drag di peta) atau lewat `navigator.geolocation` browser. **Reverse-geocoding** (pin → teks alamat, 2026-09-21) ditambahkan lewat **Nominatim** (`nominatim.openstreetmap.org`, ekosistem OSM yang sama, gratis tanpa API key) untuk auto-isi field "Alamat Lapak" di `/dashboard/profil` (`src/server/geocoding.ts`) begitu Pedagang taruh/geser pin — dipanggil dari server (bukan client) karena kebijakan penggunaan Nominatim mewajibkan header `User-Agent` custom yang tidak bisa di-set dari `fetch` browser (forbidden header). Gagal apa pun (timeout/rate-limit/response invalid) → `null`, tidak pernah blocking — Pedagang tetap bisa isi/edit alamat manual. |
+| Peta & pencarian alamat (titik Lapak, Area, alamat antar) | **Google Maps JS + Places API (New)** sebagai utama, **fallback otomatis ke Leaflet + OpenStreetMap + Photon** (`@googlemaps/js-api-loader`, `leaflet` + `react-leaflet`) | **Direvisi 2026-10-06** (sebelumnya Leaflet+OSM saja, dipilih 2026-09-17): User minta bisa mengetik alamat lalu pin pindah otomatis, karena menggeser peta manual terlalu ribet. Google dipilih karena data tempat Indonesia (pasar, gang, warung) paling lengkap; OSM tetap ada sebagai cadangan gratis saat Google tidak dikonfigurasi, kuota bulanan hampir habis, atau Google error. Tanpa env Google, aplikasi berjalan penuh di mode OSM (default dev/test/E2E). Reverse-geocoding (pin → teks alamat) **tetap Nominatim** (`src/server/geocoding.ts`, `reverseGeocodeAddress`). Detail: [§Peta & Pencarian Alamat](#peta--pencarian-alamat-2026-10-06). |
 
 ## Kenapa Bukan Alternatif Lain?
 
@@ -123,8 +123,43 @@ Dasar keputusan & angka: [STRESS-TEST.md](STRESS-TEST.md). Ringkas:
 - **Cache in-memory** ([src/lib/cache/memory.ts](../src/lib/cache/memory.ts)): `createTtlCache` menyimpan Promise per key (request bersamaan cukup satu query), tanpa dependency/infra baru. Cache data memakai `productionTtl()` sehingga hanya aktif saat `NODE_ENV=production` — `next dev` dan E2E selalu membaca DB. Yang di-cache: config platform, katalog menu (`src/lib/cache/stall-catalog.ts`, dikosongkan oleh Server Action Item/varian/profil/status Lapak), daftar Gerai publik, Laporan, render QR, poster pendaftaran. Keterbatasan sama dengan rate-limiter: per proses, tidak sinkron lintas instance.
 - **Alat ukur**: `tests/stress/` (lihat STRESS-TEST.md §7). Jalankan `compare.mjs` sebelum & sesudah perubahan yang menyentuh query/polling.
 
+## Peta & Pencarian Alamat (2026-10-06)
+
+Komponen: [src/components/merchant/LocationMapPicker.tsx](../src/components/merchant/LocationMapPicker.tsx) (+ `map/`), dipakai profil Pedagang, checkout Diantar, dan Area Admin. Kotak cari alamat di atas peta; **pin tetap di tengah, peta yang digeser** (gaya aplikasi ojol); tombol "Pakai lokasi saya sekarang" tetap ada. Keputusan lengkap: [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-10-06.
+
+- **Penentuan provider** (`getMapProvider`, dipanggil sekali saat picker dibuka): Google hanya kalau `MAPS_PROVIDER=google` + kedua key terisi, circuit breaker tertutup, dan semua SKU bulan ini di bawah batas. Selain itu OSM. Satu picker selalu satu paket: hasil Google hanya tampil di peta Google (ketentuan layanan Google); kalau beralih, peta **dan** pencarian sama-sama pindah ke OSM.
+- **Pencarian**: lewat Server Action `searchPlaces`/`resolvePlace` (key server tidak pernah ke browser). Google = Places Autocomplete (New) + Place Details field `location` dengan *session token* (satu sesi ketik ditagih sebagai satu sesi). OSM = **Photon** (`photon.komoot.io`, gratis, tanpa key, *fair use*). Rate limit 60/menit per IP (Pembeli tanpa akun).
+- **Tiga lapis pengaman biaya**:
+  1. *Quota cap* harian per API di Google Cloud Console (batas keras — lewat batas, Google menolak dan tidak menagih). **Wajib di-set User.**
+  2. Penghitung bulanan sendiri di tabel `map_api_usage` (SKU `map_load`, `autocomplete`, `place_details`). Satu SKU mencapai `GOOGLE_MAPS_MONTHLY_LIMIT` (default 9.000) → semua picker baru memakai OSM sampai bulan (UTC) berganti.
+  3. Fallback reaktif: Google gagal apa pun (4xx/5xx/timeout di server; script gagal/`gm_authFailure` di browser) → picker langsung pindah ke OSM tanpa reload, dan Google dimatikan 15 menit (circuit breaker in-memory).
+- **Keterbatasan**: Photon publik tidak punya SLA dan cukup lambat (±2–4 detik per pencarian saat diuji); data OSM untuk gang/warung kecil sering kosong — User tetap bisa menggeser peta. Di `next dev` (React Strict Mode) satu picker tercatat 2 map load; di produksi 1.
+
+### Environment variables
+
+```
+MAPS_PROVIDER=""                 # kosong/"osm" (default) | "google"
+GOOGLE_MAPS_BROWSER_KEY=""       # dipakai <script> Maps JS — memang publik, amankan lewat restriksi
+GOOGLE_MAPS_SERVER_KEY=""        # hanya server (Places API New), tidak pernah ke browser
+GOOGLE_MAPS_MONTHLY_LIMIT=""     # default 9000 per SKU per bulan
+```
+
+Browser key dikirim lewat Server Action saat runtime (bukan `NEXT_PUBLIC_*` yang ter-inline saat build), jadi bisa diganti/dimatikan di Dokploy tanpa rebuild.
+
+### Setup Google Cloud (dikerjakan User)
+
+1. Buat project di console.cloud.google.com, aktifkan **billing account** (wajib walau pemakaian masih di kuota gratis).
+2. **APIs & Services → Library**: aktifkan **Maps JavaScript API** dan **Places API (New)**.
+3. **Credentials → Create API key** dua kali:
+   - *Browser key*: Application restriction = **Websites** (`https://<domain-produksi>/*`, plus `http://localhost:3000/*` kalau mau uji lokal); API restriction = **Maps JavaScript API** saja.
+   - *Server key*: API restriction = **Places API (New)** saja (opsional: IP restriction ke IP keluar server Garuda).
+4. **Quotas** (per API): set batas harian, mis. ±300 request/hari per SKU (≈ 9.000/bulan), supaya tidak pernah melewati kuota gratis bulanan.
+5. Cek halaman harga Google Maps Platform yang berlaku saat setup (kuota gratis per SKU bisa berubah), sesuaikan `GOOGLE_MAPS_MONTHLY_LIMIT`.
+6. Isi env di Dokploy (`MAPS_PROVIDER=google` + kedua key), redeploy. Opsional: pasang *budget alert* di Billing.
+
 ## Batasan Biaya (estimasi, untuk kesadaran User)
 
 - Hosting app & database: **tanpa biaya tambahan** — pakai server Garuda yang sudah ada, sama seperti proyek User lainnya (MyPlaza).
 - Midtrans: tidak ada biaya bulanan. **MDR QRIS** per transaksi sukses (~0,7% umum, bisa 0% untuk transaksi kecil skema "QRIS bebas biaya" UMI — tergantung klasifikasi akun, cek ke Midtrans) — **ditagih ke akun Aplikator**, dan **ditanggung Aplikator** (dipotong dari margin Biaya Layanan; **tidak boleh** dibebankan ke Pembeli — [PBI 23/6/PBI/2021 Ps. 52](https://peraturan.bpk.go.id/Details/207042/peraturan-bi-no-236pbi2021)). **Iris** (disbursement): biaya per transfer (~Rp2.500–5.000 bank; lebih murah/gratis e-wallet) — **ditanggung Pedagang** (dipotong dari tiap Pencairan). Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08.
+- Google Maps Platform (opsional, 2026-10-06): **Rp0 selama di bawah kuota gratis bulanan** per SKU — dijaga quota cap harian + `GOOGLE_MAPS_MONTHLY_LIMIT` (lihat [§Peta & Pencarian Alamat](#peta--pencarian-alamat-2026-10-06)). Tanpa key = OSM gratis.
 - Storage foto (kalau nanti pilih Cloudflare R2): tier gratis R2 cukup besar (10GB/bulan) untuk skala awal.

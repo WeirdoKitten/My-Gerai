@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-06 — Pencarian alamat di peta (branch `feat/pencarian-alamat-peta`)
+
+**Dampak:** [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (baris Peta direvisi, §Peta & Pencarian Alamat baru, Batasan Biaya), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-06), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (tabel `map_api_usage`, migrasi `0019`), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CATATAN-RILIS.md](CATATAN-RILIS.md), `.env.example`. Kode baru: `src/lib/maps/`, `src/components/merchant/map/`, `src/lib/validation/maps.schema.ts`, `src/types/maps.ts`, `tests/unit/maps.test.ts`. Dependency baru: `@googlemaps/js-api-loader`, `@types/google.maps`.
+**Alasan:** Permintaan User: memilih titik lokasi dengan menggeser peta terlalu ribet. Keputusan User: Google Maps + Places sebagai utama, otomatis beralih ke OSM kalau kuota/billing habis. Fallback Photon = rekomendasi Claude.
+**Ringkasan:**
+- Map picker (profil Pedagang, checkout Diantar, Area Admin) kini punya kotak cari alamat dan pin tetap di tengah — peta yang digeser.
+- Google aktif hanya kalau `MAPS_PROVIDER=google` + kedua key terisi; tanpa itu semuanya OSM (Leaflet + Photon), jadi dev/test tidak berubah. Pengaman biaya tiga lapis: quota cap Google Cloud (diset User), penghitung bulanan di DB, fallback otomatis saat Google gagal (+ circuit breaker 15 menit).
+- **Diverifikasi**: unit 216/216, E2E 16/16, `tsc`/`build` lulus, uji manual mode OSM + fallback key palsu + batas bulanan, `/security-review` tanpa temuan. **Belum**: uji dengan key Google asli (menunggu setup User), uji manual User.
+
 ## 2026-10-05 — Rating & Ulasan Gerai (branch `feat/rating-ulasan`)
 
 **Dampak:** [docs/PRD.md](docs/PRD.md) (§4, §7), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (tabel `merchant_reviews`, migrasi `0018`), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-05), [docs/GLOSSARY.md](docs/GLOSSARY.md), [docs/CODING-STYLE.md](docs/CODING-STYLE.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (`StarRating`, ikon `star`), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CATATAN-RILIS.md](CATATAN-RILIS.md). Kode baru: `src/server/reviews.ts`, `src/lib/review/`, `src/types/review.ts`, `src/lib/validation/review.schema.ts`, `src/components/buyer/{OrderReviewSection,StallReviews}.tsx`, `src/components/merchant/MerchantReviewList.tsx`, `src/components/ui/StarRating.tsx`, `src/app/(merchant)/dashboard/ulasan/`.

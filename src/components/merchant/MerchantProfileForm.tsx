@@ -205,8 +205,8 @@ export function MerchantProfileForm({
         </span>
         <LocationMapPicker value={location} onChange={handleLocationChange} />
         <span className="text-xs text-ink-muted">
-          Taruh atau geser pin ke lokasi Lapak, alamat di bawah otomatis terisi.
-          Opsional.
+          Cari alamat atau geser peta ke lokasi Lapak, alamat di bawah otomatis
+          terisi. Opsional.
         </span>
       </div>
       <Field

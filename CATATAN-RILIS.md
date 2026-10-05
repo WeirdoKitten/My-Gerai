@@ -8,6 +8,20 @@ Ringkasan pembaruan MyGerai dalam bahasa sehari-hari: apa yang bisa dilakukan **
 
 ---
 
+## 6 Oktober 2026: Cari alamat langsung di peta
+
+**Untuk Pembeli**
+- Saat memilih "Diantar", titik lokasi pengantaran sekarang bisa dicari dengan mengetik alamat atau nama tempat. Pilih salah satu saran, peta langsung pindah ke sana.
+- Pin sekarang diam di tengah peta. Cukup geser petanya sampai pin pas di depan rumahmu.
+
+**Untuk Pedagang**
+- Lokasi lapak di halaman Profil juga bisa dicari dengan mengetik alamat. Alamat lapak tetap terisi otomatis setelah pin dipasang.
+
+**Untuk Admin**
+- Titik pusat Area bisa dicari dengan mengetik nama daerah.
+
+---
+
 ## 5 Oktober 2026: Rating & ulasan gerai
 
 **Untuk Pembeli**

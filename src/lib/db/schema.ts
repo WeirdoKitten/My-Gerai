@@ -7,6 +7,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   time,
   timestamp,
@@ -540,3 +541,21 @@ export const adminSessions = pgTable("admin_sessions", {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp({ withTimezone: true }).notNull(),
 });
+
+/**
+ * Penghitung pemakaian Google Maps Platform per bulan (UTC, `YYYY-MM`) per
+ * SKU yang ditagih: `map_load`, `autocomplete`, `place_details`. Dipakai
+ * `src/lib/maps/usage.ts` untuk beralih ke OSM SEBELUM melewati kuota gratis
+ * (Google tidak berhenti sendiri saat kuota habis — lewat dari itu ditagih).
+ * Disimpan di DB, bukan in-memory, supaya restart container tidak me-reset
+ * hitungan. Upsert `count + 1` per pemakaian — volume kecil di skala kaki lima.
+ */
+export const mapApiUsage = pgTable(
+  "map_api_usage",
+  {
+    month: text().notNull(),
+    sku: text().notNull(),
+    count: integer().notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.month, table.sku] })],
+);
