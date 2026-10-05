@@ -518,6 +518,19 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [x] Unit test `tests/unit/review.test.ts` (8 test); E2E `order-flow.spec.ts` + 1 test (beri ulasan → tampil di menu, `/gerai`, dashboard). Suite E2E 16/16, unit 199/199, `tsc`/`build` lulus. Constraint DB (duplikat & rating 6) dibuktikan menolak. Cek visual di lebar HP.
 - [ ] Uji manual User.
 
+## Pencarian Alamat di Peta (2026-10-06, branch `feat/pencarian-alamat-peta`)
+
+> Permintaan User: memilih titik lokasi Lapak/pengantaran terlalu ribet karena harus menggeser peta manual — ingin bisa mengetik alamat lalu pin pindah otomatis, dengan teknologi yang paling memudahkan (boleh selain Leaflet/OSM). Keputusan User (2026-10-06): **Google Maps + Places Autocomplete (New) sebagai utama**, **otomatis beralih ke OSM** (Leaflet + pencarian Photon) kalau kuota/billing habis atau Google error. Fallback Photon = rekomendasi Claude (gratis, tanpa key). Akun Google Cloud & API key menyusul dari User — tanpa key, aplikasi tetap penuh di mode OSM. Membalik keputusan peta 2026-09-17 (lihat ADR 2026-10-06 di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)). Plan: `~/.claude/plans/hashed-percolating-wombat.md`.
+
+- [x] Tabel `map_api_usage` (penghitung pemakaian Google per bulan per SKU) + migrasi `0019_map_api_usage.sql`.
+- [x] `src/lib/maps/`: klien Google Places (autocomplete + details), klien Photon (saran kembar dibuang), penentuan provider (env + batas bulanan + circuit breaker 15 menit), penghitung DB di `usage-store.ts` (dipisah supaya logika murni bisa diunit-test).
+- [x] Server Action `getMapProvider`, `searchPlaces`, `resolvePlace` di `src/server/geocoding.ts` (key server tidak pernah ke client, rate limit per IP, gagal → fallback OSM, tidak pernah throw).
+- [x] `LocationMapPicker` + `components/merchant/map/`: kotak cari + saran (Enter tidak submit form induk), pin tetap di tengah (peta yang digeser, tap = pusatkan, zoom di bawah 13 tidak memasang titik), peta Google atau Leaflet, pindah otomatis ke OSM saat Google gagal. Prop tidak berubah.
+- [x] Env baru `MAPS_PROVIDER`, `GOOGLE_MAPS_BROWSER_KEY`, `GOOGLE_MAPS_SERVER_KEY`, `GOOGLE_MAPS_MONTHLY_LIMIT` + panduan setup Google Cloud di TEKNOLOGI.md.
+- [x] Unit test `tests/unit/maps.test.ts` (17 test), unit total 216/216, E2E 16/16, `tsc`/`build` lulus. Manual (dev server + Playwright, lebar HP): mode OSM di profil Pedagang (cari → pilih → alamat Nominatim terisi, geser peta memindah titik, Enter memilih saran tanpa submit), Area Admin (lingkaran radius), checkout Diantar (jarak dari Lapak muncul). Fallback dengan key palsu: Maps JS dimuat → key ditolak → otomatis Leaflet; Places membalas 400 → `GooglePlacesError`. Batas bulanan = 1: Google tidak dimuat sama sekali, hitungan tidak bertambah.
+- [x] `/security-review`: tidak ada temuan.
+- [ ] **User:** buat project Google Cloud + billing + 2 API key + quota cap harian, isi env, lalu uji mode Google dengan key asli.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

@@ -224,6 +224,12 @@ erDiagram
         timestamp created_at
         timestamp expires_at
     }
+
+    MAP_API_USAGE {
+        string month PK "YYYY-MM (UTC)"
+        string sku PK "map_load, autocomplete, place_details"
+        int count
+    }
 ```
 
 ## Catatan per Entitas
@@ -238,7 +244,7 @@ erDiagram
 - `payment_mode` (Fase 7, default `gateway`): **hanya Admin** yang boleh mengubah (`setMerchantPaymentMode`, ditolak server kalau mau switch ke `qris_pribadi` tapi `qris_photo_url` masih kosong) — Pedagang cuma unggah/kelola foto QRIS miliknya sendiri, bukan self-service ganti mode. Lihat [ARSITEKTUR-SISTEM.md ADR 2026-09-11](ARSITEKTUR-SISTEM.md).
 - `qris_photo_url` (nullable, Fase 7): foto QRIS statis Pedagang, path `/uploads/qris/<uuid>.<ext>` (pola sama upload foto Item/Lapak — volume Docker, magic-bytes validation). Dipakai sebagai gambar QR di halaman status Pesanan Pembeli saat `payment_mode = qris_pribadi`.
 - `manual_override` / `manual_override_set_at` (nullable, 2026-09-14): override manual status buka/tutup Lapak, diisi Pedagang lewat toggle di header dashboard. Dihitung lazy bareng `merchant_operating_hours` oleh `getMerchantOpenState` (`src/lib/schedule/is-merchant-open.ts`) — **tanpa keduanya** (belum pernah toggle, belum ada jadwal) Lapak dianggap **selalu buka** (default aman, tidak meregresi Lapak lama). Override cuma berlaku selama segmen jadwal yang sama saat dipasang — begitu lewat batas jadwal berikutnya, otomatis basi & kembali murni ikut jadwal (atau Pedagang bisa hapus manual lewat "Ikuti Jadwal Lagi" di `/dashboard/jadwal`).
-- `latitude` / `longitude` (nullable, `double precision`, Fase 8 — 2026-09-17): titik GPS Lapak, diisi opsional oleh Pedagang lewat map picker Leaflet di `/dashboard/profil` (`LocationMapPicker`, klik/drag pin atau tombol "pakai lokasi saya sekarang"). `null` = belum pernah diisi, dianggap "lokasi tidak diketahui" — Lapak tetap tampil normal di semua tempat, cuma tidak ikut pengelompokan Area di landing page. Dicocokkan **lazy** ke `service_areas` terdekat oleh `listApprovedMerchants` lewat `findNearestArea` (`src/lib/utils/geo.ts`, Fase 9) — tidak disimpan sebagai FK, supaya perubahan Area oleh Admin langsung berlaku tanpa migrasi data. Selalu diisi/dikosongkan bersamaan (divalidasi di `updateMerchantProfileSchema`, bukan CHECK constraint DB — skala kaki lima, KISS).
+- `latitude` / `longitude` (nullable, `double precision`, Fase 8 — 2026-09-17): titik GPS Lapak, diisi opsional oleh Pedagang lewat map picker di `/dashboard/profil` (`LocationMapPicker`: cari alamat, geser peta dengan pin di tengah, atau tombol "pakai lokasi saya sekarang"; Google Maps atau Leaflet/OSM, lihat ADR 2026-10-06). `null` = belum pernah diisi, dianggap "lokasi tidak diketahui" — Lapak tetap tampil normal di semua tempat, cuma tidak ikut pengelompokan Area di landing page. Dicocokkan **lazy** ke `service_areas` terdekat oleh `listApprovedMerchants` lewat `findNearestArea` (`src/lib/utils/geo.ts`, Fase 9) — tidak disimpan sebagai FK, supaya perubahan Area oleh Admin langsung berlaku tanpa migrasi data. Selalu diisi/dikosongkan bersamaan (divalidasi di `updateMerchantProfileSchema`, bukan CHECK constraint DB — skala kaki lima, KISS).
 - `address` (nullable, `text`, 2026-09-21): alamat fisik bebas-teks, diisi opsional oleh Pedagang di `/dashboard/profil` (field "Alamat Lapak"). Nilai awal diisi **otomatis** dari reverse-geocode `latitude`/`longitude` (Nominatim, `src/server/geocoding.ts`) begitu Pedagang taruh/geser pin di map picker — supaya alamat & titik GPS selalu sinkron ke lokasi yang sama, bukan dua input independen yang bisa divergen — tapi tetap **bisa ditimpa manual** (mis. tambah patokan "dekat Alfamart" kalau hasil otomatis kurang jelas). Ditampilkan ke Pembeli di halaman menu (`getStallCatalog`) supaya tidak bingung mencari lapaknya saat ambil pesanan; berdampingan dengan tombol "Buka di Peta" (dibangun dari `latitude`/`longitude` kalau ada, link Google Maps mode navigasi `dir/?api=1&destination=lat,lng`, bukan komponen peta baru).
 
 ### `merchant_operating_hours` (Jadwal Operasional — 2026-09-14)
@@ -328,6 +334,12 @@ erDiagram
 ### `admin_sessions` (Sesi login Admin — Fase 4)
 - Tabel **terpisah** dari `sessions` (bukan tabel polimorfik dengan kolom nullable) — `merchants`/`admins` sudah sengaja dipisah sejak awal (bukan `users`+role tunggal), jadi sesi mereka juga dipisah supaya tidak butuh `CHECK` constraint tambahan untuk dua domain yang memang berbeda. Mekanisme identik `sessions` (token bearer acak di-hash SHA-256, cookie `HttpOnly` terpisah bernama `mygerai_admin_session` — beda dari `mygerai_session` Pedagang supaya keduanya bisa aktif berdampingan di browser yang sama). Lihat implementasi di `src/lib/auth/admin-session.ts`.
 - Admin **tidak** punya gate status seperti `merchants.status === "approved"` — begitu password cocok, sesi langsung dibuat (Admin = akun internal, dibuat manual, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)).
+
+### `map_api_usage` (Penghitung pemakaian Google Maps — 2026-10-06)
+- Satu baris per bulan (UTC, `YYYY-MM`) per SKU Google yang ditagih: `map_load`, `autocomplete`, `place_details`. PK komposit `(month, sku)`, migrasi `0019_map_api_usage.sql`. Tanpa relasi ke tabel lain.
+- Ditambah `count + 1` lewat upsert atomik (`INSERT ... ON CONFLICT DO UPDATE ... RETURNING`) di `src/lib/maps/usage-store.ts` setiap kali picker membuka peta Google, setiap permintaan autocomplete, dan setiap Place Details. Hitungan ≥ `GOOGLE_MAPS_MONTHLY_LIMIT` → map picker beralih ke OSM sampai bulan berganti (lihat [TEKNOLOGI.md §Peta & Pencarian Alamat](TEKNOLOGI.md#peta--pencarian-alamat-2026-10-06)).
+- Disimpan di DB (bukan in-memory) supaya restart container tidak me-reset hitungan dan membuat tagihan lolos. Tidak ada cleanup — 3 baris per bulan.
+- Koordinat hasil Google **tidak** disimpan apa adanya sebagai data Google: yang disimpan ke `merchants`/`orders`/`service_areas` adalah posisi pin yang dikonfirmasi User (Google hanya dipakai untuk memindahkan peta).
 
 ## Index (migrasi `0017`, 2026-10-05)
 

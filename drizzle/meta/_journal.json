@@ -134,6 +134,13 @@
       "when": 1791191116835,
       "tag": "0018_merchant_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791227219992,
+      "tag": "0019_map_api_usage",
+      "breakpoints": true
     }
   ]
 }

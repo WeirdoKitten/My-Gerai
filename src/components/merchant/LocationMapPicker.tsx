@@ -1,52 +1,43 @@
 "use client";
 
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { useCallback, useEffect, useState } from "react";
-import {
-  Circle,
-  MapContainer,
-  Marker,
-  TileLayer,
-  useMap,
-  useMapEvents,
-} from "react-leaflet";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { MapPinIcon } from "@/components/ui/icons";
+import { Spinner } from "@/components/ui/Spinner";
+import { cn } from "@/lib/utils/cn";
 import type { Coordinates } from "@/lib/utils/geo";
+import { getMapProvider } from "@/server/geocoding";
+import type { MapProviderConfig } from "@/types/maps";
+import { PlaceSearchBox } from "./map/PlaceSearchBox";
+import type { MapController } from "./map/types";
 
-// L.Icon.Default menebak path asset ikon marker dari pipeline webpack
-// klasik -- tidak berlaku di Next.js, hasilnya ikon default patah. Override
-// ke asset yang sudah dicopy ke public/leaflet/ (lihat public/leaflet/).
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })
-  ._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: "/leaflet/marker-icon.png",
-  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
-  shadowUrl: "/leaflet/marker-shadow.png",
-});
-
-const INDONESIA_CENTER: [number, number] = [-2.5, 118];
-const DEFAULT_ZOOM = 4;
-const PICKED_ZOOM = 16;
-
-function ClickToPlace({ onPlace }: { onPlace: (coords: Coordinates) => void }) {
-  useMapEvents({
-    click(e) {
-      onPlace({ latitude: e.latlng.lat, longitude: e.latlng.lng });
-    },
-  });
-  return null;
+function MapLoading() {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-neutral-bg text-ink-muted">
+      <Spinner className="size-6" />
+    </div>
+  );
 }
 
-/** MapContainer cuma pakai center/zoom sekali saat mount -- perlu flyTo manual biar ikut pindah saat lokasi diisi lewat tombol "pakai lokasi saya sekarang". */
-function RecenterOnChange({ target }: { target: Coordinates | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (target) map.flyTo([target.latitude, target.longitude], PICKED_ZOOM);
-  }, [target, map]);
-  return null;
-}
+// Dipisah per provider: mode Google tidak memuat Leaflet, mode OSM tidak
+// memuat loader Google.
+const LeafletMap = dynamic(
+  () => import("./map/LeafletMap").then((mod) => mod.LeafletMap),
+  { ssr: false, loading: MapLoading },
+);
+const GoogleMap = dynamic(
+  () => import("./map/GoogleMap").then((mod) => mod.GoogleMap),
+  { ssr: false, loading: MapLoading },
+);
 
+/**
+ * Pemilih titik lokasi: kotak cari alamat + peta dengan pin tetap di tengah
+ * (geser peta untuk memindah titik) + "Pakai lokasi saya sekarang". Provider
+ * ditentukan server (`getMapProvider`): Google kalau aktif & kuota aman,
+ * selain itu OSM (Leaflet + Photon). Google gagal kapan pun → pindah ke OSM
+ * tanpa reload. Dipakai profil Pedagang, checkout Diantar, dan Area Admin.
+ */
 export function LocationMapPicker({
   value,
   onChange,
@@ -60,10 +51,39 @@ export function LocationMapPicker({
   /** Opsional -- titik awal peta saat `value` masih kosong (mis. lokasi Lapak di checkout Pesanan Antar). */
   initialCenter?: Coordinates;
 }) {
+  const [config, setConfig] = useState<MapProviderConfig | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
-  const [recenterTarget, setRecenterTarget] = useState<Coordinates | null>(
-    null,
+  const controllerRef = useRef<MapController | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMapProvider()
+      .catch((): MapProviderConfig => ({ provider: "osm" }))
+      .then((result) => {
+        if (!cancelled) setConfig(result);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleReady = useCallback((controller: MapController) => {
+    controllerRef.current = controller;
+  }, []);
+
+  const fallBackToOsm = useCallback(() => {
+    controllerRef.current = null;
+    setConfig({ provider: "osm" });
+  }, []);
+
+  /** Titik dari hasil cari / GPS: set nilai lalu terbangkan peta ke sana. */
+  const placeAt = useCallback(
+    (coords: Coordinates) => {
+      onChange(coords);
+      controllerRef.current?.flyTo(coords);
+    },
+    [onChange],
   );
 
   const handleUseCurrentLocation = useCallback(() => {
@@ -75,66 +95,61 @@ export function LocationMapPicker({
     setGeoError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const coords = {
+        placeAt({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        };
-        onChange(coords);
-        setRecenterTarget(coords);
+        });
         setLocating(false);
       },
       () => {
         setGeoError(
-          "Tidak bisa mendapat lokasi otomatis. Tap peta di bawah untuk pasang titik manual.",
+          "Tidak bisa mendapat lokasi otomatis. Cari alamat atau geser peta untuk memasang titik.",
         );
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
-  }, [onChange]);
+  }, [placeAt]);
+
+  const mapProps = {
+    value,
+    initialCenter,
+    radiusKm,
+    onCenterChange: onChange,
+    onReady: handleReady,
+  };
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="h-64 w-full overflow-hidden rounded-xl border border-line">
-        <MapContainer
-          center={
-            value
-              ? [value.latitude, value.longitude]
-              : initialCenter
-                ? [initialCenter.latitude, initialCenter.longitude]
-                : INDONESIA_CENTER
-          }
-          zoom={value || initialCenter ? PICKED_ZOOM : DEFAULT_ZOOM}
-          scrollWheelZoom={false}
-          className="h-full w-full"
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      {config ? (
+        <PlaceSearchBox
+          provider={config.provider}
+          near={value ?? initialCenter ?? null}
+          onPick={placeAt}
+          onProviderFallback={fallBackToOsm}
+        />
+      ) : null}
+      <div className="relative h-64 w-full overflow-hidden rounded-xl border border-line">
+        {!config ? (
+          <MapLoading />
+        ) : config.provider === "google" ? (
+          <GoogleMap
+            {...mapProps}
+            browserKey={config.browserKey}
+            onLoadError={fallBackToOsm}
           />
-          <ClickToPlace onPlace={onChange} />
-          <RecenterOnChange target={recenterTarget} />
-          {value ? (
-            <Marker
-              position={[value.latitude, value.longitude]}
-              draggable
-              eventHandlers={{
-                dragend: (event) => {
-                  const marker = event.target as L.Marker;
-                  const pos = marker.getLatLng();
-                  onChange({ latitude: pos.lat, longitude: pos.lng });
-                },
-              }}
-            />
-          ) : null}
-          {value && radiusKm ? (
-            <Circle
-              center={[value.latitude, value.longitude]}
-              radius={radiusKm * 1000}
-              pathOptions={{ color: "#ea580c", fillOpacity: 0.12 }}
-            />
-          ) : null}
-        </MapContainer>
+        ) : (
+          <LeafletMap {...mapProps} />
+        )}
+        {config ? (
+          // Pin tetap di tengah — ujung bawah ikon tepat di pusat peta.
+          <MapPinIcon
+            className={cn(
+              "pointer-events-none absolute left-1/2 top-1/2 z-[500] size-10 -translate-x-1/2 -translate-y-full text-brand drop-shadow-md",
+              !value && "opacity-50",
+            )}
+          />
+        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -162,8 +177,8 @@ export function LocationMapPicker({
       ) : (
         <span className="text-xs text-ink-muted">
           {value
-            ? `${value.latitude.toFixed(6)}, ${value.longitude.toFixed(6)}`
-            : "Tap peta untuk pasang titik lokasi, atau pakai tombol di atas."}
+            ? `Titik terpasang: ${value.latitude.toFixed(6)}, ${value.longitude.toFixed(6)}. Geser peta untuk memindahkan.`
+            : "Cari alamat, pakai lokasi saya, atau perbesar lalu geser peta sampai pin di titik yang tepat."}
         </span>
       )}
     </div>
