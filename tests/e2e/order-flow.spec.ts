@@ -8,6 +8,7 @@ const MERCHANT_PASSWORD = "password";
 test.describe
   .serial("alur checkout Pembeli & alur Pedagang", () => {
     let orderCode: string;
+    let orderUrl: string;
 
     test("Pembeli menyelesaikan checkout dan bayar", async ({ page }) => {
       await page.goto(`/menu/${MERCHANT_SLUG}`);
@@ -33,6 +34,7 @@ test.describe
       await expect(page.getByAltText("QR pembayaran")).toBeVisible();
       await expect(page.getByText("Total Dibayar")).toBeVisible();
 
+      orderUrl = page.url();
       orderCode = (await page.locator("p.text-3xl").innerText()).trim();
       // Kode Pesanan: 8 karakter acak.
       expect(orderCode).toMatch(/^[A-Z0-9]{8}$/);
@@ -140,5 +142,65 @@ test.describe
       ).toBeVisible();
       await expect(page.getByText("Omzet")).toBeVisible();
       await expect(page.getByText(/Asisten butuh setidaknya/)).toBeVisible();
+    });
+
+    test("Pembeli memberi Rating & Ulasan setelah Pesanan selesai", async ({
+      page,
+    }) => {
+      await page.goto(orderUrl);
+      await expect(page.getByText("Bagaimana pesananmu?")).toBeVisible();
+
+      // Bintang wajib dipilih dulu.
+      await page.getByRole("button", { name: "Kirim Ulasan" }).click();
+      await expect(
+        page.getByText("Pilih 1 sampai 5 bintang dulu."),
+      ).toBeVisible();
+
+      await page.getByRole("radio", { name: "4 bintang" }).click();
+      await page
+        .getByLabel("Ulasan (opsional)")
+        .fill("Kuahnya gurih, porsinya pas.");
+      await page.getByRole("button", { name: "Kirim Ulasan" }).click();
+      await expect(page.getByText("Ulasanmu")).toBeVisible();
+
+      // Final: setelah reload form tidak muncul lagi.
+      await page.reload();
+      await expect(page.getByText("Ulasanmu")).toBeVisible();
+      await expect(page.getByText("Bagaimana pesananmu?")).toHaveCount(0);
+
+      // Halaman menu: ringkasan + ulasan dengan nama disamarkan.
+      await page.goto(`/menu/${MERCHANT_SLUG}`);
+      await expect(
+        page.getByRole("link", { name: /4,0\s*· 1 ulasan/ }),
+      ).toBeVisible();
+      const reviews = page.locator("#ulasan");
+      await expect(
+        reviews.getByText("Pembeli E.", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        reviews.getByText("Kuahnya gurih, porsinya pas."),
+      ).toBeVisible();
+      await expect(reviews.getByText("Pembeli E2E")).toHaveCount(0);
+
+      // Kartu Gerai di direktori publik ikut menampilkan rating.
+      await page.goto("/gerai");
+      const stallCard = page.getByRole("link", { name: /Bakso Pak Budi/ });
+      await expect(stallCard.getByText("4,0")).toBeVisible();
+
+      // Dashboard Pedagang: nama lengkap + Kode Pesanan.
+      await page.goto("/login");
+      await page.getByLabel("Nomor HP").fill(MERCHANT_PHONE);
+      await page.getByLabel("Password").fill(MERCHANT_PASSWORD);
+      await page.getByRole("button", { name: "Masuk" }).click();
+      await expect(page).toHaveURL(/\/dashboard$/);
+      await page.goto("/dashboard/ulasan");
+      await expect(
+        page.getByRole("heading", { name: "Rating & Ulasan" }),
+      ).toBeVisible();
+      await expect(page.getByText("Pembeli E2E")).toBeVisible();
+      await expect(page.getByText(orderCode, { exact: true })).toBeVisible();
+      await expect(
+        page.getByText("Kuahnya gurih, porsinya pas."),
+      ).toBeVisible();
     });
   });

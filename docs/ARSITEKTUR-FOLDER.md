@@ -71,6 +71,7 @@
 │   │   ├── config.ts                          # getActivePlatformConfig (dipakai bareng alur Pembeli) + update & histori (Admin)
 │   │   ├── payouts.ts                         # Saldo Pedagang (formula payout_id IS NULL) + runDisbursementBatch (Fase 6) + laporan
 │   │   ├── reports.ts                         # getMerchantSalesReport(period) — agregat penjualan Lapak sendiri + rekomendasi asisten
+│   │   ├── reviews.ts                         # (2026-10-05) submitOrderReview (Pembeli, tanpa sesi) + listMerchantReviews (Pedagang); query baca bersama di lib/review/
 │   │   └── service-fee-invoices.ts            # (Fase 7) Tagihan Biaya Layanan: list Pedagang/Admin + akrual + override manual (Tandai Lunas/Batalkan)
 │   ├── lib/
 │   │   ├── db/                                # Drizzle schema & client

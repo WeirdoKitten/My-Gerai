@@ -159,6 +159,9 @@ Dialog berbasis `<dialog>` bawaan (Esc + focus-trap + backdrop gratis). Panel `m
 ### `EmptyState.tsx`
 Tengah, `py-12`, ikon SVG `size-10 text-ink-muted`, judul `font-semibold text-ink`, keterangan `text-sm text-ink-muted`, opsional tombol. Ganti teks polos "Belum ada Pesanan masuk." / "Belum ada Item tersedia." dll.
 
+### `StarRating.tsx`
+Tampilan 5 bintang read-only (`value`, `size` `sm`|`md`), dibulatkan ke bintang utuh — tanpa setengah bintang. Terisi `text-brand`, kosong `text-line`; `role="img"` + `aria-label` "Rating 4,5 dari 5". Angka rating ditulis dengan koma desimal lewat `formatRating`. Input bintang (form ulasan) memakai tombol `role="radio"` 44px di `OrderReviewSection`, bukan komponen ini.
+
 ### `Spinner.tsx`
 SVG lingkaran `animate-spin size-4`, `currentColor`.
 
@@ -197,7 +200,7 @@ SVG lingkaran `animate-spin size-4`, `currentColor`.
 
 ## 6. Ikon
 
-Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `chart` (tab Laporan), `lightbulb` (kartu asisten), `copy` (tombol salin), `settings`, `wallet`, `user`, `clock`, `volume`/`volume-off` (toggle notifikasi suara Pesanan). `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
+Tidak pakai library ikon (berat untuk halaman Pembeli). Kumpulan kecil **inline SVG** di `src/components/ui/icons.tsx` — a.l. `cart`, `arrow-right`, `check`, `plus`, `minus`, `image-off`, `store`, `chevron-down`, `qr`, `tag`, `receipt`, `history` (tab Riwayat), `chart` (tab Laporan), `lightbulb` (kartu asisten), `copy` (tombol salin), `settings`, `wallet`, `user`, `clock`, `volume`/`volume-off` (toggle notifikasi suara Pesanan), `star` (Rating & Ulasan; prop `filled` mengisi bintang dengan `currentColor`). `stroke="currentColor"`, `size-*` dari kelas. Emoji hanya untuk EmptyState kalau memang pas, bukan di UI inti.
 
 - **`CopyButton` (`src/components/ui/CopyButton.tsx`)** — tombol ikon `size-9` (border kotak seperti ikon header) untuk menyalin sebuah string ke clipboard; umpan balik inline (ikon → centang ±2 dtk), **tidak** butuh `ToastProvider`. Dipakai di samping link (QR Menu, URL QRIS sandbox).
 - **Konfirmasi "Keluar" (`src/components/LogoutButton.tsx`)** — tombol Keluar di `DashboardShell` (Pedagang & Admin) membuka `Modal` "Keluar dari dashboard?" dengan tombol **Batal** (`secondary`) + **Ya, keluar** (`danger`), bukan langsung submit form logout.

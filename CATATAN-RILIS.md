@@ -8,6 +8,17 @@ Ringkasan pembaruan MyGerai dalam bahasa sehari-hari: apa yang bisa dilakukan **
 
 ---
 
+## 5 Oktober 2026: Rating & ulasan gerai
+
+**Untuk Pembeli**
+- Setelah pesanan selesai, kamu bisa memberi bintang 1 sampai 5 dan menulis ulasan singkat (boleh dikosongkan) langsung di halaman status pesanan. Satu pesanan, satu ulasan.
+- Rating rata-rata tiap gerai sekarang terlihat di daftar gerai dan di halaman menu. Ulasan terbaru dari pembeli lain bisa dibaca di bagian bawah menu. Nama pembeli ditampilkan singkat, misalnya "Budi S.".
+
+**Untuk Pedagang**
+- Menu baru **Rating & Ulasan** di halaman Profil: lihat rata-rata bintang, jumlah ulasan per bintang, dan semua ulasan lengkap dengan nama pembeli dan kode pesanannya.
+
+---
+
 ## 30 September 2026: Pilih varian lebih rapi
 
 **Untuk Pembeli**

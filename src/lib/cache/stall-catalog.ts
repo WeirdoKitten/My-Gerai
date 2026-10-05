@@ -3,7 +3,7 @@ import type { StallCatalogView } from "@/types/product";
 
 /**
  * Bagian katalog menu yang jarang berubah (profil Lapak + daftar Item +
- * varian), di-cache 15 dtk per slug. Status buka/tutup & kunci tagihan TIDAK
+ * varian + ringkasan Rating & Ulasan), di-cache 15 dtk per slug. Status buka/tutup & kunci tagihan TIDAK
  * ikut di-cache — selalu dihitung per request di `getStallCatalog`.
  * `null` = slug tidak ada/belum `approved`. Dikosongkan oleh setiap Server
  * Action yang mengubah Item/varian/profil/status Lapak supaya Pedagang
@@ -13,6 +13,7 @@ export type CachedStallCatalog = {
   merchantId: string;
   merchant: Omit<StallCatalogView["merchant"], "isOpen" | "reopensAt">;
   products: StallCatalogView["products"];
+  reviews: StallCatalogView["reviews"];
 };
 
 export const stallCatalogCache = createTtlCache<

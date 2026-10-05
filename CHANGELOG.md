@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-05 — Rating & Ulasan Gerai (branch `feat/rating-ulasan`)
+
+**Dampak:** [docs/PRD.md](docs/PRD.md) (§4, §7), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (tabel `merchant_reviews`, migrasi `0018`), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-05), [docs/GLOSSARY.md](docs/GLOSSARY.md), [docs/CODING-STYLE.md](docs/CODING-STYLE.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (`StarRating`, ikon `star`), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CATATAN-RILIS.md](CATATAN-RILIS.md). Kode baru: `src/server/reviews.ts`, `src/lib/review/`, `src/types/review.ts`, `src/lib/validation/review.schema.ts`, `src/components/buyer/{OrderReviewSection,StallReviews}.tsx`, `src/components/merchant/MerchantReviewList.tsx`, `src/components/ui/StarRating.tsx`, `src/app/(merchant)/dashboard/ulasan/`.
+**Alasan:** Permintaan User. Keputusan lewat AskUserQuestion: hanya Pembeli Pesanan `selesai` (1 ulasan per Pesanan), bintang 1–5 + komentar opsional, tampil di halaman menu + kartu Gerai + dashboard Pedagang, tanpa moderasi dulu.
+**Ringkasan:**
+- Form ulasan muncul di halaman status Pesanan setelah `selesai`; sekali kirim, final. Server memeriksa ulang status, rate-limit 10/10 menit per IP, `UNIQUE(order_id)` menolak ulasan ganda.
+- Halaman menu menampilkan rata-rata + 10 ulasan terbaru (nama Pembeli disamarkan, mis. "Budi S."); kartu Gerai menampilkan chip rating; Pedagang melihat semua ulasan + distribusi bintang di `/dashboard/ulasan` (tautan dari Profil).
+- **Diverifikasi**: unit test 199/199 (+8 baru), E2E 16/16 (+1 alur ulasan), `tsc`/`build` lulus, constraint DB dibuktikan menolak duplikat & rating di luar 1–5, cek visual di lebar HP. **Belum**: uji manual User.
+
 ## 2026-10-05 — Optimasi performa (branch `perf/optimasi`)
 
 **Dampak:** [docs/STRESS-TEST.md](docs/STRESS-TEST.md) (§8 baru), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-05), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (reservasi stok, index, migrasi `0017`), [docs/PRD.md](docs/PRD.md) (§4 stok), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (Performa & Cache), [docs/BACKLOG.md](docs/BACKLOG.md), `.env.example`. Kode baru: `src/lib/cache/`, `src/lib/payment/qr-image.ts`, `drizzle/0017_perf_indexes.sql`, `tests/unit/memory-cache.test.ts`.

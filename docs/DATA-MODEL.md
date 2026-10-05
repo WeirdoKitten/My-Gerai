@@ -12,6 +12,8 @@ erDiagram
     MERCHANTS ||--o{ PAYOUTS : "menerima pencairan"
     MERCHANTS ||--o{ SERVICE_FEE_INVOICES : "ditagih (qris_pribadi)"
     MERCHANTS ||--o{ MERCHANT_OPERATING_HOURS : "jadwal buka"
+    MERCHANTS ||--o{ MERCHANT_REVIEWS : "diulas"
+    ORDERS ||--o| MERCHANT_REVIEWS : "diulas (maks 1)"
     PRODUCTS ||--o{ PRODUCT_VARIANT_GROUPS : "punya grup varian"
     PRODUCT_VARIANT_GROUPS ||--|{ PRODUCT_VARIANT_OPTIONS : "punya pilihan"
     ORDERS ||--|{ ORDER_ITEMS : "terdiri dari"
@@ -54,6 +56,15 @@ erDiagram
         int day_of_week "0=Minggu..6=Sabtu (konvensi Postgres EXTRACT(dow), sama seperti weekdayStats di reports.ts). Tidak ada baris utk suatu hari = tutup hari itu."
         time open_time
         time close_time "closeTime <= openTime dianggap jendela menembus tengah malam"
+    }
+
+    MERCHANT_REVIEWS {
+        uuid id PK
+        uuid merchant_id FK "duplikat dari orders.merchant_id, supaya agregat per Lapak tanpa JOIN"
+        uuid order_id FK "UNIQUE: 1 ulasan per Pesanan"
+        int rating "1-5 (CHECK)"
+        text comment "nullable, maks 500 karakter"
+        timestamp created_at
     }
 
     PRODUCTS {
@@ -234,6 +245,12 @@ erDiagram
 - Opsional per Lapak — **tidak ada baris untuk suatu `day_of_week`** berarti Lapak tutup hari itu (bukan kolom `is_closed` terpisah). `UNIQUE(merchant_id, day_of_week)` — satu jadwal per hari.
 - `open_time`/`close_time`: jam lokal (WIB, tanpa kolom timezone — Lapak selalu satu zona waktu). `close_time <= open_time` diartikan jendela menembus tengah malam (mis. buka 22:00 tutup 02:00 keesokan harinya) — ditangani `evaluateSchedule` (`src/lib/schedule/evaluate.ts`, pure & unit-tested di `tests/unit/schedule-evaluate.test.ts`).
 - Dikelola Pedagang sendiri lewat `setMerchantOperatingHours` — pola **replace-all** (hapus semua baris lama Lapak itu, insert ulang sesuai form), bukan update per-baris.
+
+### `merchant_reviews` (Rating & Ulasan Gerai — 2026-10-05)
+- Ditulis Pembeli (tanpa akun) lewat `submitOrderReview` hanya untuk Pesanan berstatus `selesai`; UUID Pesanan = bukti beli (prinsip sama dengan halaman status Pesanan). `UNIQUE(order_id)` menjamin 1 ulasan per Pesanan, termasuk saat klik ganda/race (`ON CONFLICT DO NOTHING`). `CHECK rating BETWEEN 1 AND 5` sebagai lapis kedua setelah Zod.
+- Final: tidak ada update/delete dari Pembeli maupun Pedagang. `ON DELETE CASCADE` dari `merchants`/`orders`.
+- Nama Pembeli tidak disimpan ulang — diambil dari `orders.buyer_name` (JOIN). Publik (halaman menu) hanya menerima nama tersamar (`maskBuyerName`); nama lengkap + Kode Pesanan hanya untuk sesi Pedagang pemilik Lapak (`listMerchantReviews`, difilter `merchant_id` dari sesi).
+- Rata-rata dihitung saat dibaca (`SUM/COUNT ... GROUP BY merchant_id`, `fetchRatingSummaries`), bukan kolom denormal di `merchants` — cukup cepat dengan index `(merchant_id, created_at)` dan sudah ter-cache (katalog 15 dtk, daftar Gerai 30 dtk).
 
 ### `admins`
 - `password_hash`: sama seperti `merchants.password_hash`, dibuat manual oleh Admin lain lewat proses internal (bukan self-service).

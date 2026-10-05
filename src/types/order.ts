@@ -3,6 +3,7 @@ import type {
   DeliveryFailureReason,
   FulfillmentMethod,
 } from "@/lib/utils/order-status";
+import type { OrderReviewView } from "@/types/review";
 
 export type Order = typeof orders.$inferSelect;
 export type OrderItem = typeof orderItems.$inferSelect;
@@ -89,6 +90,8 @@ export type BuyerOrderStatusView = {
   canSimulate: boolean;
   /** URL gambar QR di Midtrans, HANYA di sandbox — untuk ditempel ke simulator QRIS. `null` di produksi/mock. */
   sandboxQrUrl: string | null;
+  /** Rating & Ulasan Pesanan ini — hanya dimuat saat status `selesai`; `null` = belum diulas. */
+  review: OrderReviewView | null;
 };
 
 export type CreateOrderResult =
