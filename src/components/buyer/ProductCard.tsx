@@ -1,9 +1,9 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { PhotoThumb } from "@/components/ui/PhotoThumb";
 import { formatRupiah } from "@/lib/utils/money";
 import type { BuyerProductView } from "@/types/product";
 import { AddToCartControls } from "./AddToCartControls";
+import { ProductPhotoZoom } from "./ProductPhotoZoom";
 
 export function ProductCard({
   product,
@@ -14,7 +14,7 @@ export function ProductCard({
 }) {
   return (
     <Card pad="sm" className="flex gap-3">
-      <PhotoThumb src={product.photoUrl} alt={product.name} bordered={false} />
+      <ProductPhotoZoom src={product.photoUrl} alt={product.name} />
       <div className="flex min-w-0 flex-1 flex-col">
         <p className="font-semibold text-ink">{product.name}</p>
         {product.preOrder ? (

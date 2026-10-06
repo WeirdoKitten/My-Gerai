@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-06 — Perbesar foto Item (branch `feat/zoom-foto-item`)
+
+**Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode baru: `src/components/buyer/ProductPhotoZoom.tsx`, `tests/e2e/menu-photo-zoom.spec.ts`.
+**Alasan:** Permintaan User: Pembeli ingin melihat foto Item lebih besar/jelas sebelum membeli.
+**Ringkasan:**
+- Ketuk foto Item di halaman menu → foto tampil besar di layar gelap, lengkap dengan nama Item. Tutup dengan tombol ×, Esc, atau ketuk di mana saja.
+- Foto besar baru diunduh saat dibuka, jadi halaman menu tetap ringan di jaringan lambat.
+- **Diverifikasi**: E2E baru + `menu-variant` lulus, `tsc`/Biome lulus, cek visual lebar HP. **Belum**: uji manual User.
+
 ## 2026-10-06 — Pencarian alamat di peta (branch `feat/pencarian-alamat-peta`)
 
 **Dampak:** [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (baris Peta direvisi, §Peta & Pencarian Alamat baru, Batasan Biaya), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-06), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (tabel `map_api_usage`, migrasi `0019`), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CATATAN-RILIS.md](CATATAN-RILIS.md), `.env.example`. Kode baru: `src/lib/maps/`, `src/components/merchant/map/`, `src/lib/validation/maps.schema.ts`, `src/types/maps.ts`, `tests/unit/maps.test.ts`. Dependency baru: `@googlemaps/js-api-loader`, `@types/google.maps`.
