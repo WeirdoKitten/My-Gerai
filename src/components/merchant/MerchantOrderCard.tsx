@@ -85,6 +85,11 @@ export function MerchantOrderCard({
         </div>
       </div>
       <p className="text-sm text-ink-muted">Atas nama {order.buyerName}</p>
+      {order.eventName ? (
+        <p className="text-sm font-semibold text-brand-strong">
+          Event: {order.eventName} · diambil Pembeli di Gerai
+        </p>
+      ) : null}
       {order.scheduledFor ? (
         <div className="flex flex-col gap-1 rounded-control bg-info-bg p-3 text-sm">
           <p className="font-semibold text-info">

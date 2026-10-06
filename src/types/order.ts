@@ -61,6 +61,8 @@ export type BuyerOrderStatusView = {
   status: Order["status"];
   buyerName: string;
   stallName: string;
+  /** Event asal Pesanan (Portal EO) untuk tautan kembali. `null` = Pesanan biasa. */
+  event: { slug: string; name: string } | null;
   subtotal: number;
   platformFeeSnapshot: number;
   deliveryFeeSnapshot: number;
@@ -131,6 +133,8 @@ export type MerchantOrderListItem = {
   scheduledFor: Date | null;
   /** Nomor HP Pembeli (`62...`) -- terisi untuk Pesanan Antar & pre-order. */
   buyerPhone: string | null;
+  /** Nama event asal Pesanan (Portal EO). `null` = Pesanan biasa. */
+  eventName: string | null;
   /**
    * `true` = Pesanan QRIS pribadi yang masih `menunggu_pembayaran`, tampilkan
    * tombol "Tandai Lunas" (markQrisPribadiOrderPaid) alih-alih tombol status
@@ -173,6 +177,8 @@ export type MerchantOrderHistoryItem = {
   delivery: MerchantOrderDeliveryView | null;
   /** Jadwal ambil/antar Pesanan pre-order. `null` = Pesanan biasa. */
   scheduledFor: Date | null;
+  /** Nama event asal Pesanan (Portal EO). `null` = Pesanan biasa. */
+  eventName: string | null;
 };
 
 /**

@@ -22,7 +22,12 @@ type MerchantPaymentMode = "gateway" | "qris_pribadi";
 
 type CartAction =
   | { type: "HYDRATE"; state: CartState }
-  | { type: "ADD_ITEM"; stallSlug: string; item: CartItem }
+  | {
+      type: "ADD_ITEM";
+      stallSlug: string;
+      eventSlug: string | null;
+      item: CartItem;
+    }
   | { type: "UPDATE_QTY"; lineKey: string; qty: number }
   | { type: "UPDATE_NOTE"; lineKey: string; note: string }
   | { type: "REMOVE_ITEM"; lineKey: string }
@@ -55,14 +60,18 @@ function cartReducer(state: CartState, action: CartAction): CartState {
               : item,
           )
         : [...base.items, action.item];
-      return { stallSlug: action.stallSlug, items };
+      return {
+        stallSlug: action.stallSlug,
+        eventSlug: action.eventSlug,
+        items,
+      };
     }
     case "UPDATE_QTY": {
       if (action.qty <= 0) {
         const items = state.items.filter(
           (item) => cartLineKey(item) !== action.lineKey,
         );
-        return { stallSlug: items.length > 0 ? state.stallSlug : null, items };
+        return items.length > 0 ? { ...state, items } : EMPTY_CART_STATE;
       }
       return {
         ...state,
@@ -86,7 +95,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       const items = state.items.filter(
         (item) => cartLineKey(item) !== action.lineKey,
       );
-      return { stallSlug: items.length > 0 ? state.stallSlug : null, items };
+      return items.length > 0 ? { ...state, items } : EMPTY_CART_STATE;
     }
     case "CLEAR":
       return EMPTY_CART_STATE;
@@ -97,6 +106,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
 type CartContextValue = {
   stallSlug: string | null;
+  /** Slug event asal Keranjang (Portal EO) — `null` = Keranjang biasa. */
+  eventSlug: string | null;
   items: CartItem[];
   itemCount: number;
   subtotalDisplay: number;
@@ -120,7 +131,11 @@ type CartContextValue = {
   isPreOrderCart: boolean;
   /** Gabungan rentang hari pre-order semua Item — `null` untuk Keranjang biasa atau rentang tanpa irisan. */
   preOrderRange: PreOrderRange | null;
-  addItem: (stallSlug: string, item: CartItem) => void;
+  addItem: (
+    stallSlug: string,
+    item: CartItem,
+    eventSlug?: string | null,
+  ) => void;
   updateQty: (lineKey: string, qty: number) => void;
   updateNote: (lineKey: string, note: string) => void;
   removeItem: (lineKey: string) => void;
@@ -203,6 +218,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       : null;
     return {
       stallSlug: state.stallSlug,
+      eventSlug: state.eventSlug,
       items: state.items,
       isPreOrderCart,
       preOrderRange,
@@ -211,8 +227,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       paymentMode,
       isOpen,
       reopensAt,
-      addItem: (stallSlug, item) =>
-        dispatch({ type: "ADD_ITEM", stallSlug, item }),
+      addItem: (stallSlug, item, eventSlug = null) =>
+        dispatch({ type: "ADD_ITEM", stallSlug, eventSlug, item }),
       updateQty: (lineKey, qty) =>
         dispatch({ type: "UPDATE_QTY", lineKey, qty }),
       updateNote: (lineKey, note) =>

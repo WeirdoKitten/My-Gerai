@@ -9,7 +9,8 @@
 
 const PROFILE_KEY = "mygerai_buyer_profile_v1";
 const RECENT_ORDERS_KEY = "mygerai_recent_orders_v1";
-const RECENT_ORDERS_LIMIT = 10;
+// 20 (bukan 10) supaya Pesanan dari beberapa Gerai di satu event tidak tergeser.
+const RECENT_ORDERS_LIMIT = 20;
 
 export type BuyerProfile = {
   buyerName: string;
@@ -26,6 +27,8 @@ export type RecentOrder = {
   stallName: string;
   /** ISO string. */
   createdAt: string;
+  /** Slug event asal Pesanan (Portal EO) — dipakai "Pesanan kamu di event ini". */
+  eventSlug?: string | null;
 };
 
 function read(key: string): unknown {

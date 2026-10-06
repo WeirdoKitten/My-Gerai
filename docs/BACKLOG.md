@@ -539,6 +539,18 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [x] E2E `tests/e2e/menu-photo-zoom.spec.ts` (buka, foto >300px di lebar HP, tutup via tombol & Esc) + `menu-variant.spec.ts` tetap lulus. `tsc`/Biome lulus. Cek visual screenshot lebar 390px.
 - [ ] Uji manual User.
 
+## Portal Event Organizer (EO) (2026-10-06, branch `feat/portal-eo`)
+
+> Permintaan User: klien baru berupa EO ingin peserta event bisa membeli oleh-oleh/Item khas daerah dari banyak Gerai lewat **satu QR event** — misalnya sambil di bis menuju lokasi — lalu saat sesi oleh-oleh tinggal mengambil barang di Gerai tanpa antre. Keputusan User (AskUserQuestion 2026-10-06): checkout **per Gerai** (alur uang tidak berubah); Pembeli **ambil sendiri di Gerai**; EO **punya login sendiri, daftar sendiri + disetujui Admin**; EO **langsung menambah** Gerai ke event (tanpa undangan, Pedagang hanya diberi info); event **tanpa batas waktu** (aktif sampai EO menonaktifkan, info jam/tempat ambil = deskripsi bebas); EO melihat **daftar Pesanan lengkap** event-nya (read-only); **tanpa komisi/biaya EO**; Gerai tutup tetap **tidak bisa dipesan** (aturan biasa). Plan: `~/.claude/plans/gentle-stirring-perlis.md`.
+
+- [x] Data model: `event_organizers`, `eo_sessions`, `events`, `event_merchants`, `orders.event_id` + migrasi `0020_events.sql`.
+- [x] Auth EO (`src/lib/auth/eo-session.ts`) + `/eo/daftar`, `/eo/login`; Admin menyetujui/menolak EO di `/admin/eo` (tab nav baru "EO").
+- [x] Portal EO: `/eo` (daftar event, buat event), `/eo/event/[eventId]` (QR Event + unduh poster, pilih/urutkan Gerai, daftar Pesanan event dipoll 15 dtk dengan filter status & Gerai, ubah event + aktif/nonaktif).
+- [x] Pembeli: `/e/[eventSlug]` (daftar Gerai + badge Buka/Tutup + "Pesanan kamu di event ini"), `/e/[eventSlug]/[stallSlug]` (menu Gerai dalam konteks event, isi menu diekstrak ke `StallMenu`). Checkout event dikunci Ambil Sendiri, `createOrder` mengisi `orders.event_id`. Halaman status Pesanan menampilkan info event + tautan "Belanja di Gerai lain". Riwayat Pesanan di perangkat dinaikkan 10 → 20.
+- [x] Pedagang: baris "Event: …" di kartu Pesanan & Riwayat, kartu "Gerai kamu ikut event" di Profil.
+- [x] Seed EO + event demo (`083333333333`, `/e/wisata-kuliner-bandung`). Unit `tests/unit/event.test.ts` (11 test, total 227/227). E2E `tests/e2e/eo-flow.spec.ts` (6 test: daftar → disetujui Admin → buat event + pilih Gerai → peserta pesan dari 2 Gerai di lebar HP, Diantar tidak muncul → EO lihat Pesanan, badge di dashboard Pedagang → nonaktifkan event); suite E2E 23/23. `tsc`/Biome/`build` lulus. Cek visual screenshot 390px. `/security-review`: tidak ada temuan.
+- [ ] Uji manual User.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.
@@ -553,3 +565,4 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [ ] Ongkir per km (jarak garis lurus × faktor koreksi, dibulatkan) — lanjutan Fase 11, saat ini tarif tetap.
 - [ ] Gratis ongkir di atas minimal belanja (Fase 11).
 - [ ] Rating & Ulasan lanjutan: balasan Pedagang, Admin menyembunyikan ulasan kasar/spam, ulasan per Item.
+- [ ] Portal EO lanjutan: Pedagang keluar dari event sendiri / menerima undangan, komisi atau biaya event untuk EO, satu keranjang lintas Gerai, titik kumpul pengambilan EO, jadwal mulai/selesai event otomatis, boleh pesan saat Gerai tutup khusus Pesanan event.

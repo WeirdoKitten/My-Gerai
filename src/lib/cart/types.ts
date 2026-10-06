@@ -34,7 +34,17 @@ export type CartItem = {
 
 export type CartState = {
   stallSlug: string | null;
+  /**
+   * Slug event (Portal EO) kalau Item terakhir ditambahkan dari halaman
+   * event. `null` = Keranjang biasa. Hanya petunjuk — `createOrder`
+   * memvalidasi ulang keanggotaan Gerai & status event.
+   */
+  eventSlug: string | null;
   items: CartItem[];
 };
 
-export const EMPTY_CART_STATE: CartState = { stallSlug: null, items: [] };
+export const EMPTY_CART_STATE: CartState = {
+  stallSlug: null,
+  eventSlug: null,
+  items: [],
+};

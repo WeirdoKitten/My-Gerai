@@ -262,6 +262,69 @@ export const productVariantOptions = pgTable(
 );
 
 /**
+ * Event Organizer (EO) — klien yang membuat event berisi banyak Gerai dengan
+ * satu QR. Daftar sendiri, aktif setelah disetujui Admin (status memakai enum
+ * yang sama dengan Pedagang). Tabel terpisah dari `merchants`/`admins`,
+ * konsisten dengan pemisahan akun yang sudah ada.
+ */
+export const eventOrganizers = pgTable("event_organizers", {
+  id: uuid().primaryKey().defaultRandom(),
+  organizationName: text().notNull(),
+  contactName: text().notNull(),
+  phone: text().notNull().unique(),
+  passwordHash: text().notNull(),
+  status: merchantStatusEnum().notNull().default("pending"),
+  /** Wajib diisi Admin saat reject — ditampilkan ke EO saat mencoba login. */
+  rejectionReason: text(),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Event milik EO. Tanpa jadwal: aktif sampai EO menonaktifkan (`isActive`).
+ * Tidak pernah dihapus karena Pesanan mereferensikannya lewat `orders.eventId`.
+ */
+export const events = pgTable(
+  "events",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    organizerId: uuid()
+      .notNull()
+      .references(() => eventOrganizers.id),
+    slug: text().notNull().unique(),
+    name: text().notNull(),
+    /** Teks bebas untuk Pembeli, mis. jam & tempat pengambilan oleh-oleh. */
+    description: text(),
+    location: text(),
+    isActive: boolean().notNull().default(true),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("events_organizer_id_idx").on(table.organizerId)],
+);
+
+/**
+ * Gerai yang ikut sebuah event. Ditambahkan langsung oleh EO (tanpa
+ * persetujuan Pedagang — keputusan User 2026-10-06). Pola replace-all
+ * seperti `merchant_operating_hours`.
+ */
+export const eventMerchants = pgTable(
+  "event_merchants",
+  {
+    eventId: uuid()
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    sortOrder: integer().notNull().default(0),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.eventId, table.merchantId] }),
+    index("event_merchants_merchant_id_idx").on(table.merchantId),
+  ],
+);
+
+/**
  * Pesanan. Halaman status Pembeli (`/pesanan/[orderId]`) tidak butuh akun —
  * `id` (UUID, sulit ditebak) yang jadi "kredensial" akses, dibaca lewat Route
  * Handler/Server Component yang query by primary key. Tidak ada isu RLS/anon
@@ -305,6 +368,12 @@ export const orders = pgTable(
     deliveryStartedAt: timestamp({ withTimezone: true }),
     deliveryFailureReason: deliveryFailureReasonEnum(),
     deliveryFailureNote: text(),
+    /**
+     * Event asal Pesanan (Portal EO) — terisi kalau Pembeli memesan dari
+     * halaman event dan Gerai masih anggota event aktif saat checkout.
+     * `null` = Pesanan biasa.
+     */
+    eventId: uuid().references(() => events.id),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     paidAt: timestamp({ withTimezone: true }),
     expiresAt: timestamp({ withTimezone: true }).notNull(),
@@ -324,6 +393,8 @@ export const orders = pgTable(
     ),
     // Antrean Pesanan aktif dashboard Pedagang (dipoll tiap 5 dtk).
     index("orders_merchant_id_status_idx").on(table.merchantId, table.status),
+    // Daftar Pesanan event di portal EO.
+    index("orders_event_id_created_at_idx").on(table.eventId, table.createdAt),
   ],
 );
 
@@ -537,6 +608,17 @@ export const adminSessions = pgTable("admin_sessions", {
   adminId: uuid()
     .notNull()
     .references(() => admins.id, { onDelete: "cascade" }),
+  tokenHash: text().notNull().unique(),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp({ withTimezone: true }).notNull(),
+});
+
+/** Sesi login EO — pola sama persis dengan `sessions`/`adminSessions`. */
+export const eoSessions = pgTable("eo_sessions", {
+  id: uuid().primaryKey().defaultRandom(),
+  organizerId: uuid()
+    .notNull()
+    .references(() => eventOrganizers.id, { onDelete: "cascade" }),
   tokenHash: text().notNull().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp({ withTimezone: true }).notNull(),

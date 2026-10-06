@@ -8,6 +8,24 @@ Ringkasan pembaruan MyGerai dalam bahasa sehari-hari: apa yang bisa dilakukan **
 
 ---
 
+## 6 Oktober 2026: Portal Event Organizer — satu QR untuk banyak Gerai
+
+**Untuk Event Organizer (baru)**
+- Daftar di halaman EO, tunggu disetujui Admin, lalu buat event (nama, lokasi, dan info untuk peserta seperti jam ambil oleh-oleh).
+- Pilih Gerai yang ikut event, atur urutannya, lalu unduh QR Event untuk dicetak, ditempel di bis, atau dikirim ke grup peserta.
+- Pantau daftar pesanan peserta yang sudah dibayar, per Gerai dan per status. Matikan event kalau acara sudah selesai.
+
+**Untuk Pembeli (peserta event)**
+- Scan QR Event, pilih Gerai, pesan dan bayar dari HP — misalnya sambil di perjalanan.
+- Saat sesi oleh-oleh, tinggal ambil di Gerai dengan menunjukkan Kode Pesanan, tanpa antre bayar.
+- Halaman event menampilkan semua pesanan kamu di event itu, lengkap dengan kodenya.
+
+**Untuk Pedagang**
+- Pesanan dari event ditandai nama event-nya, supaya bisa disiapkan sebelum rombongan datang. Halaman Profil menampilkan event yang kamu ikuti.
+
+**Untuk Admin**
+- Tab baru "EO" untuk menyetujui atau menolak pendaftaran Event Organizer.
+
 ## 6 Oktober 2026: Cari alamat langsung di peta
 
 **Untuk Pembeli**

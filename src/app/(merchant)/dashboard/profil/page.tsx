@@ -3,13 +3,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MerchantProfileForm } from "@/components/merchant/MerchantProfileForm";
 import { SoundSettingRow } from "@/components/merchant/SoundSettingRow";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import {
   ArrowRightIcon,
+  CalendarIcon,
   ClockIcon,
   MapPinIcon,
   StarIcon,
   WalletIcon,
 } from "@/components/ui/icons";
+import { getMyMerchantEvents } from "@/server/events";
 import { getMerchantProfile } from "@/server/merchants";
 import { hasAnyProduct } from "@/server/products";
 
@@ -39,7 +43,10 @@ function SettingsLinkRow({
 export default async function MerchantProfilePage() {
   if (!(await hasAnyProduct())) redirect("/dashboard/produk");
 
-  const profile = await getMerchantProfile();
+  const [profile, merchantEvents] = await Promise.all([
+    getMerchantProfile(),
+    getMyMerchantEvents(),
+  ]);
   if (!profile) return null;
 
   return (
@@ -65,6 +72,36 @@ export default async function MerchantProfilePage() {
         icon={<StarIcon className="size-4 text-ink-muted" />}
         label="Rating & Ulasan"
       />
+      {merchantEvents.length > 0 ? (
+        <Card className="flex flex-col gap-2">
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <CalendarIcon className="size-4 text-ink-muted" />
+            Gerai kamu ikut event
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {merchantEvents.map((event) => (
+              <li
+                key={event.slug}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className="min-w-0 truncate text-ink">
+                  {event.name}{" "}
+                  <span className="text-ink-muted">
+                    · {event.organizationName}
+                  </span>
+                </span>
+                <Badge tone={event.isActive ? "success" : "neutral"}>
+                  {event.isActive ? "Aktif" : "Selesai"}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-ink-muted">
+            Pesanan dari event ditandai di kartu Pesanan dan diambil Pembeli
+            langsung di Gerai.
+          </p>
+        </Card>
+      ) : null}
       <SoundSettingRow />
       <MerchantProfileForm profile={profile} />
     </div>

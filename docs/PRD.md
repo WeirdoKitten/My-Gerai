@@ -35,6 +35,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 | **Pembeli** | Siapa saja yang lewat & mau beli dari sebuah Lapak | **Tidak** — cukup isi Nama saat checkout |
 | **Pedagang** | Pemilik Lapak (tukang bakso, dll) | Ya — daftar mandiri (self-service), lalu **menunggu approval Admin** |
 | **Admin** | Pengelola internal Aplikator (User sendiri di tahap awal) | Ya |
+| **Event Organizer (EO)** | Penyelenggara event/tur (2026-10-06) yang ingin peserta bisa membeli oleh-oleh dari banyak Gerai lewat satu QR | Ya — daftar mandiri di `/eo/daftar`, lalu **menunggu approval Admin** |
 
 ## 4. Lingkup MVP (In Scope)
 
@@ -58,6 +59,7 @@ MyGerai mengadaptasi **inti alur ESB Order** (scan → pilih → bayar → masuk
 - [ ] Pedagang opsional pasang **titik lokasi GPS** Lapak di profil (peta Leaflet + OpenStreetMap, klik/drag pin atau deteksi lokasi otomatis). Ditampilkan di landing page (section showcase "Gerai Terdaftar") supaya Pembeli tahu lokasi fisik Lapak. Lihat [BACKLOG.md](BACKLOG.md) Fase 8, [DATA-MODEL.md](DATA-MODEL.md#merchants-pedaganglapak).
 - [ ] Admin bisa mendefinisikan **Area Lapak** bernama (titik pusat + radius) di `/admin/areas`; sistem otomatis mengelompokkan tiap Lapak ke Area terdekat yang mencakup koordinatnya (tanpa Pedagang perlu mengetik nama area sendiri). Landing page menampilkan chip filter per Area (mis. "Baleendah (2)") — Lapak tanpa lokasi/area tetap tampil (tidak disembunyikan). Lihat [BACKLOG.md](BACKLOG.md) Fase 9, [DATA-MODEL.md](DATA-MODEL.md#service_areas-area-lapak--fase-9-2026-09-17).
 - [ ] Halaman publik **`/gerai`** menampilkan **semua** Lapak disetujui (landing `/` cuma showcase 12 Lapak terbaru) — supaya Pembeli bisa pesan dan bayar dulu dari sana, lalu tinggal datang ambil Pesanannya di Lapak tanpa antre di tempat. Filter per Area tetap ikut tersedia di halaman ini. Lihat [BACKLOG.md](BACKLOG.md) Fase 10.
+- [ ] **Portal Event Organizer** (2026-10-06, [BACKLOG.md](BACKLOG.md)): EO membuat **event** berisi banyak Gerai `approved` (dipilih langsung oleh EO, tanpa persetujuan Pedagang) dan mendapat **QR Event** (`/e/<slug>`). Peserta scan, pilih Gerai, pesan & bayar seperti biasa (**checkout tetap per Gerai**), lalu saat sesi oleh-oleh tinggal **ambil sendiri di Gerai** tanpa antre bayar — mis. memesan sambil di bis menuju lokasi. Halaman event merangkum "Pesanan kamu di event ini" dari perangkat Pembeli. EO melihat daftar Pesanan event (kode, nama Pembeli, Gerai, Item, status — tanpa No. HP/alamat). Event aktif sampai EO menonaktifkannya. Tanpa komisi/biaya EO.
 - [ ] **Rating & Ulasan Gerai** (2026-10-05, [BACKLOG.md](BACKLOG.md)): setelah Pesanan `selesai`, Pembeli bisa memberi **bintang 1–5 + komentar opsional** dari halaman status Pesanan (1 ulasan per Pesanan, final, tanpa akun). Rata-rata & jumlah ulasan tampil di kartu Gerai dan halaman menu; 10 ulasan terbaru tampil di halaman menu dengan nama Pembeli disamarkan. Pedagang membaca semua ulasan di `/dashboard/ulasan`. Belum ada moderasi/balasan.
 
 ## 5. Di Luar Lingkup MVP (Out of Scope — dicatat sebagai ide masa depan di [BACKLOG.md](BACKLOG.md))
@@ -117,6 +119,15 @@ sequenceDiagram
 2. Lihat daftar Pedagang `pending` → approve atau reject (dengan alasan).
 3. Atur konfigurasi: nominal Biaya Layanan, durasi kedaluwarsa Pesanan.
 4. Lihat daftar transaksi, akumulasi Saldo Pedagang per Lapak, & **riwayat Pencairan otomatis** (read-only — sejak Fase 6 tidak ada input manual).
+5. Setujui/tolak akun **Event Organizer** baru di `/admin/eo` (2026-10-06).
+
+### 6.4. Alur Event Organizer (2026-10-06)
+
+1. Daftar di `/eo/daftar` → tunggu persetujuan Admin → login di `/eo/login`.
+2. Buat event (nama, lokasi, info untuk peserta mis. jam & tempat ambil oleh-oleh).
+3. Cari & tambahkan Gerai, atur urutan → simpan. Unduh/bagikan **QR Event**.
+4. Peserta scan QR Event → pilih Gerai → pesan & bayar → ambil di Gerai saat sesi oleh-oleh.
+5. EO memantau daftar Pesanan event (diperbarui tiap 15 detik), lalu menonaktifkan event setelah selesai.
 
 ## 7. Aturan Bisnis
 
@@ -129,6 +140,7 @@ sequenceDiagram
 - **Ongkir** (Fase 11): **tarif tetap per Lapak**, diatur Pedagang, **100% untuk Pedagang** (`total_for_merchant = subtotal + Ongkir`), disimpan sebagai snapshot per Pesanan dan dihitung ulang di server. Pembeli bayar `subtotal + Biaya Layanan + Ongkir` (QRIS Pribadi: `subtotal + Ongkir`). Ongkir adalah biaya jasa pengantaran, bukan surcharge MDR. MDR atas bagian Ongkir tetap ditanggung Aplikator.
 - **Pengantaran gagal** (Fase 11): Pedagang menandai `gagal_diantar` dengan alasan wajib, paling cepat ±15 menit setelah `sedang_diantar`. **Tidak ada refund** — dana tetap hak Pedagang. Pedagang yang menghubungi Pembeli (WA/telepon ke nomor Pembeli); nomor Pedagang **tidak** ditampilkan ke Pembeli karena nomor itu juga username login Pedagang.
 - **Rating & Ulasan**: hanya untuk Pesanan berstatus `selesai`, maksimal satu per Pesanan, tidak bisa diubah/dihapus. Link status Pesanan (UUID) jadi bukti pembelian. Nama Pembeli di ulasan publik disamarkan (kata pertama + inisial kata kedua). **Keterbatasan yang diterima**: Pedagang bisa melihat UUID Pesanannya sendiri, jadi secara teknis bisa mengulas Pesanan yang belum diulas Pembeli — tanpa akun Pembeli tidak ada cara membedakannya; diterima untuk skala sekarang.
+- **Event (Portal EO)**: Pesanan dari halaman event selalu **Ambil Sendiri** (Diantar tidak ditawarkan dan ditolak server). Alur uang, Biaya Layanan, dan Pencairan sama persis dengan Pesanan biasa — EO tidak menerima atau membayar apa pun. Gerai yang sedang **tutup tetap tidak bisa dipesan** (aturan biasa); EO memilih Gerai yang buka di jam perjalanan peserta. Pesanan tercatat ke event (`orders.event_id`) hanya kalau event aktif dan Gerai masih anggota event saat checkout; selain itu tetap dibuat sebagai Pesanan biasa.
 - **Pre-order**: 1 Pesanan = 1 jadwal, jadi Keranjang pre-order **tidak bisa dicampur** Item biasa. Jenis Pesanan dan keabsahan jadwal selalu ditentukan ulang di server dari data Item & Jadwal Operasional (bukan klaim klien). Rentang jadwal = irisan rentang hari semua Item di Keranjang. Tanpa kuota harian. Pencairan sama seperti Pesanan biasa; **tidak ada refund** kalau Pembeli tidak datang.
 
 ## 8. Risiko & Catatan

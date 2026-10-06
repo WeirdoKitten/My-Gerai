@@ -14,6 +14,8 @@ export function loadCart(): CartState {
     // `variantSelections` — normalisasi jadi `[]` supaya tidak crash.
     return {
       ...parsed,
+      // Keranjang dari sebelum Portal EO belum punya `eventSlug`.
+      eventSlug: typeof parsed.eventSlug === "string" ? parsed.eventSlug : null,
       items: parsed.items.map((item) => ({
         ...item,
         variantSelections: Array.isArray(item.variantSelections)

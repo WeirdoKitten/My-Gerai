@@ -53,6 +53,11 @@ function MerchantOrderHistoryCard({
       <p className="text-sm text-ink-muted">
         Atas nama {order.buyerName} · {formatDateTime(timestamp)}
       </p>
+      {order.eventName ? (
+        <p className="text-sm font-semibold text-brand-strong">
+          Event: {order.eventName}
+        </p>
+      ) : null}
       {order.scheduledFor ? (
         <p className="text-sm font-semibold text-info">
           Pre-order · jadwal {formatSchedule(new Date(order.scheduledFor))}

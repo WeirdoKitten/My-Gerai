@@ -9,6 +9,7 @@ import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { createTtlCache } from "@/lib/cache/memory";
 import { db } from "@/lib/db/client";
 import {
+  events,
   merchantOperatingHours,
   merchants,
   orderItems,
@@ -19,6 +20,7 @@ import {
   productVariantGroups,
   productVariantOptions,
 } from "@/lib/db/schema";
+import { resolveOrderEventId } from "@/lib/event/queries";
 import { getPaymentProvider, getPaymentProviderName } from "@/lib/payment";
 import {
   midtransIsSandbox,
@@ -243,6 +245,19 @@ async function fetchVariantSelectionsByOrderItemId(
   return selectionsByOrderItemId;
 }
 
+/** Nama event per id untuk badge Pesanan event di dashboard Pedagang. */
+async function fetchEventNamesById(
+  eventIds: (string | null)[],
+): Promise<Map<string, string>> {
+  const ids = [...new Set(eventIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: events.id, name: events.name })
+    .from(events)
+    .where(inArray(events.id, ids));
+  return new Map(rows.map((row) => [row.id, row.name]));
+}
+
 type DbExecutor =
   | typeof db
   | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -352,6 +367,10 @@ export async function createOrder(
 
   const { platformFeeAmount, orderExpiryMinutes, serviceFeeGracePeriodDays } =
     await getActivePlatformConfig();
+
+  const eventId = checkout.eventSlug
+    ? await resolveOrderEventId(checkout.eventSlug, merchant.id)
+    : null;
 
   // Defense-in-depth: `getStallCatalog` (halaman menu) sudah menolak Lapak
   // yang terkunci, tapi cek ulang di sini supaya menu yang ke-cache stale
@@ -682,6 +701,7 @@ export async function createOrder(
         fulfillmentMethod: checkout.fulfillmentMethod,
         deliveryFeeSnapshot,
         scheduledFor,
+        eventId,
         // Pre-order Ambil sendiri: HP wajib (schema) supaya Pedagang bisa
         // menghubungi Pembeli. Mode Antar menimpa lewat spread di bawah.
         buyerPhone: isPreOrder ? (checkout.buyerPhone ?? null) : null,
@@ -824,12 +844,18 @@ export async function getOrderStatus(
       current;
   }
 
-  const [merchant, items, review] = await Promise.all([
+  const [merchant, items, review, event] = await Promise.all([
     db.query.merchants.findFirst({
       where: eq(merchants.id, current.merchantId),
     }),
     db.query.orderItems.findMany({ where: eq(orderItems.orderId, current.id) }),
     current.status === "selesai" ? fetchOrderReview(current.id) : null,
+    current.eventId
+      ? db.query.events.findFirst({
+          where: eq(events.id, current.eventId),
+          columns: { slug: true, name: true },
+        })
+      : undefined,
   ]);
   const variantSelectionsByOrderItemId =
     await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
@@ -862,6 +888,7 @@ export async function getOrderStatus(
     status: current.status,
     buyerName: current.buyerName,
     stallName: merchant?.stallName ?? "",
+    event: event ?? null,
     subtotal: current.subtotal,
     platformFeeSnapshot: current.platformFeeSnapshot,
     deliveryFeeSnapshot: current.deliveryFeeSnapshot,
@@ -1097,8 +1124,10 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
     list.push(item);
     itemsByOrderId.set(item.orderId, list);
   }
-  const variantSelectionsByOrderItemId =
-    await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
+  const [variantSelectionsByOrderItemId, eventNamesById] = await Promise.all([
+    fetchVariantSelectionsByOrderItemId(items.map((item) => item.id)),
+    fetchEventNamesById(activeOrders.map(({ order }) => order.eventId)),
+  ]);
 
   return {
     orders: activeOrders.map(({ order, paymentProvider }) => ({
@@ -1113,6 +1142,9 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
       delivery: toMerchantDeliveryView(order),
       scheduledFor: order.scheduledFor,
       buyerPhone: order.buyerPhone,
+      eventName: order.eventId
+        ? (eventNamesById.get(order.eventId) ?? null)
+        : null,
       items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
         id: item.id,
         productNameSnapshot: item.productNameSnapshot,
@@ -1160,8 +1192,10 @@ export async function listMerchantOrderHistory(): Promise<
     list.push(item);
     itemsByOrderId.set(item.orderId, list);
   }
-  const variantSelectionsByOrderItemId =
-    await fetchVariantSelectionsByOrderItemId(items.map((item) => item.id));
+  const [variantSelectionsByOrderItemId, eventNamesById] = await Promise.all([
+    fetchVariantSelectionsByOrderItemId(items.map((item) => item.id)),
+    fetchEventNamesById(pastOrders.map((order) => order.eventId)),
+  ]);
 
   return pastOrders.map((order) => ({
     id: order.id,
@@ -1177,6 +1211,9 @@ export async function listMerchantOrderHistory(): Promise<
     completedAt: order.completedAt,
     fulfillmentMethod: order.fulfillmentMethod,
     scheduledFor: order.scheduledFor,
+    eventName: order.eventId
+      ? (eventNamesById.get(order.eventId) ?? null)
+      : null,
     delivery: toMerchantDeliveryView(order),
     items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
       id: item.id,

@@ -4,6 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CalendarIcon,
   ChartIcon,
   HistoryIcon,
   MapPinIcon,
@@ -28,6 +29,7 @@ const ICONS = {
   history: HistoryIcon,
   chart: ChartIcon,
   map: MapPinIcon,
+  calendar: CalendarIcon,
 } as const;
 
 export type NavItem = {

@@ -8,9 +8,11 @@ import { ProductPhotoZoom } from "./ProductPhotoZoom";
 export function ProductCard({
   product,
   stallSlug,
+  eventSlug = null,
 }: {
   product: BuyerProductView;
   stallSlug: string;
+  eventSlug?: string | null;
 }) {
   return (
     <Card pad="sm" className="flex gap-3">
@@ -31,7 +33,11 @@ export function ProductCard({
           {formatRupiah(product.price)}
         </p>
         <div className="mt-2">
-          <AddToCartControls product={product} stallSlug={stallSlug} />
+          <AddToCartControls
+            product={product}
+            stallSlug={stallSlug}
+            eventSlug={eventSlug}
+          />
         </div>
       </div>
     </Card>

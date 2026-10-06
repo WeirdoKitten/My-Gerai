@@ -18,14 +18,16 @@ export function CheckoutView({
 }: {
   platformFeeAmount: number;
 }) {
-  const { stallSlug } = useCart();
+  const { stallSlug, eventSlug } = useCart();
   const [delivery, setDelivery] = useState<StallDeliveryView>(null);
   const [method, setMethod] = useState<FulfillmentMethod>("ambil_sendiri");
 
   useEffect(() => {
     setDelivery(null);
     setMethod("ambil_sendiri");
-    if (!stallSlug) return;
+    // Pesanan event selalu diambil sendiri di Gerai — pilihan Diantar tidak
+    // ditawarkan (createOrder juga menolaknya).
+    if (!stallSlug || eventSlug) return;
     let cancelled = false;
     getStallDeliverySettings(stallSlug).then((result) => {
       if (!cancelled) setDelivery(result);
@@ -33,7 +35,7 @@ export function CheckoutView({
     return () => {
       cancelled = true;
     };
-  }, [stallSlug]);
+  }, [stallSlug, eventSlug]);
 
   const deliveryFee = method === "antar" && delivery ? delivery.fee : 0;
 
