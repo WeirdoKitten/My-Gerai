@@ -531,6 +531,14 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [x] `/security-review`: tidak ada temuan.
 - [ ] **User:** buat project Google Cloud + billing + 2 API key + quota cap harian, isi env, lalu uji mode Google dengan key asli.
 
+## Perbesar Foto Item (2026-10-06, branch `feat/zoom-foto-item`)
+
+> Permintaan User: Pembeli bisa melihat foto Item lebih besar/jelas sebelum membeli.
+
+- [x] `src/components/buyer/ProductPhotoZoom.tsx`: thumbnail di `ProductCard` jadi tombol "Perbesar foto …" → `<dialog>` foto besar (`next/image`, diunduh hanya saat dibuka). Tutup lewat tombol ×, Esc, atau ketuk di mana saja. Item tanpa foto tetap placeholder biasa.
+- [x] E2E `tests/e2e/menu-photo-zoom.spec.ts` (buka, foto >300px di lebar HP, tutup via tombol & Esc) + `menu-variant.spec.ts` tetap lulus. `tsc`/Biome lulus. Cek visual screenshot lebar 390px.
+- [ ] Uji manual User.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.
