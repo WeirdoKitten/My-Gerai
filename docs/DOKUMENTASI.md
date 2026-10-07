@@ -19,6 +19,16 @@
 | Istilah domain baru | [GLOSSARY.md](GLOSSARY.md) |
 | Perubahan signifikan apa pun di atas | **[CHANGELOG.md](../CHANGELOG.md)** (selalu) |
 
+## Aturan Lintas Repo (Aplikasi Android)
+
+Sejak 2026-10-07 ada repo kedua, [My-Gerai-Mobile](https://github.com/WeirdoKitten/My-Gerai-Mobile) (aplikasi Android Pedagang), yang memakai dokumen domain repo ini sebagai sumber kebenaran.
+
+- Dokumen domain (PRD, DATA-MODEL, GLOSSARY, kontrak API mobile, keputusan backend) **hanya ada di sini**. Repo mobile merujuk lewat path relatif `../My-Gerai/docs/`, jadi jangan memindah atau mengganti nama file `docs/` tanpa memperbarui rujukannya di repo mobile.
+- Ubah kontrak API mobile (tambah/ubah/hapus field atau endpoint) → perbarui dokumen kontrak API, jaga kompatibilitas dengan versi aplikasi lama, dan tambah item penyesuaian di `docs/BACKLOG.md` repo mobile.
+- Fitur Pedagang baru di web → catat juga di BACKLOG repo mobile (paritas), walau dikerjakan belakangan.
+- Ubah token desain (warna/tipografi) → beri tahu repo mobile (`docs/DESAIN-SISTEM.md` dan `src/theme.ts` di sana).
+- Ubah format struk (`src/lib/utils/receipt.ts`) → encoder struk di repo mobile wajib ikut diubah agar identik.
+
 ## Format Entri CHANGELOG.md
 
 Tiap entri:

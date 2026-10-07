@@ -551,6 +551,30 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [x] Seed EO + event demo (`083333333333`, `/e/wisata-kuliner-bandung`). Unit `tests/unit/event.test.ts` (11 test, total 227/227). E2E `tests/e2e/eo-flow.spec.ts` (6 test: daftar → disetujui Admin → buat event + pilih Gerai → peserta pesan dari 2 Gerai di lebar HP, Diantar tidak muncul → EO lihat Pesanan, badge di dashboard Pedagang → nonaktifkan event); suite E2E 23/23. `tsc`/Biome/`build` lulus. Cek visual screenshot 390px. `/security-review`: tidak ada temuan.
 - [ ] Uji manual User.
 
+## Fase 12 — Aplikasi Android Pedagang (2026-10-07, branch `feat/api-mobile` + repo [My-Gerai-Mobile](https://github.com/WeirdoKitten/My-Gerai-Mobile))
+
+> Permintaan User: aplikasi Android khusus Pedagang di Play Store, supaya Pedagang lebih percaya, notifikasi Pesanan tetap masuk saat HP terkunci, dan struk bisa dicetak ke printer Bluetooth. Claude mengusulkan PWA + TWA atau Capacitor sebagai alternatif yang lebih murah. User memilih **aplikasi native** (AskUserQuestion 2026-10-07): **React Native + Expo**, **repo terpisah**, cakupan v1 **setara dashboard web Pedagang**, dan **daftar + login di aplikasi**. Ground truth tetap di `docs/` repo ini; repo mobile hanya merujuk. Lihat ADR 2026-10-07 di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md).
+
+### Fase 12a — API mobile Pedagang (repo ini)
+
+- [ ] Plan mode: kontrak API, skema auth token, tabel baru, dan urutan endpoint. Hasilnya melengkapi ADR 2026-10-07.
+- [ ] Pisahkan logika Pedagang dari Server Action ke fungsi service bersama, supaya web dan API memakai aturan bisnis yang sama (tanpa duplikasi).
+- [ ] Auth token untuk aplikasi (access + refresh, bisa dicabut saat logout/ganti password, rate limit login). Sesi cookie web tidak berubah.
+- [ ] Endpoint REST `/api/mobile/v1/*`: daftar, login, antrean & riwayat Pesanan, ubah status, data struk, Item & varian & stok & foto, buka/tutup & jadwal, profil & pengantaran & pembayaran, laporan, ulasan, tagihan Biaya Layanan, event.
+- [ ] Upload foto multipart ke Storage yang sudah ada.
+- [ ] Push notification FCM: simpan token perangkat Pedagang, kirim push saat Pesanan lunas (jalur webhook/settle dan QRIS Pribadi).
+- [ ] Dokumen kontrak API di `docs/` (dirujuk repo mobile).
+- [ ] Unit/integration test endpoint, `/security-review` (auth, token, data uang).
+
+### Fase 12b — Aplikasi Expo (repo My-Gerai-Mobile)
+
+- [ ] Tahap 1: daftar, login, antrean Pesanan, ubah status, push notification.
+- [ ] Tahap 2: cetak struk Bluetooth (ESC/POS, isi sama dengan web).
+- [ ] Tahap 3: kelola Item, varian, stok, foto, buka/tutup, jadwal operasional.
+- [ ] Tahap 4: laporan, profil, pengantaran, pembayaran/pencairan, tagihan, ulasan, event.
+- [ ] Tahap 5: rilis Play Store (uji tertutup dulu).
+- [ ] **User:** akun Google Play Console (US$25 sekali bayar), project Firebase untuk FCM, halaman kebijakan privasi.
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-07 — Rencana Aplikasi Android Pedagang (Fase 12)
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 12), [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md) (aturan lintas repo), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-07), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md), [docs/PRD.md](docs/PRD.md) (§4), [CLAUDE.md](CLAUDE.md).
+**Alasan:** Permintaan User: aplikasi Android khusus Pedagang di Play Store untuk kepercayaan, notifikasi Pesanan saat HP terkunci, dan cetak struk. Keputusan lewat AskUserQuestion: React Native + Expo, repo terpisah, cakupan setara dashboard web, daftar + login di aplikasi.
+**Ringkasan:**
+- Backend tetap di repo ini; aplikasi memakai REST API baru `/api/mobile/v1/*` dengan auth token dan push FCM.
+- Aplikasi dibangun di repo [My-Gerai-Mobile](https://github.com/WeirdoKitten/My-Gerai-Mobile). Ground truth tetap di `docs/` repo ini.
+- Baru tahap perencanaan; belum ada kode. Detail API ditetapkan di plan Fase 12a.
+- Repo mobile diisi fondasi dokumentasi (RULES, TEKNOLOGI, ARSITEKTUR, DESAIN-SISTEM, BACKLOG, dll). Repo ini mendapat aturan lintas repo di [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#aturan-lintas-repo-aplikasi-android) dan catatan di [CLAUDE.md](CLAUDE.md).
+
 ## 2026-10-06 — Portal Event Organizer (branch `feat/portal-eo`)
 
 **Dampak:** [docs/PRD.md](docs/PRD.md) (§3 peran EO, §4, §6.3, §6.4 baru, §7), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`event_organizers`, `eo_sessions`, `events`, `event_merchants`, `orders.event_id`, migrasi `0020`), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-06 Portal EO), [docs/GLOSSARY.md](docs/GLOSSARY.md) (EO, Event, QR Event), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CATATAN-RILIS.md](CATATAN-RILIS.md), `CLAUDE.md`. Kode baru: `src/app/(eo)/`, `src/app/(buyer)/e/`, `src/app/(admin)/admin/(dashboard)/eo/`, `src/components/eo/`, `src/components/admin/EventOrganizerApprovalList.tsx`, `src/components/buyer/{StallMenu,EventMyOrders}.tsx`, `src/lib/auth/eo-session.ts`, `src/lib/event/queries.ts`, `src/lib/validation/event.schema.ts`, `src/server/{events,event-organizers}.ts`, `src/types/event.ts`, `tests/unit/event.test.ts`, `tests/e2e/eo-flow.spec.ts`.
