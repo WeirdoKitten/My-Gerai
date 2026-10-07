@@ -337,6 +337,13 @@ erDiagram
 - Tidak ada job cleanup baris kedaluwarsa — sama seperti filosofi kedaluwarsa Pesanan ([ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md#kedaluwarsa-pesanan)): cukup difilter `expires_at > now()` saat dibaca (lazy), volume rendah di skala MVP.
 - Logout = hapus baris (bukan cuma hapus cookie klien) — sesi benar-benar revoked di server.
 
+- **`client`** (enum `session_client`: `web` | `mobile`, default `web`, migrasi `0021`, Fase 12a): asal sesi. `web` = cookie browser, umur tetap 30 hari. `mobile` = Bearer token aplikasi Android, umur **90 hari bergeser** (diperpanjang ke 90 hari saat dipakai dan sisa umur < 60 hari). Satu tabel untuk keduanya karena identitas, pengecekan `approved`, dan isolasi data sama persis. Lihat [API-MOBILE.md](API-MOBILE.md#2-autentikasi).
+
+### `merchant_push_tokens` (Token push aplikasi Android — Fase 12a, 2026-10-07)
+- `id`, `merchant_id` (FK `merchants`, cascade), `session_id` (FK `sessions`, cascade), `token` (text, **unique**, format `ExponentPushToken[...]`), `created_at`, `updated_at`. Index `merchant_id`, `session_id`. Migrasi `0021`.
+- Satu baris = satu HP yang login. Terikat ke **sesi**, bukan cuma ke Pedagang: logout/cabut sesi menghapus token lewat cascade, jadi HP yang sudah logout berhenti menerima notifikasi.
+- Didaftarkan lewat `PUT /api/mobile/v1/devices` (upsert berdasarkan `token`; HP yang ganti akun memindah pemilik baris). Dibaca `notifyMerchantOrderPaid` (`src/lib/push/notify.ts`) saat Pesanan lunas. Token yang ditolak Expo (`DeviceNotRegistered`) dihapus otomatis.
+
 ### `admin_sessions` (Sesi login Admin — Fase 4)
 - Tabel **terpisah** dari `sessions` (bukan tabel polimorfik dengan kolom nullable) — `merchants`/`admins` sudah sengaja dipisah sejak awal (bukan `users`+role tunggal), jadi sesi mereka juga dipisah supaya tidak butuh `CHECK` constraint tambahan untuk dua domain yang memang berbeda. Mekanisme identik `sessions` (token bearer acak di-hash SHA-256, cookie `HttpOnly` terpisah bernama `mygerai_admin_session` — beda dari `mygerai_session` Pedagang supaya keduanya bisa aktif berdampingan di browser yang sama). Lihat implementasi di `src/lib/auth/admin-session.ts`.
 - Admin **tidak** punya gate status seperti `merchants.status === "approved"` — begitu password cocok, sesi langsung dibuat (Admin = akun internal, dibuat manual, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)).

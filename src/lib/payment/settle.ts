@@ -1,6 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { orderItems, orders, payments, products } from "@/lib/db/schema";
+import { notifyMerchantOrderPaid } from "@/lib/push/notify";
 
 /**
  * Terapkan pembayaran sukses ke sebuah Pesanan: `payments` → sukses, transisi
@@ -8,12 +9,16 @@ import { orderItems, orders, payments, products } from "@/lib/db/schema";
  * stok Item yang dibatasi. Dipanggil dari webhook Midtrans DAN dari
  * `simulatePaymentSuccess` (mock). Idempoten.
  *
+ * Setelah transaksi selesai dan Pesanan benar-benar berpindah ke `dibayar`,
+ * kirim push ke aplikasi Pedagang (sekali per transisi). Gagal kirim push
+ * tidak pernah menggagalkan pembayaran.
+ *
  * BUKAN Server Action (`"use server"`) — sengaja di modul biasa supaya tidak
  * jadi RPC publik yang bisa "menandai lunas" Pesanan mana pun tanpa bayar.
  */
 export async function settleOrderPayment(orderId: string): Promise<void> {
   const paidAt = new Date();
-  await db.transaction(async (tx) => {
+  const transitioned = await db.transaction(async (tx) => {
     await tx
       .update(payments)
       .set({ status: "success", paidAt })
@@ -27,7 +32,7 @@ export async function settleOrderPayment(orderId: string): Promise<void> {
       )
       .returning({ id: orders.id, merchantId: orders.merchantId });
 
-    if (!paidOrder) return;
+    if (!paidOrder) return false;
 
     const lines = await tx.query.orderItems.findMany({
       where: eq(orderItems.orderId, orderId),
@@ -46,7 +51,14 @@ export async function settleOrderPayment(orderId: string): Promise<void> {
           ),
         );
     }
+    return true;
   });
+
+  if (transitioned) {
+    void notifyMerchantOrderPaid(orderId).catch((error) => {
+      console.error("[push] gagal kirim notifikasi Pesanan lunas", error);
+    });
+  }
 }
 
 /** Tandai `payments` sebagai gagal/kedaluwarsa (dari notifikasi gateway). */

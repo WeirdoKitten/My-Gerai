@@ -3,7 +3,8 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/admin-session";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { authenticateMerchant } from "@/lib/auth/merchant-login";
+import { hashPassword } from "@/lib/auth/password";
 import {
   createMerchantSession,
   destroyMerchantSession,
@@ -37,7 +38,6 @@ import {
   type ApproveMerchantInput,
   approveMerchantSchema,
   type LoginMerchantInput,
-  loginMerchantSchema,
   type RegisterMerchantInput,
   type RejectMerchantInput,
   registerMerchantSchema,
@@ -85,30 +85,6 @@ const MAX_MERCHANT_PHOTO_BYTES = 3 * 1024 * 1024;
 const PUBLIC_SHOWCASE_LIMIT = 12;
 /** Batas aman query direktori "Semua Gerai" (`/gerai`) — bukan pagination, cuma jaga-jaga (skala kaki lima). */
 const PUBLIC_DIRECTORY_LIMIT = 500;
-
-// Dihitung sekali saat modul dimuat — dipakai supaya waktu verifikasi login
-// tetap konsisten walau nomor HP tidak terdaftar (cegah timing side-channel
-// yang membocorkan nomor mana saja yang terdaftar).
-const DUMMY_PASSWORD_HASH = hashPassword(
-  "dummy-password-untuk-konsistensi-waktu",
-);
-
-/** Pesan status non-approved untuk Pedagang saat login — `rejected` menyertakan alasan asli dari Admin. */
-function buildStatusMessage(
-  status: "pending" | "rejected" | "suspended",
-  rejectionReason: string | null,
-): string {
-  switch (status) {
-    case "pending":
-      return "Pendaftaran Lapak kamu sedang ditinjau Admin. Silakan coba login lagi setelah disetujui.";
-    case "rejected":
-      return rejectionReason
-        ? `Pendaftaran Lapak kamu ditolak Admin. Alasan: ${rejectionReason}`
-        : "Pendaftaran Lapak kamu ditolak Admin. Hubungi Aplikator untuk info lebih lanjut.";
-    case "suspended":
-      return "Akun Lapak kamu sedang dinonaktifkan Aplikator. Hubungi Aplikator untuk info lebih lanjut.";
-  }
-}
 
 async function generateUniqueSlug(stallName: string): Promise<string> {
   const base = slugify(stallName) || "lapak";
@@ -170,45 +146,10 @@ export async function registerMerchant(
 export async function loginMerchant(
   input: LoginMerchantInput,
 ): Promise<LoginMerchantResult> {
-  const ip = await getClientIp();
-  if (!checkRateLimit(`login-merchant:ip:${ip}`, 5, 5 * 60_000)) {
-    return { ok: false, message: RATE_LIMIT_MESSAGE };
-  }
+  const result = await authenticateMerchant(input, await getClientIp());
+  if (!result.ok || result.status !== "approved") return result;
 
-  const parsed = loginMerchantSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
-    };
-  }
-  const { phone, password } = parsed.data;
-
-  if (!checkRateLimit(`login-merchant:phone:${phone}`, 5, 5 * 60_000)) {
-    return { ok: false, message: RATE_LIMIT_MESSAGE };
-  }
-
-  const merchant = await db.query.merchants.findFirst({
-    where: eq(merchants.phone, phone),
-  });
-  const passwordOk = await verifyPassword(
-    password,
-    merchant?.passwordHash ?? (await DUMMY_PASSWORD_HASH),
-  );
-
-  if (!merchant || !passwordOk) {
-    return { ok: false, message: "Nomor HP atau password salah." };
-  }
-
-  if (merchant.status !== "approved") {
-    return {
-      ok: true,
-      status: merchant.status,
-      message: buildStatusMessage(merchant.status, merchant.rejectionReason),
-    };
-  }
-
-  await createMerchantSession(merchant.id);
+  await createMerchantSession(result.merchantId);
   return { ok: true, status: "approved" };
 }
 

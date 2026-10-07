@@ -555,16 +555,20 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 
 > Permintaan User: aplikasi Android khusus Pedagang di Play Store, supaya Pedagang lebih percaya, notifikasi Pesanan tetap masuk saat HP terkunci, dan struk bisa dicetak ke printer Bluetooth. Claude mengusulkan PWA + TWA atau Capacitor sebagai alternatif yang lebih murah. User memilih **aplikasi native** (AskUserQuestion 2026-10-07): **React Native + Expo**, **repo terpisah**, cakupan v1 **setara dashboard web Pedagang**, dan **daftar + login di aplikasi**. Ground truth tetap di `docs/` repo ini; repo mobile hanya merujuk. Lihat ADR 2026-10-07 di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md).
 
-### Fase 12a — API mobile Pedagang (repo ini)
+### Fase 12a — API mobile Pedagang (repo ini) — KODE SELESAI
 
-- [ ] Plan mode: kontrak API, skema auth token, tabel baru, dan urutan endpoint. Hasilnya melengkapi ADR 2026-10-07.
-- [ ] Pisahkan logika Pedagang dari Server Action ke fungsi service bersama, supaya web dan API memakai aturan bisnis yang sama (tanpa duplikasi).
-- [ ] Auth token untuk aplikasi (access + refresh, bisa dicabut saat logout/ganti password, rate limit login). Sesi cookie web tidak berubah.
-- [ ] Endpoint REST `/api/mobile/v1/*`: daftar, login, antrean & riwayat Pesanan, ubah status, data struk, Item & varian & stok & foto, buka/tutup & jadwal, profil & pengantaran & pembayaran, laporan, ulasan, tagihan Biaya Layanan, event.
-- [ ] Upload foto multipart ke Storage yang sudah ada.
-- [ ] Push notification FCM: simpan token perangkat Pedagang, kirim push saat Pesanan lunas (jalur webhook/settle dan QRIS Pribadi).
-- [ ] Dokumen kontrak API di `docs/` (dirujuk repo mobile).
-- [ ] Unit/integration test endpoint, `/security-review` (auth, token, data uang).
+Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 hari bergeser (tanpa refresh token), push lewat Expo Push Service, `getMerchantSession()` menerima Bearer sehingga API memanggil Server Action yang ada (tanpa ekstraksi lapisan service). Kontrak: [API-MOBILE.md](API-MOBILE.md).
+
+- [x] Migrasi `0021`: `sessions.client` (`web`/`mobile`) + tabel `merchant_push_tokens` (terikat sesi, cascade).
+- [x] Auth: `src/lib/auth/bearer.ts` (parse Bearer, perpanjangan 90 hari), `session.ts` (Bearer dulu lalu cookie, `createMerchantToken`, `revokeMerchantSessionByToken`), `merchant-login.ts` (`authenticateMerchant` dipakai login web dan aplikasi, di luar file `"use server"`).
+- [x] Adaptor `src/lib/mobile-api/` (format respons tunggal, `withMerchant` wajib Bearer, cookie saja ditolak).
+- [x] 35 handler (29 file route) di `src/app/api/mobile/v1/**`: meta, daftar, login, logout, me, devices, Pesanan (antrean, riwayat, status, gagal antar, tandai lunas QRIS Pribadi, struk), Item (CRUD, status, foto, varian), buka/tutup, jadwal, profil + foto + QRIS, pengantaran, pembayaran, QR Menu, laporan, ulasan, tagihan, event.
+- [x] Push: `src/lib/push/` + pemicu di `settleOrderPayment` (sekali per transisi ke `dibayar`, tanpa await). Env `PUSH_PROVIDER`, `EXPO_ACCESS_TOKEN`, `MOBILE_MIN_APP_VERSION`.
+- [x] Dokumen kontrak [API-MOBILE.md](API-MOBILE.md).
+- [x] Unit `tests/unit/mobile-api.test.ts` (10 test, total 237/237). E2E `tests/e2e/mobile-api.spec.ts` (11 test; suite 34/34). `tsc`, Biome (file baru), `build` lulus. Log push tercetak tepat sekali per Pesanan lunas (`PUSH_PROVIDER=log`).
+- [x] `/security-review`: tidak ada temuan. Catatan di bawah ambang: `PUT /devices` memindah token push yang sudah terdaftar di akun lain (butuh token Expo korban yang tidak bisa ditebak).
+- [ ] Geocoding (cari alamat/peta) untuk aplikasi: ditunda sampai cara peta di aplikasi native diputuskan (Tahap 4 aplikasi).
+- [ ] **User:** di server staging/produksi set `PUSH_PROVIDER=expo` saat aplikasi sudah memakai push. Uji push nyata menunggu development build aplikasi (Tahap 1).
 
 ### Fase 12b — Aplikasi Expo (repo My-Gerai-Mobile)
 

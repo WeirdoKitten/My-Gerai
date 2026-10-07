@@ -2,6 +2,17 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-07 — API mobile Pedagang (Fase 12a, branch `feat/api-mobile`)
+
+**Dampak:** [docs/API-MOBILE.md](docs/API-MOBILE.md) (baru), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`sessions.client`, `merchant_push_tokens`, migrasi `0021`), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-07 dilengkapi), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (§Autentikasi, baris aplikasi Android), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), `.env.example`, `CLAUDE.md`. Kode baru: `src/app/api/mobile/v1/`, `src/lib/mobile-api/`, `src/lib/push/`, `src/lib/auth/{bearer,merchant-login}.ts`, `drizzle/0021_mobile_api.sql`, `tests/unit/mobile-api.test.ts`, `tests/e2e/mobile-api.spec.ts`. Diubah: `src/lib/auth/session.ts`, `src/lib/payment/settle.ts`, `src/server/merchants.ts` (`loginMerchant`), `src/lib/db/schema.ts`.
+**Alasan:** Backend untuk aplikasi Android Pedagang. Keputusan User di Plan mode: token sesi 90 hari bergeser tanpa refresh token, Expo Push Service, Bearer di `getMerchantSession` supaya API memakai Server Action yang sudah ada.
+**Ringkasan:**
+- Aplikasi login dengan No. HP + password dan mendapat token Bearer. Token tetap aktif selama dipakai, dicabut saat logout, dan otomatis ditolak kalau Pedagang di-suspend. Cookie web tidak diterima di API.
+- Semua fitur dashboard web Pedagang tersedia lewat `/api/mobile/v1/*` dengan aturan bisnis yang sama persis (adaptor ke Server Action). Pencarian alamat/peta belum, menunggu keputusan desain peta di aplikasi.
+- HP Pedagang menerima push "Pesanan baru lunas" sekali per Pesanan, dari semua jalur pembayaran. Isi push tanpa data Pembeli.
+- Perilaku web tidak berubah (login web memakai fungsi autentikasi yang sama).
+- **Diverifikasi**: unit 237/237 (+10), E2E 34/34 (+11 API mobile), `tsc`/`build` lulus, `/security-review` tanpa temuan. **Belum**: uji push nyata di HP (menunggu aplikasi).
+
 ## 2026-10-07 — Rencana Aplikasi Android Pedagang (Fase 12)
 
 **Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 12), [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md) (aturan lintas repo), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-07), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md), [docs/PRD.md](docs/PRD.md) (§4), [CLAUDE.md](CLAUDE.md).

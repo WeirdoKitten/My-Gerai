@@ -94,6 +94,9 @@ export const merchantManualOverrideEnum = pgEnum("merchant_manual_override", [
   "closed",
 ]);
 
+/** Asal sesi Pedagang: cookie browser (`web`) atau Bearer token aplikasi Android (`mobile`, Fase 12a). */
+export const sessionClientEnum = pgEnum("session_client", ["web", "mobile"]);
+
 export const serviceFeeInvoiceStatusEnum = pgEnum(
   "service_fee_invoice_status",
   ["belum_lunas", "lunas", "dibatalkan"],
@@ -594,9 +597,32 @@ export const sessions = pgTable("sessions", {
     .notNull()
     .references(() => merchants.id, { onDelete: "cascade" }),
   tokenHash: text().notNull().unique(),
+  client: sessionClientEnum().notNull().default("web"),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp({ withTimezone: true }).notNull(),
 });
+
+/**
+ * Token Expo Push perangkat Pedagang (aplikasi Android, Fase 12a). Terikat ke
+ * sesi mobile: logout/cabut sesi menghapus token lewat cascade, jadi HP yang
+ * sudah logout tidak lagi menerima notifikasi Pesanan.
+ */
+export const merchantPushTokens = pgTable(
+  "merchant_push_tokens",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    sessionId: uuid()
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    token: text().notNull().unique(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.merchantId), index().on(t.sessionId)],
+);
 
 /**
  * Sesi login Admin — tabel terpisah dari `sessions` (bukan polimorfik),
