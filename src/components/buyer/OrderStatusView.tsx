@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { OrderReviewSection } from "@/components/buyer/OrderReviewSection";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CopyButton } from "@/components/ui/CopyButton";
 import {
@@ -57,6 +57,7 @@ export function OrderStatusView({
       orderCode: initialOrder.orderCode,
       stallName: initialOrder.stallName,
       createdAt: new Date(initialOrder.createdAt).toISOString(),
+      eventSlug: initialOrder.event?.slug ?? null,
     });
   }, [initialOrder]);
 
@@ -304,6 +305,23 @@ export function OrderStatusView({
           </div>
         </div>
       </Card>
+
+      {order.event ? (
+        <Card className="flex flex-col gap-2">
+          <p className="text-sm text-ink">
+            Pesanan dari event{" "}
+            <span className="font-semibold">{order.event.name}</span>. Ambil di{" "}
+            <span className="font-semibold">{order.stallName}</span> dengan
+            menunjukkan Kode Pesanan, tanpa perlu antre bayar lagi.
+          </p>
+          <Link
+            href={`/e/${order.event.slug}`}
+            className={buttonClasses({ variant: "secondary", size: "sm" })}
+          >
+            Belanja di Gerai lain di event ini
+          </Link>
+        </Card>
+      ) : null}
 
       <p className="text-center text-xs text-ink-muted">
         Mau cek pesanan ini lagi nanti? Buka{" "}

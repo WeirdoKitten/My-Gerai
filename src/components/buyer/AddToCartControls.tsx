@@ -22,9 +22,12 @@ import type { BuyerProductView } from "@/types/product";
 export function AddToCartControls({
   product,
   stallSlug,
+  eventSlug = null,
 }: {
   product: BuyerProductView;
   stallSlug: string;
+  /** Terisi kalau menu dibuka dari halaman event (Portal EO). */
+  eventSlug?: string | null;
 }) {
   const cart = useCart();
   const { addItem, clearCart } = cart;
@@ -81,16 +84,20 @@ export function AddToCartControls({
         };
       });
 
-    addItem(stallSlug, {
-      productId: product.id,
-      name: product.name,
-      price: effectivePrice,
-      photoUrl: product.photoUrl,
-      qty,
-      note,
-      variantSelections,
-      preOrder: product.preOrder,
-    });
+    addItem(
+      stallSlug,
+      {
+        productId: product.id,
+        name: product.name,
+        price: effectivePrice,
+        photoUrl: product.photoUrl,
+        qty,
+        note,
+        variantSelections,
+        preOrder: product.preOrder,
+      },
+      eventSlug,
+    );
     showToast(
       qty > 1
         ? `${qty} ${product.name} ditambahkan`

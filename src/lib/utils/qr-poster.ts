@@ -162,3 +162,15 @@ export async function buildMenuQrPoster(
     captionSubtitle: "Pesan & bayar QRIS langsung dari HP",
   });
 }
+
+export async function buildEventQrPoster(
+  url: string,
+  eventName: string,
+): Promise<string> {
+  return buildQrPoster({
+    url,
+    headerText: eventName,
+    captionTitle: "Scan untuk Belanja Oleh-oleh",
+    captionSubtitle: "Pesan & bayar dari HP, ambil tanpa antre",
+  });
+}

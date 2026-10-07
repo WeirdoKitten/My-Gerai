@@ -24,6 +24,11 @@ erDiagram
     PLATFORM_CONFIG ||--o{ ORDERS : "fee snapshot dari"
     MERCHANTS ||--o{ SESSIONS : "login"
     ADMINS ||--o{ ADMIN_SESSIONS : "login"
+    EVENT_ORGANIZERS ||--o{ EVENTS : "membuat"
+    EVENT_ORGANIZERS ||--o{ EO_SESSIONS : "login"
+    EVENTS ||--o{ EVENT_MERCHANTS : "berisi Gerai"
+    MERCHANTS ||--o{ EVENT_MERCHANTS : "ikut event"
+    EVENTS |o--o{ ORDERS : "asal Pesanan"
 
     MERCHANTS {
         uuid id PK
@@ -281,6 +286,7 @@ erDiagram
 - `subtotal` = jumlah `harga Item × qty` = **pendapatan Pedagang** (diterima penuh; `total_for_merchant = subtotal`).
 - **`grand_total` = `subtotal + platform_fee_snapshot`** = **yang dibayar Pembeli** (sejak [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-09 — Biaya Layanan dibebankan ke Pembeli). **Bukan kolom** — turunan dari dua kolom snapshot yang sudah immutable, jadi tak perlu disimpan/migrasi. Nilai inilah yang dikirim ke payment gateway & disalin ke `payments.gross_amount`. MDR QRIS **tidak** ditambahkan ke sini (dilarang di-surcharge ke Pembeli — PBI 23/6/PBI/2021 Ps. 52); MDR ditanggung Aplikator di luar pembukuan per-Pesanan.
 - **Pengantaran (Fase 11, migrasi `0012`):** `fulfillment_method` = `ambil_sendiri` (default, Pesanan lama) | `antar`. Mode `antar` mengisi `buyer_phone` (ternormalisasi `62...`), `delivery_address`, `delivery_landmark`, `delivery_latitude/longitude`, `delivery_fee_snapshot` (dari `merchants.delivery_fee` saat Pesanan dibuat) & `delivery_distance_km` — Ongkir dan jarak **selalu dihitung server**, ditolak kalau jarak > `merchants.delivery_radius_km`. Rumus: `grand_total = subtotal + platform_fee_snapshot + delivery_fee_snapshot`, `total_for_merchant = subtotal + delivery_fee_snapshot`; QRIS pribadi: Pembeli bayar `subtotal + delivery_fee_snapshot` (`orderAmountToPay`). Alur status antar: `dibayar → diproses → sedang_diantar (isi delivery_started_at) → selesai | gagal_diantar` (akhir; `delivery_failure_reason` wajib, `note` wajib kalau `lainnya`, baru boleh ≥15 menit setelah `delivery_started_at`). Data HP/alamat **tidak dihapus otomatis**; hanya terbaca sesi Pedagang pemilik Pesanan (`toMerchantDeliveryView`), Admin, dan halaman status by UUID (tanpa HP/koordinat). Lacak Pesanan cukup mencocokkan `order_code` format baru (revisi 2026-09-29); `buyer_phone` tetap wajib untuk antar tapi tidak lagi dipakai untuk lacak. Lihat [BACKLOG.md](BACKLOG.md) Fase 11, [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-28.
+- `event_id` (nullable, 2026-10-06, migrasi `0020`): event asal Pesanan (Portal EO), index `(event_id, created_at)`. Diisi `createOrder` lewat `resolveOrderEventId` hanya kalau Keranjang membawa slug event, event aktif, dan Gerai masih anggotanya — selain itu `null` (Pesanan biasa). Pesanan dengan `event_id` wajib `fulfillment_method = ambil_sendiri` (validasi Zod).
 - `payout_id` (nullable, Fase 6): NULL selama dana Pesanan belum masuk Pencairan. Diisi oleh job Pencairan otomatis saat baris `payouts` dibuat. Order dengan `payout_id` terisi **tidak** ikut dihitung lagi di Saldo Pedagang. Kalau Pencairan gagal → di-*unlink* kembali ke NULL.
 
 ### `order_items`
@@ -334,6 +340,14 @@ erDiagram
 ### `admin_sessions` (Sesi login Admin — Fase 4)
 - Tabel **terpisah** dari `sessions` (bukan tabel polimorfik dengan kolom nullable) — `merchants`/`admins` sudah sengaja dipisah sejak awal (bukan `users`+role tunggal), jadi sesi mereka juga dipisah supaya tidak butuh `CHECK` constraint tambahan untuk dua domain yang memang berbeda. Mekanisme identik `sessions` (token bearer acak di-hash SHA-256, cookie `HttpOnly` terpisah bernama `mygerai_admin_session` — beda dari `mygerai_session` Pedagang supaya keduanya bisa aktif berdampingan di browser yang sama). Lihat implementasi di `src/lib/auth/admin-session.ts`.
 - Admin **tidak** punya gate status seperti `merchants.status === "approved"` — begitu password cocok, sesi langsung dibuat (Admin = akun internal, dibuat manual, lihat [TEKNOLOGI.md §Autentikasi](TEKNOLOGI.md#autentikasi)).
+
+### `event_organizers`, `eo_sessions`, `events`, `event_merchants` (Portal EO — 2026-10-06)
+- Migrasi `0020_events.sql`. Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-10-06 (Portal EO).
+- `event_organizers`: akun EO terpisah dari `merchants`/`admins` (pola yang sama). `phone` unik (format `08…`, sama seperti Pedagang), `status` memakai ulang enum `merchant_status` (`pending` saat daftar → `approved`/`rejected` oleh Admin; `suspended` disiapkan), `rejection_reason` ditampilkan saat EO mencoba login.
+- `eo_sessions`: identik `sessions`/`admin_sessions` (token acak di-hash SHA-256, cookie `HttpOnly` terpisah `mygerai_eo_session`). `getEventOrganizerSession` mengecek ulang `status = approved` tiap request, jadi EO yang dinonaktifkan langsung kehilangan sesi.
+- `events`: milik satu EO (`organizer_id`, index). `slug` unik (dari nama + suffix acak kalau bentrok) jadi URL QR Event `/e/<slug>`. `description` & `location` teks bebas. `is_active` (default `true`) = satu-satunya pengatur waktu: tanpa tanggal mulai/selesai (keputusan User). **Tidak pernah dihapus** — Pesanan mereferensikannya.
+- `event_merchants`: PK `(event_id, merchant_id)`, `sort_order` = urutan tampil ke peserta, index `merchant_id`. Pola **replace-all** (`setEventMerchants`) seperti `merchant_operating_hours`; maks 100 Gerai per event (validasi app). Hanya Lapak `approved` yang boleh dimasukkan; Lapak yang belakangan tidak `approved` otomatis tidak tampil di halaman event (disaring lewat daftar Gerai publik). FK `ON DELETE CASCADE` dari kedua sisi.
+- Isolasi: setiap Server Action EO memfilter `events.organizer_id = sesi EO` (`findOwnEvent`). EO hanya membaca Pesanan event miliknya, status `dibayar` ke atas, **tanpa** No. HP/alamat Pembeli.
 
 ### `map_api_usage` (Penghitung pemakaian Google Maps — 2026-10-06)
 - Satu baris per bulan (UTC, `YYYY-MM`) per SKU Google yang ditagih: `map_load`, `autocomplete`, `place_details`. PK komposit `(month, sku)`, migrasi `0019_map_api_usage.sql`. Tanpa relasi ke tabel lain.

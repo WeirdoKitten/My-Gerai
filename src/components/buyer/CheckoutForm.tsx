@@ -132,6 +132,7 @@ export function CheckoutForm({
         })),
       })),
       scheduledFor: isPreOrder && scheduledFor ? scheduledFor : undefined,
+      eventSlug: cart.eventSlug ?? undefined,
     };
 
     const result =
@@ -177,6 +178,13 @@ export function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {cart.eventSlug ? (
+        <p className="rounded-control bg-brand-tint px-3 py-2 text-sm text-brand-strong">
+          <span className="font-semibold">Pesanan event.</span> Bayar sekarang,
+          lalu ambil di Gerai saat sesi oleh-oleh dengan menunjukkan Kode
+          Pesanan.
+        </p>
+      ) : null}
       {delivery ? (
         <FulfillmentMethodPicker
           value={method}

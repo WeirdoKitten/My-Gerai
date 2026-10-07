@@ -47,6 +47,14 @@ const baseOrderSchema = z.object({
    * ulang di server (lihat pre-order-slots.ts).
    */
   scheduledFor: z.iso.datetime().optional(),
+  /**
+   * Slug event (Portal EO) kalau Pembeli memesan dari halaman event.
+   * Keanggotaan Gerai & status aktif event divalidasi ulang di `createOrder`.
+   */
+  eventSlug: z
+    .string()
+    .regex(/^[a-z0-9-]{1,120}$/)
+    .optional(),
 });
 
 /** Nomor HP Indonesia, dinormalisasi ke `62...` (lihat normalizeIndonesianPhone). */
@@ -96,6 +104,14 @@ export const createOrderSchema = z
   ])
   // Pre-order: Pedagang perlu bisa menghubungi Pembeli (jarak pesan-ambil bisa berhari-hari).
   .superRefine((data, ctx) => {
+    // Pesanan event selalu diambil sendiri di Gerai (keputusan User 2026-10-06).
+    if (data.eventSlug && data.fulfillmentMethod === "antar") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fulfillmentMethod"],
+        message: "Pesanan dari event hanya bisa diambil sendiri di Gerai.",
+      });
+    }
     if (data.scheduledFor && !data.buyerPhone) {
       ctx.addIssue({
         code: "custom",

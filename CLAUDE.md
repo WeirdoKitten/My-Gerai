@@ -6,7 +6,7 @@ Dokumen ini otomatis dibaca setiap sesi Claude Code di proyek ini. Tujuannya: **
 
 **MyGerai** (nama kerja, lihat [docs/PRD.md](docs/PRD.md#nama-produk)) adalah sistem pemesanan berbasis QR + QRIS untuk pedagang kecil pinggir jalan/pasar (bakso, batagor, cakue, baju, dll) — versi sangat disederhanakan dari **[ESB Order](https://www.esb.id/id/solusi/produk/order)**. Alur inti: **Pembeli scan QR → pilih Item → bayar QRIS → Pesanan masuk ke Pedagang setelah lunas.** Pembeli **tanpa akun**, cukup isi Nama.
 
-Status saat ini: **Fase 0–5 + Fase Tampilan + Profil/Stok/Foto Item + Rating & Ulasan Gerai selesai** (alur Pembeli, Pedagang, Admin, desain sistem, pengujian). **Sedang dikerjakan:** Fase 6 — payment nyata Midtrans + Pencairan otomatis "Model B" (branch `feat/payment-midtrans-model-b`), dan Fase 11 — Pengantaran oleh Pedagang + Ongkir (branch `feat/pengantaran-pedagang`, kode selesai, menunggu uji manual User). Lihat [docs/BACKLOG.md](docs/BACKLOG.md) & [CHANGELOG.md](CHANGELOG.md).
+Status saat ini: **Fase 0–5 + Fase Tampilan + Profil/Stok/Foto Item + Rating & Ulasan Gerai selesai** (alur Pembeli, Pedagang, Admin, desain sistem, pengujian). **Sedang dikerjakan:** Fase 6 — payment nyata Midtrans + Pencairan otomatis "Model B" (branch `feat/payment-midtrans-model-b`), dan Fase 11 — Pengantaran oleh Pedagang + Ongkir (branch `feat/pengantaran-pedagang`, kode selesai, menunggu uji manual User). **Portal Event Organizer** (branch `feat/portal-eo`, 2026-10-06): peran ketiga ber-akun (EO) membuat event berisi banyak Gerai dengan satu QR — kode selesai, menunggu uji manual User. Lihat [docs/BACKLOG.md](docs/BACKLOG.md) & [CHANGELOG.md](CHANGELOG.md).
 
 ## Ground Truth — WAJIB Dibaca Sebelum Kerja
 
@@ -46,7 +46,7 @@ Semua keputusan produk/arsitektur ada di `docs/`. **Ini satu-satunya sumber kebe
 
 ## Istilah Kunci (lengkap di [docs/GLOSSARY.md](docs/GLOSSARY.md))
 
-**Aplikator** = pemilik platform (User) · **Pedagang/Lapak** = penjual · **Pembeli** = customer tanpa akun · **Item** = produk/menu · **Pesanan** = order · **Biaya Layanan** = fee Rp1.000/transaksi (configurable, **dibebankan ke Pembeli** di atas harga Item sejak ADR 2026-09-09; Pedagang terima harga Item penuh) · **MDR** = biaya QRIS gateway, ditanggung Aplikator (jangan di-surcharge ke Pembeli) · **Model Agregator** = dana masuk 1 akun platform dulu, lalu dicairkan otomatis ke Pedagang (Iris, Fase 6).
+**Aplikator** = pemilik platform (User) · **Pedagang/Lapak** = penjual · **Event Organizer (EO)** = klien yang membuat Event (banyak Gerai, satu QR) · **Pembeli** = customer tanpa akun · **Item** = produk/menu · **Pesanan** = order · **Biaya Layanan** = fee Rp1.000/transaksi (configurable, **dibebankan ke Pembeli** di atas harga Item sejak ADR 2026-09-09; Pedagang terima harga Item penuh) · **MDR** = biaya QRIS gateway, ditanggung Aplikator (jangan di-surcharge ke Pembeli) · **Model Agregator** = dana masuk 1 akun platform dulu, lalu dicairkan otomatis ke Pedagang (Iris, Fase 6).
 
 ## Stack Ringkas (detail & alasan di [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md))
 

@@ -2,6 +2,16 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-06 — Portal Event Organizer (branch `feat/portal-eo`)
+
+**Dampak:** [docs/PRD.md](docs/PRD.md) (§3 peran EO, §4, §6.3, §6.4 baru, §7), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`event_organizers`, `eo_sessions`, `events`, `event_merchants`, `orders.event_id`, migrasi `0020`), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-06 Portal EO), [docs/GLOSSARY.md](docs/GLOSSARY.md) (EO, Event, QR Event), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CATATAN-RILIS.md](CATATAN-RILIS.md), `CLAUDE.md`. Kode baru: `src/app/(eo)/`, `src/app/(buyer)/e/`, `src/app/(admin)/admin/(dashboard)/eo/`, `src/components/eo/`, `src/components/admin/EventOrganizerApprovalList.tsx`, `src/components/buyer/{StallMenu,EventMyOrders}.tsx`, `src/lib/auth/eo-session.ts`, `src/lib/event/queries.ts`, `src/lib/validation/event.schema.ts`, `src/server/{events,event-organizers}.ts`, `src/types/event.ts`, `tests/unit/event.test.ts`, `tests/e2e/eo-flow.spec.ts`.
+**Alasan:** Permintaan klien EO: peserta event memesan oleh-oleh dari banyak Gerai lewat satu QR (mis. sambil di bis), lalu tinggal mengambil tanpa antre. Keputusan User lewat AskUserQuestion (lihat ADR).
+**Ringkasan:**
+- EO daftar sendiri, disetujui Admin di `/admin/eo`, lalu membuat event, memilih Gerai, dan mengunduh QR Event.
+- Peserta membuka `/e/<slug>`, memilih Gerai, dan checkout seperti biasa — per Gerai, selalu Ambil Sendiri. Pesanan tercatat ke event lewat `orders.event_id`; uang & Pencairan tidak berubah.
+- Halaman event merangkum Pesanan peserta dari perangkat itu. EO melihat Pesanan event yang sudah dibayar (tanpa No. HP/alamat). Pedagang melihat penanda event di kartu Pesanan & Profil.
+- **Diverifikasi**: unit 227/227 (+11), E2E 23/23 (+6 alur EO), `tsc`/Biome/`build` lulus, cek visual lebar HP, `/security-review` tanpa temuan. **Belum**: uji manual User.
+
 ## 2026-10-06 — Perbesar foto Item (branch `feat/zoom-foto-item`)
 
 **Dampak:** [docs/DESAIN-SISTEM.md](docs/DESAIN-SISTEM.md) (kartu Item Pembeli), [docs/BACKLOG.md](docs/BACKLOG.md). Kode baru: `src/components/buyer/ProductPhotoZoom.tsx`, `tests/e2e/menu-photo-zoom.spec.ts`.

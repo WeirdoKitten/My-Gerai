@@ -5,6 +5,10 @@ import { client, db } from "./client";
 import {
   adminSessions,
   admins,
+  eoSessions,
+  eventMerchants,
+  eventOrganizers,
+  events,
   merchants,
   orderItems,
   orders,
@@ -37,7 +41,7 @@ if (
 async function main() {
   console.log("Menghapus data lama...");
   await db.execute(
-    sql`TRUNCATE TABLE ${adminSessions}, ${sessions}, ${payouts}, ${payments}, ${orderItems}, ${orders}, ${products}, ${merchants}, ${admins}, ${platformConfig} RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE ${adminSessions}, ${sessions}, ${eoSessions}, ${eventMerchants}, ${events}, ${eventOrganizers}, ${payouts}, ${payments}, ${orderItems}, ${orders}, ${products}, ${merchants}, ${admins}, ${platformConfig} RESTART IDENTITY CASCADE`,
   );
 
   console.log("Membuat data seed...");
@@ -196,6 +200,33 @@ async function main() {
     { key: "order_expiry_minutes", value: "15" },
   ]);
 
+  // Portal EO: satu EO disetujui + satu event berisi kedua Lapak demo.
+  const [organizer] = await db
+    .insert(eventOrganizers)
+    .values({
+      organizationName: "Jelajah Nusantara Tour",
+      contactName: "Rina",
+      phone: "083333333333",
+      passwordHash,
+      status: "approved",
+    })
+    .returning();
+  const [demoEvent] = await db
+    .insert(events)
+    .values({
+      organizerId: organizer.id,
+      slug: "wisata-kuliner-bandung",
+      name: "Wisata Kuliner Bandung",
+      location: "Baleendah, Kab. Bandung",
+      description:
+        "Pesan oleh-oleh sambil di perjalanan. Ambil di Gerai masing-masing saat sesi oleh-oleh pukul 15.00.",
+    })
+    .returning();
+  await db.insert(eventMerchants).values([
+    { eventId: demoEvent.id, merchantId: merchant.id, sortOrder: 0 },
+    { eventId: demoEvent.id, merchantId: merchantRajaRasa.id, sortOrder: 1 },
+  ]);
+
   console.log("Selesai. Coba buka: http://localhost:3000/menu/bakso-pak-budi");
   console.log("");
   console.log("Kredensial uji Pedagang (login di /login):");
@@ -206,6 +237,11 @@ async function main() {
   console.log("");
   console.log("Kredensial uji Admin (login di /admin/login):");
   console.log(`  081111111111 / ${SEED_PASSWORD}`);
+  console.log("");
+  console.log("Kredensial uji EO (login di /eo/login):");
+  console.log(
+    `  083333333333 / ${SEED_PASSWORD} -> Jelajah Nusantara Tour (event: /e/wisata-kuliner-bandung)`,
+  );
 }
 
 main()

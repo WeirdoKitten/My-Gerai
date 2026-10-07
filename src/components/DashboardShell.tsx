@@ -44,11 +44,18 @@ export function DashboardShell({
         </div>
       </header>
 
-      <main className={cn("mx-auto w-full flex-1 px-4 pb-24 pt-6", width)}>
+      <main
+        className={cn(
+          "mx-auto w-full flex-1 px-4 pt-6",
+          nav.length > 0 ? "pb-24" : "pb-10",
+          width,
+        )}
+      >
         {children}
       </main>
 
-      <DashboardNav items={nav} />
+      {/* Portal EO cuma punya satu layar utama, jadi tanpa bottom nav. */}
+      {nav.length > 0 ? <DashboardNav items={nav} /> : null}
     </div>
   );
 }
