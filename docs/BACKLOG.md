@@ -572,7 +572,10 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 
 ### Fase 12b — Aplikasi Expo (repo My-Gerai-Mobile)
 
-- [ ] Tahap 1: daftar, login, antrean Pesanan, ubah status, push notification.
+- [x] Tahap 1a (2026-10-12): daftar, login, antrean + riwayat Pesanan, detail, ubah status, tandai lunas, gagal antar, logout. Diuji di emulator terhadap server lokal.
+- [ ] Tahap 1b: push notification (butuh project Firebase).
+- [ ] API: tambah total Pesanan (`subtotal`/`totalForMerchant`) ke `GET /orders` supaya kartu antrean aplikasi bisa menampilkannya (perubahan aman: menambah field). Saat ini aplikasi mengikuti dashboard web, tanpa total.
+- [ ] API (opsional): `GET /orders/{orderId}` untuk detail Pesanan dari notifikasi. Sekarang aplikasi mencari di antrean lalu riwayat.
 - [ ] Tahap 2: cetak struk Bluetooth (ESC/POS, isi sama dengan web).
 - [ ] Tahap 3: kelola Item, varian, stok, foto, buka/tutup, jadwal operasional.
 - [ ] Tahap 4: laporan, profil, pengantaran, pembayaran/pencairan, tagihan, ulasan, event.
