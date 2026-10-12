@@ -111,8 +111,10 @@ Foto dikompres di HP sebelum upload (sisi terpanjang ±1280px). Server tidak me-
 | `GET /reviews` | | `MerchantReviewsPage` |
 | `GET /service-fee-invoices` | | `{ invoices: MerchantServiceFeeInvoiceView[] }` |
 | `GET /events` | | `{ events: MerchantEventInfo[] }` |
+| `GET /places/search?q=&lat=&lng=` | `q` 3–120 huruf; `lat`/`lng` opsional (utamakan hasil di dekat titik) | `{ suggestions: PlaceSuggestion[] }`. Selalu Photon (OSM), `coords` terisi. Rate limit `searchPlaces` (60/menit per IP). `q` terlalu pendek → `422` |
+| `GET /places/reverse?lat=&lng=` | koordinat valid | `{ address: string \| null }` dari Nominatim. `null` kalau gagal/kena rate limit (20/menit per Pedagang); aplikasi diam saja. Koordinat tidak valid → `422` |
 
-**Belum ada**: pencarian alamat/peta (geocoding). Cara peta di aplikasi native diputuskan saat Tahap 4 aplikasi ([BACKLOG.md](BACKLOG.md) Fase 12).
+Geocoding (2026-10-13): aplikasi memakai peta OSM di WebView (Leaflet), jadi pencarian selalu lewat Photon tanpa kuota Google. Keputusan peta: ADR 2026-10-13 di `docs/ARSITEKTUR-SISTEM.md` repo mobile.
 
 ## 5. Push Notification
 

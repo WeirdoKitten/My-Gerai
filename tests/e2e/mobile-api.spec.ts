@@ -370,6 +370,38 @@ test.describe
       expect(badPeriod.status()).toBe(422);
     });
 
+    test("cari alamat dan alamat dari titik peta", async ({ request }) => {
+      const auth = bearer(token);
+      // Photon/Nominatim di luar kendali tes: cukup bentuk respons, bukan isinya.
+      const search = await request.get(
+        `${API}/places/search?q=${encodeURIComponent("Jalan Malioboro")}`,
+        { headers: auth },
+      );
+      expect(search.status()).toBe(200);
+      expect(Array.isArray((await search.json()).data.suggestions)).toBe(true);
+
+      const reverse = await request.get(
+        `${API}/places/reverse?lat=-7.7928&lng=110.3658`,
+        { headers: auth },
+      );
+      expect(reverse.status()).toBe(200);
+      expect("address" in (await reverse.json()).data).toBe(true);
+
+      const shortQuery = await request.get(`${API}/places/search?q=ab`, {
+        headers: auth,
+      });
+      expect(shortQuery.status()).toBe(422);
+      const badPoint = await request.get(
+        `${API}/places/reverse?lat=200&lng=x`,
+        {
+          headers: auth,
+        },
+      );
+      expect(badPoint.status()).toBe(422);
+      const noAuth = await request.get(`${API}/places/reverse?lat=0&lng=0`);
+      expect(noAuth.status()).toBe(401);
+    });
+
     test("cookie login web saja ditolak API mobile", async ({ page }) => {
       // IP tiruan sendiri: budget login per IP browser dipakai spec lain.
       await page.setExtraHTTPHeaders({ "cf-connecting-ip": "10.12.0.6" });

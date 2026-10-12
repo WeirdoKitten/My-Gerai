@@ -567,7 +567,7 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [x] Dokumen kontrak [API-MOBILE.md](API-MOBILE.md).
 - [x] Unit `tests/unit/mobile-api.test.ts` (10 test, total 237/237). E2E `tests/e2e/mobile-api.spec.ts` (11 test; suite 34/34). `tsc`, Biome (file baru), `build` lulus. Log push tercetak tepat sekali per Pesanan lunas (`PUSH_PROVIDER=log`).
 - [x] `/security-review`: tidak ada temuan. Catatan di bawah ambang: `PUT /devices` memindah token push yang sudah terdaftar di akun lain (butuh token Expo korban yang tidak bisa ditebak).
-- [ ] Geocoding (cari alamat/peta) untuk aplikasi: ditunda sampai cara peta di aplikasi native diputuskan (Tahap 4 aplikasi).
+- [x] Geocoding untuk aplikasi (2026-10-13): `GET /places/search` (Photon) dan `GET /places/reverse` (Nominatim), memakai `searchPlaces`/`reverseGeocodeAddress` yang sudah ada (rate limit ikut). Aplikasi memakai peta OSM di WebView (keputusan User di Plan mode Tahap 4 aplikasi). E2E `mobile-api.spec.ts` 12/12.
 - [ ] **User:** di server staging/produksi set `PUSH_PROVIDER=expo` saat aplikasi sudah memakai push. Uji push nyata menunggu development build aplikasi (Tahap 1).
 
 ### Fase 12b — Aplikasi Expo (repo My-Gerai-Mobile)
@@ -578,8 +578,9 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [ ] API: tambah total Pesanan (`subtotal`/`totalForMerchant`) ke `GET /orders` supaya kartu antrean aplikasi bisa menampilkannya (perubahan aman: menambah field). Saat ini aplikasi mengikuti dashboard web, tanpa total.
 - [ ] API (opsional): `GET /orders/{orderId}` untuk detail Pesanan dari notifikasi. Sekarang aplikasi mencari di antrean lalu riwayat.
 - [ ] Tahap 2: cetak struk Bluetooth (ESC/POS, isi sama dengan web).
-- [ ] Tahap 3: kelola Item, varian, stok, foto, buka/tutup, jadwal operasional.
-- [ ] Tahap 4: laporan, profil, pengantaran, pembayaran/pencairan, tagihan, ulasan, event.
+- [x] Tahap 4 (2026-10-13): profil + peta + rekening Pencairan, QR Menu, pengantaran, event, laporan + asisten, ulasan, metode pembayaran + foto QRIS, tagihan Biaya Layanan. Diuji di emulator.
+- [ ] **Paritas (fitur Pedagang baru, web dulu):** riwayat Pencairan dan Saldo untuk Pedagang. Sekarang hanya Admin yang melihat Saldo (`/admin/payouts`); dashboard web Pedagang dan API mobile belum punya. Ditunda dari Tahap 4 aplikasi atas keputusan User (2026-10-13). Perlu keputusan isi (Saldo berjalan, daftar Pencairan, rincian per Pesanan?) lalu halaman web + `GET /payouts` untuk aplikasi.
+- [ ] API (opsional): `qrString` atau PNG lebih besar untuk QR tagihan di `GET /service-fee-invoices`; data URI sekarang kecil sehingga tampak buram saat diperbesar di HP.
 - [ ] Tahap 5: rilis Play Store (uji tertutup dulu).
 - [ ] **User:** akun Google Play Console (US$25 sekali bayar), project Firebase untuk FCM, halaman kebijakan privasi.
 

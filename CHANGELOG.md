@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-13 — API mobile: cari alamat dan alamat dari titik peta
+
+**Dampak:** [docs/API-MOBILE.md](docs/API-MOBILE.md) (§4 dua endpoint baru, catatan "belum ada geocoding" dihapus), [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 12a/12b, paritas riwayat Pencairan/Saldo Pedagang). Kode baru: `src/app/api/mobile/v1/places/{search,reverse}/route.ts`. Diubah: `tests/e2e/mobile-api.spec.ts`.
+**Alasan:** Tahap 4 aplikasi Android butuh pemilih titik Lapak. Keputusan User di Plan mode repo mobile: peta OSM di WebView, geocoding lewat server.
+**Ringkasan:**
+- `GET /places/search` memanggil `searchPlaces` dengan provider OSM (Photon), `GET /places/reverse` memanggil `reverseGeocodeAddress` (Nominatim). Keduanya wajib Bearer dan memakai rate limit yang sudah ada; input divalidasi Zod (`422` kalau salah).
+- E2E: bentuk respons, `422`, dan `401` tanpa token. Suite `mobile-api.spec.ts` 12/12.
+- Dicatat untuk paritas: riwayat Pencairan/Saldo untuk Pedagang belum ada di web maupun aplikasi.
+
 ## 2026-10-07 — API mobile Pedagang (Fase 12a, branch `feat/api-mobile`)
 
 **Dampak:** [docs/API-MOBILE.md](docs/API-MOBILE.md) (baru), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (`sessions.client`, `merchant_push_tokens`, migrasi `0021`), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-07 dilengkapi), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (§Autentikasi, baris aplikasi Android), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/BACKLOG.md](docs/BACKLOG.md), `.env.example`, `CLAUDE.md`. Kode baru: `src/app/api/mobile/v1/`, `src/lib/mobile-api/`, `src/lib/push/`, `src/lib/auth/{bearer,merchant-login}.ts`, `drizzle/0021_mobile_api.sql`, `tests/unit/mobile-api.test.ts`, `tests/e2e/mobile-api.spec.ts`. Diubah: `src/lib/auth/session.ts`, `src/lib/payment/settle.ts`, `src/server/merchants.ts` (`loginMerchant`), `src/lib/db/schema.ts`.
