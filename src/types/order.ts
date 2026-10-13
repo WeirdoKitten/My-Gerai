@@ -127,6 +127,8 @@ export type MerchantOrderListItem = {
   items: MerchantOrderItemView[];
   fulfillmentMethod: FulfillmentMethod;
   deliveryFeeSnapshot: number;
+  /** Bagian Pedagang = subtotal + Ongkir (sama dengan Riwayat). Dihitung server saat Pesanan dibuat. */
+  totalForMerchant: number;
   /** `null` untuk Ambil sendiri. */
   delivery: MerchantOrderDeliveryView | null;
   /** Jadwal ambil/antar Pesanan pre-order. `null` = Pesanan biasa. */
@@ -154,6 +156,12 @@ export type MerchantOrderListResult = {
 };
 
 export type UpdateOrderStatusResult = { ok: boolean; message?: string };
+
+/** Detail satu Pesanan milik Lapak sendiri (`getMerchantOrder`, `GET /api/mobile/v1/orders/{id}`). */
+export type GetMerchantOrderResult =
+  | { ok: true; kind: "active"; order: MerchantOrderListItem }
+  | { ok: true; kind: "history"; order: MerchantOrderHistoryItem }
+  | { ok: false; message: string };
 
 /**
  * Bentuk hasil daftar Riwayat Pesanan untuk dashboard Pedagang — Pesanan milik

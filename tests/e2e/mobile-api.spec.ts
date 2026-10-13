@@ -149,6 +149,15 @@ test.describe
       page,
       request,
     }) => {
+      // Saldo hanya dari Pesanan gateway: Pesanan QRIS Pribadi tidak menambahnya.
+      const balanceOf = async () =>
+        (
+          await (
+            await request.get(`${API}/payouts`, { headers: bearer(token) })
+          ).json()
+        ).data.balance as number;
+      const balanceBefore = await balanceOf();
+
       await page.goto(`/menu/${NASGOR.slug}`);
       await page
         .getByRole("button", { name: "Tambah", exact: true })
@@ -168,6 +177,16 @@ test.describe
         (o: { id: string }) => o.id === orderId,
       );
       expect(waiting.status).toBe("menunggu_pembayaran");
+      expect(waiting.totalForMerchant).toBeGreaterThan(0);
+
+      const detail = await request.get(`${API}/orders/${orderId}`, {
+        headers: bearer(token),
+      });
+      expect(detail.status()).toBe(200);
+      expect((await detail.json()).data).toMatchObject({
+        kind: "active",
+        order: { id: orderId, awaitingManualConfirmation: true },
+      });
 
       // Belum lunas → struk belum tersedia.
       const early = await request.get(`${API}/orders/${orderId}/receipt`, {
@@ -214,6 +233,15 @@ test.describe
         (o: { id: string }) => o.id,
       );
       expect(ids).toContain(orderId);
+
+      const finished = await request.get(`${API}/orders/${orderId}`, {
+        headers: bearer(token),
+      });
+      expect((await finished.json()).data).toMatchObject({
+        kind: "history",
+        order: { id: orderId, status: "selesai" },
+      });
+      expect(await balanceOf()).toBe(balanceBefore);
     });
 
     test("Pedagang lain tidak bisa melihat atau mengubah Pesanan ini", async ({
@@ -239,6 +267,11 @@ test.describe
         (o: { id: string }) => o.id,
       );
       expect(ids).not.toContain(orderId);
+
+      const detail = await request.get(`${API}/orders/${orderId}`, {
+        headers: other,
+      });
+      expect(detail.status()).toBe(404);
     });
 
     test("Item, varian, foto, dan buka/tutup Lapak lewat API", async ({
@@ -358,6 +391,7 @@ test.describe
         "/reviews",
         "/service-fee-invoices",
         "/events",
+        "/payouts",
       ]) {
         const res = await request.get(`${API}${path}`, { headers: auth });
         expect(res.status(), path).toBe(200);

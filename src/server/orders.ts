@@ -65,9 +65,12 @@ import type {
   BuyerOrderStatusSummary,
   BuyerOrderStatusView,
   CreateOrderResult,
+  GetMerchantOrderResult,
   GetOrderReceiptResult,
   MerchantOrderDeliveryView,
   MerchantOrderHistoryItem,
+  MerchantOrderItemView,
+  MerchantOrderListItem,
   MerchantOrderListResult,
   Order,
   SimulatePaymentResult,
@@ -1032,6 +1035,83 @@ export async function markQrisPribadiOrderPaid(
   return { ok: true };
 }
 
+type OrderRow = typeof orders.$inferSelect;
+
+/** Item, pilihan varian, dan nama event untuk sekumpulan Pesanan (dipakai daftar & detail). */
+async function loadMerchantOrderParts(orderRows: OrderRow[]) {
+  const items = await db.query.orderItems.findMany({
+    where: inArray(
+      orderItems.orderId,
+      orderRows.map((order) => order.id),
+    ),
+  });
+  const itemsByOrderId = new Map<string, typeof items>();
+  for (const item of items) {
+    const list = itemsByOrderId.get(item.orderId) ?? [];
+    list.push(item);
+    itemsByOrderId.set(item.orderId, list);
+  }
+  const [variantSelectionsByOrderItemId, eventNamesById] = await Promise.all([
+    fetchVariantSelectionsByOrderItemId(items.map((item) => item.id)),
+    fetchEventNamesById(orderRows.map((order) => order.eventId)),
+  ]);
+
+  const itemViews = (orderId: string): MerchantOrderItemView[] =>
+    (itemsByOrderId.get(orderId) ?? []).map((item) => ({
+      id: item.id,
+      productNameSnapshot: item.productNameSnapshot,
+      priceSnapshot: item.priceSnapshot,
+      qty: item.qty,
+      note: item.note,
+      variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
+    }));
+  const eventName = (order: OrderRow) =>
+    order.eventId ? (eventNamesById.get(order.eventId) ?? null) : null;
+
+  return {
+    toActive: (
+      order: OrderRow,
+      paymentProvider: string | null,
+    ): MerchantOrderListItem => ({
+      id: order.id,
+      orderCode: order.orderCode,
+      status: order.status,
+      buyerName: order.buyerName,
+      buyerNote: order.buyerNote,
+      createdAt: order.createdAt,
+      fulfillmentMethod: order.fulfillmentMethod,
+      deliveryFeeSnapshot: order.deliveryFeeSnapshot,
+      totalForMerchant: order.totalForMerchant,
+      delivery: toMerchantDeliveryView(order),
+      scheduledFor: order.scheduledFor,
+      buyerPhone: order.buyerPhone,
+      eventName: eventName(order),
+      items: itemViews(order.id),
+      awaitingManualConfirmation:
+        order.status === "menunggu_pembayaran" &&
+        paymentProvider === "qris_pribadi",
+    }),
+    toHistory: (order: OrderRow): MerchantOrderHistoryItem => ({
+      id: order.id,
+      orderCode: order.orderCode,
+      status: order.status,
+      buyerName: order.buyerName,
+      subtotal: order.subtotal,
+      platformFeeSnapshot: order.platformFeeSnapshot,
+      deliveryFeeSnapshot: order.deliveryFeeSnapshot,
+      totalForMerchant: order.totalForMerchant,
+      createdAt: order.createdAt,
+      paidAt: order.paidAt,
+      completedAt: order.completedAt,
+      fulfillmentMethod: order.fulfillmentMethod,
+      scheduledFor: order.scheduledFor,
+      eventName: eventName(order),
+      delivery: toMerchantDeliveryView(order),
+      items: itemViews(order.id),
+    }),
+  };
+}
+
 /** Pesanan aktif (butuh aksi Pedagang) milik Lapak sendiri — identitas dari sesi login. */
 export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
   const session = await getMerchantSession();
@@ -1114,49 +1194,13 @@ export async function listMerchantOrders(): Promise<MerchantOrderListResult> {
           .orderBy(asc(orders.createdAt));
   if (activeOrders.length === 0) return { orders: [], totalActive: 0 };
 
-  const orderIds = activeOrders.map(({ order }) => order.id);
-  const items = await db.query.orderItems.findMany({
-    where: inArray(orderItems.orderId, orderIds),
-  });
-  const itemsByOrderId = new Map<string, typeof items>();
-  for (const item of items) {
-    const list = itemsByOrderId.get(item.orderId) ?? [];
-    list.push(item);
-    itemsByOrderId.set(item.orderId, list);
-  }
-  const [variantSelectionsByOrderItemId, eventNamesById] = await Promise.all([
-    fetchVariantSelectionsByOrderItemId(items.map((item) => item.id)),
-    fetchEventNamesById(activeOrders.map(({ order }) => order.eventId)),
-  ]);
-
+  const parts = await loadMerchantOrderParts(
+    activeOrders.map(({ order }) => order),
+  );
   return {
-    orders: activeOrders.map(({ order, paymentProvider }) => ({
-      id: order.id,
-      orderCode: order.orderCode,
-      status: order.status,
-      buyerName: order.buyerName,
-      buyerNote: order.buyerNote,
-      createdAt: order.createdAt,
-      fulfillmentMethod: order.fulfillmentMethod,
-      deliveryFeeSnapshot: order.deliveryFeeSnapshot,
-      delivery: toMerchantDeliveryView(order),
-      scheduledFor: order.scheduledFor,
-      buyerPhone: order.buyerPhone,
-      eventName: order.eventId
-        ? (eventNamesById.get(order.eventId) ?? null)
-        : null,
-      items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
-        id: item.id,
-        productNameSnapshot: item.productNameSnapshot,
-        priceSnapshot: item.priceSnapshot,
-        qty: item.qty,
-        note: item.note,
-        variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
-      })),
-      awaitingManualConfirmation:
-        order.status === "menunggu_pembayaran" &&
-        paymentProvider === "qris_pribadi",
-    })),
+    orders: activeOrders.map(({ order, paymentProvider }) =>
+      parts.toActive(order, paymentProvider),
+    ),
     totalActive,
   };
 }
@@ -1182,48 +1226,43 @@ export async function listMerchantOrderHistory(): Promise<
   });
   if (pastOrders.length === 0) return [];
 
-  const orderIds = pastOrders.map((order) => order.id);
-  const items = await db.query.orderItems.findMany({
-    where: inArray(orderItems.orderId, orderIds),
-  });
-  const itemsByOrderId = new Map<string, typeof items>();
-  for (const item of items) {
-    const list = itemsByOrderId.get(item.orderId) ?? [];
-    list.push(item);
-    itemsByOrderId.set(item.orderId, list);
-  }
-  const [variantSelectionsByOrderItemId, eventNamesById] = await Promise.all([
-    fetchVariantSelectionsByOrderItemId(items.map((item) => item.id)),
-    fetchEventNamesById(pastOrders.map((order) => order.eventId)),
-  ]);
+  const parts = await loadMerchantOrderParts(pastOrders);
+  return pastOrders.map((order) => parts.toHistory(order));
+}
 
-  return pastOrders.map((order) => ({
-    id: order.id,
-    orderCode: order.orderCode,
-    status: order.status,
-    buyerName: order.buyerName,
-    subtotal: order.subtotal,
-    platformFeeSnapshot: order.platformFeeSnapshot,
-    deliveryFeeSnapshot: order.deliveryFeeSnapshot,
-    totalForMerchant: order.totalForMerchant,
-    createdAt: order.createdAt,
-    paidAt: order.paidAt,
-    completedAt: order.completedAt,
-    fulfillmentMethod: order.fulfillmentMethod,
-    scheduledFor: order.scheduledFor,
-    eventName: order.eventId
-      ? (eventNamesById.get(order.eventId) ?? null)
-      : null,
-    delivery: toMerchantDeliveryView(order),
-    items: (itemsByOrderId.get(order.id) ?? []).map((item) => ({
-      id: item.id,
-      productNameSnapshot: item.productNameSnapshot,
-      priceSnapshot: item.priceSnapshot,
-      variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
-      qty: item.qty,
-      note: item.note,
-    })),
-  }));
+/**
+ * Satu Pesanan milik Lapak sendiri untuk layar detail aplikasi (mis. dibuka
+ * dari notifikasi). Status akhir → bentuk Riwayat, selain itu → bentuk antrean.
+ * Kepemilikan difilter di klausa WHERE; Pesanan Lapak lain = tidak ditemukan.
+ */
+export async function getMerchantOrder(
+  orderId: string,
+): Promise<GetMerchantOrderResult> {
+  const notFound = { ok: false as const, message: "Pesanan tidak ditemukan." };
+  if (!z.uuid().safeParse(orderId).success) return notFound;
+  const session = await getMerchantSession();
+  if (!session) {
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+  }
+
+  const [row] = await db
+    .select({ order: orders, paymentProvider: payments.provider })
+    .from(orders)
+    .leftJoin(payments, eq(payments.orderId, orders.id))
+    .where(
+      and(eq(orders.id, orderId), eq(orders.merchantId, session.merchantId)),
+    )
+    .limit(1);
+  if (!row) return notFound;
+
+  const parts = await loadMerchantOrderParts([row.order]);
+  return FINAL_ORDER_STATUSES.includes(row.order.status)
+    ? { ok: true, kind: "history", order: parts.toHistory(row.order) }
+    : {
+        ok: true,
+        kind: "active",
+        order: parts.toActive(row.order, row.paymentProvider),
+      };
 }
 
 /**

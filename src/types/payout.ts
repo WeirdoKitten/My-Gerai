@@ -14,3 +14,16 @@ export type AdminPayoutView = {
 };
 
 export type RecordPayoutResult = { ok: boolean; message?: string };
+
+/** Saldo + riwayat Pencairan untuk Pedagang sendiri (`getMyPayoutSummary`). */
+export type MerchantPayoutSummaryView = {
+  /** Saldo yang belum dicairkan, hanya dari Pesanan lunas lewat gateway. */
+  balance: number;
+  payouts: {
+    id: string;
+    amount: number;
+    /** Catatan Admin, mis. nomor referensi transfer. */
+    note: string | null;
+    settledAt: Date;
+  }[];
+};

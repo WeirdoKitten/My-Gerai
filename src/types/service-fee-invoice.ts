@@ -11,6 +11,8 @@ export type MerchantServiceFeeInvoiceView = {
   paidAt: Date | null;
   /** QR untuk dipindai Pedagang membayar tagihan — cuma terisi kalau `belum_lunas` & charge sudah dibuat. */
   qrImageUrl: string | null;
+  /** Payload QRIS mentah (sama isinya dengan `qrImageUrl`), untuk digambar ulang tajam di aplikasi. `null` kalau gateway hanya memberi URL gambar. */
+  qrString: string | null;
 };
 
 /** Ringkasan akrual Biaya Layanan yang belum ditagih per Lapak `qris_pribadi` (Admin). */

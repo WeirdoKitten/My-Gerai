@@ -1,9 +1,10 @@
 "use server";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, notExists, sql } from "drizzle-orm";
 import { getAdminSession } from "@/lib/auth/admin-session";
+import { getMerchantSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
-import { merchants, orders, payouts } from "@/lib/db/schema";
+import { merchants, orders, payments, payouts } from "@/lib/db/schema";
 import { formatRupiah } from "@/lib/utils/money";
 import { PAID_ORDER_STATUSES } from "@/lib/utils/order-status";
 import {
@@ -13,11 +14,35 @@ import {
 import type {
   AdminPayoutView,
   MerchantBalanceView,
+  MerchantPayoutSummaryView,
   RecordPayoutResult,
 } from "@/types/payout";
 
 /** Status Pesanan yang dananya sudah dianggap milik Pedagang (lihat DATA-MODEL.md §payouts). */
 const BALANCE_ELIGIBLE_STATUSES = [...PAID_ORDER_STATUSES];
+
+/**
+ * Pesanan yang uangnya ditampung Aplikator dan harus dicairkan: lunas DAN
+ * dibayar lewat gateway. Pesanan QRIS Pribadi dikecualikan karena uangnya
+ * sudah langsung masuk ke QRIS Pedagang (keputusan User 2026-10-13); kalau
+ * ikut dihitung, Admin bisa mencairkan uang yang sama dua kali.
+ */
+function balanceEligibleOrders() {
+  return and(
+    inArray(orders.status, BALANCE_ELIGIBLE_STATUSES),
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.orderId, orders.id),
+            eq(payments.provider, "qris_pribadi"),
+          ),
+        ),
+    ),
+  );
+}
 
 /**
  * Saldo Pedagang saat ini = SUM(orders.total_for_merchant status eligible)
@@ -38,12 +63,7 @@ async function getMerchantBalance(
       ),
     })
     .from(orders)
-    .where(
-      and(
-        eq(orders.merchantId, merchantId),
-        inArray(orders.status, BALANCE_ELIGIBLE_STATUSES),
-      ),
-    );
+    .where(and(eq(orders.merchantId, merchantId), balanceEligibleOrders()));
 
   const [payoutSum] = await executor
     .select({
@@ -74,7 +94,7 @@ export async function listMerchantBalances(): Promise<MerchantBalanceView[]> {
       ),
     })
     .from(orders)
-    .where(inArray(orders.status, BALANCE_ELIGIBLE_STATUSES))
+    .where(balanceEligibleOrders())
     .groupBy(orders.merchantId);
 
   const payoutSums = await db
@@ -100,6 +120,41 @@ export async function listMerchantBalances(): Promise<MerchantBalanceView[]> {
       (orderTotalById.get(merchant.id) ?? 0) -
       (payoutTotalById.get(merchant.id) ?? 0),
   }));
+}
+
+/** Batas riwayat Pencairan yang ditampilkan ke Pedagang (skala kaki lima — KISS). */
+const MERCHANT_PAYOUT_HISTORY_LIMIT = 50;
+
+/**
+ * Saldo + riwayat Pencairan milik Lapak sendiri (`/dashboard/saldo`,
+ * `GET /api/mobile/v1/payouts`). Identitas dari sesi login, tidak pernah dari
+ * parameter. Catatan Admin ikut tampil (keputusan User 2026-10-13).
+ */
+export async function getMyPayoutSummary(): Promise<MerchantPayoutSummaryView | null> {
+  const session = await getMerchantSession();
+  if (!session) return null;
+
+  const [balance, rows] = await Promise.all([
+    getMerchantBalance(db, session.merchantId),
+    db.query.payouts.findMany({
+      where: and(
+        eq(payouts.merchantId, session.merchantId),
+        eq(payouts.status, "selesai"),
+      ),
+      orderBy: [desc(payouts.settledAt), desc(payouts.createdAt)],
+      limit: MERCHANT_PAYOUT_HISTORY_LIMIT,
+    }),
+  ]);
+
+  return {
+    balance,
+    payouts: rows.map((row) => ({
+      id: row.id,
+      amount: row.amount,
+      note: row.note,
+      settledAt: row.settledAt ?? row.createdAt,
+    })),
+  };
 }
 
 export async function listPayoutsForAdmin(): Promise<AdminPayoutView[]> {

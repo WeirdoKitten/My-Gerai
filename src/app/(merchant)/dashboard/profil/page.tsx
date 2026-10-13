@@ -63,6 +63,11 @@ export default async function MerchantProfilePage() {
         label="Metode Pembayaran"
       />
       <SettingsLinkRow
+        href="/dashboard/saldo"
+        icon={<WalletIcon className="size-4 text-ink-muted" />}
+        label="Saldo & Pencairan"
+      />
+      <SettingsLinkRow
         href="/dashboard/pengantaran"
         icon={<MapPinIcon className="size-4 text-ink-muted" />}
         label="Pengantaran"

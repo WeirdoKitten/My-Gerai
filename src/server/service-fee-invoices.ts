@@ -58,6 +58,14 @@ export async function listMerchantServiceFeeInvoices(): Promise<
       paidAt: row.paidAt,
       qrImageUrl:
         row.status === "belum_lunas" ? await toQrImageUrl(row.qrString) : null,
+      // Isi QR mentah supaya aplikasi bisa menggambar QR tajam di HP. URL gambar
+      // (bukan payload QRIS) tidak dikirim di sini; klien memakai qrImageUrl.
+      qrString:
+        row.status === "belum_lunas" &&
+        row.qrString &&
+        !row.qrString.startsWith("http")
+          ? row.qrString
+          : null,
     })),
   );
 }

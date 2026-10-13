@@ -2,6 +2,18 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-13 — Saldo & Pencairan untuk Pedagang, Saldo tanpa QRIS Pribadi, total di antrean, detail Pesanan API
+
+**Dampak:** [docs/API-MOBILE.md](docs/API-MOBILE.md) (`GET /orders` + `totalForMerchant`, `GET /orders/{id}`, `GET /payouts`, `qrString` tagihan), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (§payouts kondisi kode saat ini), [docs/GLOSSARY.md](docs/GLOSSARY.md) (Saldo Pedagang), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/server/orders.ts` (`loadMerchantOrderParts`, `getMerchantOrder`), `src/server/payouts.ts` (`balanceEligibleOrders`, `getMyPayoutSummary`), `src/server/service-fee-invoices.ts`, `src/types/{order,payout,service-fee-invoice}.ts`, `src/components/merchant/MerchantOrderCard.tsx`, halaman baru `/dashboard/saldo` + link di Profil, route `api/mobile/v1/orders/[orderId]` dan `api/mobile/v1/payouts`, `tests/e2e/mobile-api.spec.ts`.
+**Alasan:** User meminta lanjut pekerjaan yang tidak butuh HP/printer/Firebase. Keputusan User (AskUserQuestion 2026-10-13): kartu antrean menampilkan bagian Pedagang dan web ikut; Saldo Pedagang tidak menghitung Pesanan QRIS Pribadi; halaman Saldo & Pencairan berisi Saldo + riwayat dengan catatan Admin, sebagai menu baru di Profil.
+**Ringkasan:**
+- **Perbaikan uang**: Saldo Pedagang sebelumnya ikut menghitung Pesanan QRIS Pribadi, padahal uangnya sudah langsung ke Pedagang, sehingga Admin bisa mencairkan dua kali. Sekarang dikecualikan lewat `NOT EXISTS` ke `payments.provider = 'qris_pribadi'`, berlaku untuk `/admin/payouts`, guard `recordPayout`, dan halaman Pedagang. Angka Saldo Lapak QRIS Pribadi di Admin bisa turun.
+- Kartu antrean dashboard menampilkan "Bagianmu" (`totalForMerchant`, termasuk Ongkir).
+- `GET /orders/{id}` untuk detail Pesanan aplikasi (dan nanti notifikasi); daftar antrean, Riwayat, dan detail memakai pemeta yang sama.
+- `qrString` di tagihan supaya aplikasi menggambar QR tajam.
+- Catatan: dokumen menyebut Pencairan otomatis (Fase 6), tapi 6b belum dikerjakan; kode masih pencatatan manual Admin. Dicatat di DATA-MODEL.
+- Verifikasi: `tsc`, Biome, unit 237/237, e2e penuh 35/35 (mobile-api: total, detail aktif/riwayat, 404 Lapak lain, Saldo tidak berubah setelah Pesanan QRIS Pribadi lunas, `/payouts`). Halaman `/dashboard/saldo` dan kartu antrean dicek lewat screenshot.
+
 ## 2026-10-13 — API mobile: cari alamat dan alamat dari titik peta
 
 **Dampak:** [docs/API-MOBILE.md](docs/API-MOBILE.md) (§4 dua endpoint baru, catatan "belum ada geocoding" dihapus), [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 12a/12b, paritas riwayat Pencairan/Saldo Pedagang). Kode baru: `src/app/api/mobile/v1/places/{search,reverse}/route.ts`. Diubah: `tests/e2e/mobile-api.spec.ts`.

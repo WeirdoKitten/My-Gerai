@@ -69,7 +69,8 @@ Tipe `data` merujuk ke tipe TypeScript di `src/types/` (sumber kebenaran bentuk 
 
 | Metode & path | Body | `data` |
 |---|---|---|
-| `GET /orders` | | `MerchantOrderListResult` (antrean aktif, sama dengan dashboard) |
+| `GET /orders` | | `MerchantOrderListResult` (antrean aktif, sama dengan dashboard). Tiap Pesanan membawa `totalForMerchant` (bagian Pedagang = subtotal + Ongkir, sejak 2026-10-13) |
+| `GET /orders/{orderId}` | | `{ kind: "active", order: MerchantOrderListItem }` atau `{ kind: "history", order: MerchantOrderHistoryItem }` (status akhir). Pesanan Lapak lain/tidak ada → `404`. Dipakai layar detail dan notifikasi (2026-10-13) |
 | `GET /orders/history` | | `{ orders: MerchantOrderHistoryItem[] }` |
 | `POST /orders/{orderId}/status` | `{ status }` (nilai enum `order_status`) | `{}` atau pesan. Transisi sah diperiksa server |
 | `POST /orders/{orderId}/delivery-failed` | `{ reason: "tidak_bisa_dihubungi" \| "alamat_tidak_ditemukan" \| "lainnya", note? }` | `{}` |
@@ -109,7 +110,8 @@ Foto dikompres di HP sebelum upload (sisi terpanjang ±1280px). Server tidak me-
 | `GET /qr-menu` | | `QrMenuView` |
 | `GET /reports/sales?period=` | `period`: `hari_ini` \| `7_hari` \| `30_hari` | `MerchantSalesReport` |
 | `GET /reviews` | | `MerchantReviewsPage` |
-| `GET /service-fee-invoices` | | `{ invoices: MerchantServiceFeeInvoiceView[] }` |
+| `GET /service-fee-invoices` | | `{ invoices: MerchantServiceFeeInvoiceView[] }`. `qrString` (2026-10-13) = isi QR mentah untuk digambar tajam di HP; `null` kalau gateway hanya memberi URL gambar (pakai `qrImageUrl`) |
+| `GET /payouts` | | `MerchantPayoutSummaryView`: `{ balance, payouts: [{ id, amount, note, settledAt }] }`. Saldo belum dicairkan (hanya Pesanan lunas lewat gateway) + riwayat Pencairan (maks 50, catatan Admin ikut tampil). 2026-10-13 |
 | `GET /events` | | `{ events: MerchantEventInfo[] }` |
 | `GET /places/search?q=&lat=&lng=` | `q` 3–120 huruf; `lat`/`lng` opsional (utamakan hasil di dekat titik) | `{ suggestions: PlaceSuggestion[] }`. Selalu Photon (OSM), `coords` terisi. Rate limit `searchPlaces` (60/menit per IP). `q` terlalu pendek → `422` |
 | `GET /places/reverse?lat=&lng=` | koordinat valid | `{ address: string \| null }` dari Nominatim. `null` kalau gagal/kena rate limit (20/menit per Pedagang); aplikasi diam saja. Koordinat tidak valid → `422` |

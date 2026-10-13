@@ -575,12 +575,13 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [x] Tahap 1a (2026-10-12): daftar, login, antrean + riwayat Pesanan, detail, ubah status, tandai lunas, gagal antar, logout. Diuji di emulator terhadap server lokal.
 - [ ] Tahap 1b: push notification (butuh project Firebase). Ditunda atas keputusan User (2026-10-12).
 - [x] Tahap 3 (2026-10-12): kelola Item (foto, varian, pre-order, stok, Tersedia/Habis), buka/tutup Lapak, jadwal operasional. Diuji di emulator.
-- [ ] API: tambah total Pesanan (`subtotal`/`totalForMerchant`) ke `GET /orders` supaya kartu antrean aplikasi bisa menampilkannya (perubahan aman: menambah field). Saat ini aplikasi mengikuti dashboard web, tanpa total.
-- [ ] API (opsional): `GET /orders/{orderId}` untuk detail Pesanan dari notifikasi. Sekarang aplikasi mencari di antrean lalu riwayat.
+- [x] API + web (2026-10-13): `totalForMerchant` di `GET /orders`; kartu antrean dashboard web dan aplikasi menampilkan "Bagianmu" (keputusan User: bagian Pedagang, web ikut).
+- [x] API (2026-10-13): `GET /orders/{orderId}` (`getMerchantOrder`; daftar dan detail berbagi pemeta `loadMerchantOrderParts`). Layar detail aplikasi memakainya.
 - [ ] Tahap 2: cetak struk Bluetooth (ESC/POS, isi sama dengan web).
 - [x] Tahap 4 (2026-10-13): profil + peta + rekening Pencairan, QR Menu, pengantaran, event, laporan + asisten, ulasan, metode pembayaran + foto QRIS, tagihan Biaya Layanan. Diuji di emulator.
-- [ ] **Paritas (fitur Pedagang baru, web dulu):** riwayat Pencairan dan Saldo untuk Pedagang. Sekarang hanya Admin yang melihat Saldo (`/admin/payouts`); dashboard web Pedagang dan API mobile belum punya. Ditunda dari Tahap 4 aplikasi atas keputusan User (2026-10-13). Perlu keputusan isi (Saldo berjalan, daftar Pencairan, rincian per Pesanan?) lalu halaman web + `GET /payouts` untuk aplikasi.
-- [ ] API (opsional): `qrString` atau PNG lebih besar untuk QR tagihan di `GET /service-fee-invoices`; data URI sekarang kecil sehingga tampak buram saat diperbesar di HP.
+- [x] **Saldo & Pencairan untuk Pedagang** (2026-10-13, keputusan User): halaman `/dashboard/saldo` (menu "Saldo & Pencairan" di Profil) + `GET /payouts` + layar aplikasi. Isi: Saldo belum dicairkan + riwayat Pencairan dengan catatan Admin.
+- [x] **Perbaikan Saldo**: Pesanan QRIS Pribadi tidak lagi ikut Saldo (Admin dan Pedagang), lihat DATA-MODEL §payouts. E2E: Saldo tidak berubah setelah Pesanan QRIS Pribadi lunas.
+- [x] API (2026-10-13): `qrString` di `GET /service-fee-invoices`; aplikasi menggambar QR tagihan tajam dan menyimpannya sebagai PNG 720px.
 - [ ] Tahap 5: rilis Play Store (uji tertutup dulu).
 - [ ] **User:** akun Google Play Console (US$25 sekali bayar), project Firebase untuk FCM, halaman kebijakan privasi.
 

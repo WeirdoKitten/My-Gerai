@@ -137,6 +137,18 @@ export function MerchantOrderCard({
           </li>
         ))}
       </ul>
+      {/* Nilai dari server (totalForMerchant), sama dengan footer Riwayat. */}
+      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
+        <span className="text-sm text-ink-muted">
+          Bagianmu
+          {order.deliveryFeeSnapshot > 0
+            ? ` (termasuk Ongkir ${formatRupiah(order.deliveryFeeSnapshot)})`
+            : ""}
+        </span>
+        <span className="text-base font-bold tabular-nums text-ink">
+          {formatRupiah(order.totalForMerchant)}
+        </span>
+      </div>
       {error ? <Alert tone="error">{error}</Alert> : null}
       {order.awaitingManualConfirmation ? (
         <>
