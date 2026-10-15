@@ -568,12 +568,12 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [x] Unit `tests/unit/mobile-api.test.ts` (10 test, total 237/237). E2E `tests/e2e/mobile-api.spec.ts` (11 test; suite 34/34). `tsc`, Biome (file baru), `build` lulus. Log push tercetak tepat sekali per Pesanan lunas (`PUSH_PROVIDER=log`).
 - [x] `/security-review`: tidak ada temuan. Catatan di bawah ambang: `PUT /devices` memindah token push yang sudah terdaftar di akun lain (butuh token Expo korban yang tidak bisa ditebak).
 - [x] Geocoding untuk aplikasi (2026-10-13): `GET /places/search` (Photon) dan `GET /places/reverse` (Nominatim), memakai `searchPlaces`/`reverseGeocodeAddress` yang sudah ada (rate limit ikut). Aplikasi memakai peta OSM di WebView (keputusan User di Plan mode Tahap 4 aplikasi). E2E `mobile-api.spec.ts` 12/12.
-- [ ] **User:** di server staging/produksi set `PUSH_PROVIDER=expo` saat aplikasi sudah memakai push. Uji push nyata menunggu development build aplikasi (Tahap 1).
+- [ ] **User:** di server staging/produksi set `PUSH_PROVIDER=expo` (aplikasi sudah memakai push sejak 2026-10-15; dev lokal sudah diset dan diuji).
 
 ### Fase 12b — Aplikasi Expo (repo My-Gerai-Mobile)
 
 - [x] Tahap 1a (2026-10-12): daftar, login, antrean + riwayat Pesanan, detail, ubah status, tandai lunas, gagal antar, logout. Diuji di emulator terhadap server lokal.
-- [ ] Tahap 1b: push notification (butuh project Firebase). Ditunda atas keputusan User (2026-10-12).
+- [x] Tahap 1b (2026-10-15): push notification Pesanan lunas di aplikasi (Firebase `mygerai-ea489`, Expo Push). Diuji di emulator dengan `PUSH_PROVIDER=expo` di server dev: push masuk saat aplikasi terbuka, di latar belakang, dan proses dimatikan; ketuk membuka detail lewat `GET /orders/{id}`.
 - [x] Tahap 3 (2026-10-12): kelola Item (foto, varian, pre-order, stok, Tersedia/Habis), buka/tutup Lapak, jadwal operasional. Diuji di emulator.
 - [x] API + web (2026-10-13): `totalForMerchant` di `GET /orders`; kartu antrean dashboard web dan aplikasi menampilkan "Bagianmu" (keputusan User: bagian Pedagang, web ikut).
 - [x] API (2026-10-13): `GET /orders/{orderId}` (`getMerchantOrder`; daftar dan detail berbagi pemeta `loadMerchantOrderParts`). Layar detail aplikasi memakainya.

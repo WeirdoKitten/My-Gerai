@@ -2,6 +2,15 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-10-15 — Push aplikasi Android diuji nyata
+
+**Dampak:** [docs/BACKLOG.md](docs/BACKLOG.md) (Fase 12a/12b). Tanpa perubahan kode.
+**Alasan:** Tahap 1b aplikasi Android selesai dikerjakan di repo mobile.
+**Ringkasan:**
+- `PUSH_PROVIDER=expo` diset di `.env` dev lokal. Pesanan yang lunas (simulasi bayar di alur Pembeli) mengirim push lewat Expo ke HP; diterima di emulator saat aplikasi terbuka, di latar belakang, dan proses dimatikan.
+- Kegagalan awal `Unable to retrieve the FCM server key for the recipient's app`: kunci FCM V1 di EAS belum dipasang ke aplikasi `com.mygerai.pedagang`. Server mencatatnya sebagai `[push] tiket Expo gagal` dan pembayaran tetap jalan, sesuai desain.
+- Sisa User: set `PUSH_PROVIDER=expo` di staging/produksi.
+
 ## 2026-10-13 — Saldo & Pencairan untuk Pedagang, Saldo tanpa QRIS Pribadi, total di antrean, detail Pesanan API
 
 **Dampak:** [docs/API-MOBILE.md](docs/API-MOBILE.md) (`GET /orders` + `totalForMerchant`, `GET /orders/{id}`, `GET /payouts`, `qrString` tagihan), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (§payouts kondisi kode saat ini), [docs/GLOSSARY.md](docs/GLOSSARY.md) (Saldo Pedagang), [docs/BACKLOG.md](docs/BACKLOG.md). Kode: `src/server/orders.ts` (`loadMerchantOrderParts`, `getMerchantOrder`), `src/server/payouts.ts` (`balanceEligibleOrders`, `getMyPayoutSummary`), `src/server/service-fee-invoices.ts`, `src/types/{order,payout,service-fee-invoice}.ts`, `src/components/merchant/MerchantOrderCard.tsx`, halaman baru `/dashboard/saldo` + link di Profil, route `api/mobile/v1/orders/[orderId]` dan `api/mobile/v1/payouts`, `tests/e2e/mobile-api.spec.ts`.
