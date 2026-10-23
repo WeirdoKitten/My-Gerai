@@ -10,12 +10,18 @@ import {
   sql,
 } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { orders, payments, serviceFeeInvoices } from "@/lib/db/schema";
+import {
+  merchants,
+  orders,
+  payments,
+  serviceFeeInvoices,
+} from "@/lib/db/schema";
 import { getPaymentProviderName } from "@/lib/payment";
 import { createServiceFeeInvoiceCharge } from "@/lib/payment/midtrans-provider";
 import { PAID_ORDER_STATUSES } from "@/lib/utils/order-status";
 import { getActivePlatformConfig } from "@/server/config";
 import { SEED_DEMO_INVOICE_PREFIX } from "./constants";
+import { groupAccrualsByBillingOwner } from "./owner";
 import { listClosedBillingPeriods } from "./period";
 
 /**
@@ -24,6 +30,8 @@ import { listClosedBillingPeriods } from "./period";
  * ada kolom "locked" tersendiri) — sama filosofi dengan kedaluwarsa Pesanan
  * (lihat ARSITEKTUR-SISTEM.md). Berlaku independen dari `merchants.paymentMode`
  * saat ini — piutang tidak hilang cuma karena Admin pindahkan mode Lapak.
+ * Gerai Titipan (2026-10-23) juga terkunci kalau tagihan EO pengelolanya
+ * menunggak — tagihannya gabungan per EO, bukan per Gerai.
  */
 export async function isMerchantOrderingLocked(
   merchantId: string,
@@ -31,17 +39,60 @@ export async function isMerchantOrderingLocked(
 ): Promise<boolean> {
   const threshold = new Date(Date.now() - gracePeriodDays * 86_400_000);
 
+  // Query builder biasa (bukan `db.query`): query relasional memberi alias
+  // tabel, sehingga subquery ke `merchants` tidak bisa dirujuk dengan aman.
+  const [overdue] = await db
+    .select({ id: serviceFeeInvoices.id })
+    .from(serviceFeeInvoices)
+    .where(
+      and(
+        or(
+          eq(serviceFeeInvoices.merchantId, merchantId),
+          inArray(
+            serviceFeeInvoices.organizerId,
+            db
+              .select({ organizerId: merchants.managedByOrganizerId })
+              .from(merchants)
+              .where(eq(merchants.id, merchantId)),
+          ),
+        ),
+        eq(serviceFeeInvoices.status, "belum_lunas"),
+        lt(serviceFeeInvoices.dueAt, threshold),
+        // Tagihan contoh dari seeder demo tidak pernah mengunci Lapak.
+        or(
+          isNull(serviceFeeInvoices.referenceId),
+          notLike(
+            serviceFeeInvoices.referenceId,
+            `${SEED_DEMO_INVOICE_PREFIX}%`,
+          ),
+        ),
+      ),
+    )
+    .limit(1);
+  return !!overdue;
+}
+
+/**
+ * Semua Gerai Titipan EO ini terkunci = ada tagihan EO `belum_lunas` yang
+ * jatuh tempo-nya sudah lewat masa tenggang (dipakai portal EO & Admin).
+ */
+export async function isOrganizerBillingLocked(
+  organizerId: string,
+  gracePeriodDays: number,
+): Promise<boolean> {
+  const threshold = new Date(Date.now() - gracePeriodDays * 86_400_000);
   const overdue = await db.query.serviceFeeInvoices.findFirst({
     where: and(
-      eq(serviceFeeInvoices.merchantId, merchantId),
+      eq(serviceFeeInvoices.organizerId, organizerId),
       eq(serviceFeeInvoices.status, "belum_lunas"),
       lt(serviceFeeInvoices.dueAt, threshold),
-      // Tagihan contoh dari seeder demo tidak pernah mengunci Lapak.
+      // Sama dengan isMerchantOrderingLocked: tagihan contoh seeder tidak mengunci.
       or(
         isNull(serviceFeeInvoices.referenceId),
         notLike(serviceFeeInvoices.referenceId, `${SEED_DEMO_INVOICE_PREFIX}%`),
       ),
     ),
+    columns: { id: true },
   });
   return !!overdue;
 }
@@ -72,14 +123,17 @@ async function chargeInvoice(invoice: {
 
 /**
  * Pesanan `qris_pribadi` lunas yang BELUM tercakup tagihan mana pun milik
- * Lapak-nya (status tagihan apa pun, termasuk `dibatalkan` — tagihan yang
- * dibatalkan Admin tidak boleh terbit ulang). Menjaga supaya satu Pesanan
- * tidak pernah ditagih dua kali, walau panjang siklus diubah Admin sehingga
- * batas periode baru tidak sejajar dengan tagihan lama.
+ * pemilik tagihannya — Lapak-nya, atau EO pengelolanya kalau Gerai Titipan
+ * (status tagihan apa pun, termasuk `dibatalkan` — tagihan yang dibatalkan
+ * Admin tidak boleh terbit ulang). Menjaga supaya satu Pesanan tidak pernah
+ * ditagih dua kali, walau panjang siklus diubah Admin sehingga batas periode
+ * baru tidak sejajar dengan tagihan lama. Query pemakainya wajib JOIN
+ * `merchants` (dipakai untuk mencocokkan EO).
  */
 const notYetInvoiced = sql`not exists (
   select 1 from ${serviceFeeInvoices}
-  where ${serviceFeeInvoices.merchantId} = ${orders.merchantId}
+  where (${serviceFeeInvoices.merchantId} = ${orders.merchantId}
+      or ${serviceFeeInvoices.organizerId} = ${merchants.managedByOrganizerId})
     and ${orders.paidAt} >= ${serviceFeeInvoices.periodStart}
     and ${orders.paidAt} < ${serviceFeeInvoices.periodEnd}
 )`;
@@ -126,6 +180,7 @@ export async function runWeeklyServiceFeeBilling(): Promise<{
     })
     .from(orders)
     .innerJoin(payments, eq(payments.orderId, orders.id))
+    .innerJoin(merchants, eq(merchants.id, orders.merchantId))
     .where(billableOrder);
 
   const periods = oldest?.paidAt
@@ -138,6 +193,7 @@ export async function runWeeklyServiceFeeBilling(): Promise<{
     const accrualRows = await db
       .select({
         merchantId: orders.merchantId,
+        organizerId: merchants.managedByOrganizerId,
         total:
           sql<number>`coalesce(sum(${orders.platformFeeSnapshot}), 0)`.mapWith(
             Number,
@@ -145,6 +201,7 @@ export async function runWeeklyServiceFeeBilling(): Promise<{
       })
       .from(orders)
       .innerJoin(payments, eq(payments.orderId, orders.id))
+      .innerJoin(merchants, eq(merchants.id, orders.merchantId))
       .where(
         and(
           billableOrder,
@@ -152,29 +209,53 @@ export async function runWeeklyServiceFeeBilling(): Promise<{
           lt(orders.paidAt, periodEnd),
         ),
       )
-      .groupBy(orders.merchantId);
+      .groupBy(orders.merchantId, merchants.managedByOrganizerId);
 
-    const toInsert = accrualRows
-      .filter((row) => row.total > 0)
-      .map((row) => ({
-        merchantId: row.merchantId,
-        periodStart,
-        periodEnd,
-        amount: row.total,
-        dueAt: now,
-        status: "belum_lunas" as const,
-        provider: providerName,
-      }));
-    if (toInsert.length === 0) continue;
+    const base = {
+      periodStart,
+      periodEnd,
+      dueAt: now,
+      status: "belum_lunas" as const,
+      provider: providerName,
+    };
+    const groups = groupAccrualsByBillingOwner(accrualRows);
+    const merchantInvoices = groups.flatMap(({ owner, total }) =>
+      owner.kind === "merchant"
+        ? [{ ...base, merchantId: owner.merchantId, amount: total }]
+        : [],
+    );
+    const organizerInvoices = groups.flatMap(({ owner, total }) =>
+      owner.kind === "organizer"
+        ? [{ ...base, organizerId: owner.organizerId, amount: total }]
+        : [],
+    );
 
-    const inserted = await db
-      .insert(serviceFeeInvoices)
-      .values(toInsert)
-      .onConflictDoNothing({
-        target: [serviceFeeInvoices.merchantId, serviceFeeInvoices.periodStart],
-      })
-      .returning({ id: serviceFeeInvoices.id });
-    invoicesCreated += inserted.length;
+    if (merchantInvoices.length > 0) {
+      const inserted = await db
+        .insert(serviceFeeInvoices)
+        .values(merchantInvoices)
+        .onConflictDoNothing({
+          target: [
+            serviceFeeInvoices.merchantId,
+            serviceFeeInvoices.periodStart,
+          ],
+        })
+        .returning({ id: serviceFeeInvoices.id });
+      invoicesCreated += inserted.length;
+    }
+    if (organizerInvoices.length > 0) {
+      const inserted = await db
+        .insert(serviceFeeInvoices)
+        .values(organizerInvoices)
+        .onConflictDoNothing({
+          target: [
+            serviceFeeInvoices.organizerId,
+            serviceFeeInvoices.periodStart,
+          ],
+        })
+        .returning({ id: serviceFeeInvoices.id });
+      invoicesCreated += inserted.length;
+    }
   }
 
   // Tagihan `belum_lunas` tanpa charge (baru dibuat DI ATAS, atau charge-nya

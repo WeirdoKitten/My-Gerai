@@ -155,6 +155,20 @@
       "when": 1791345283038,
       "tag": "0021_mobile_api",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792594521420,
+      "tag": "0022_proxy_stalls",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792733421097,
+      "tag": "0023_proxy_stall_qris",
+      "breakpoints": true
     }
   ]
 }

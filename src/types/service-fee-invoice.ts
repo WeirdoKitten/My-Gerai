@@ -15,20 +15,25 @@ export type MerchantServiceFeeInvoiceView = {
   qrString: string | null;
 };
 
-/** Ringkasan akrual Biaya Layanan yang belum ditagih per Lapak `qris_pribadi` (Admin). */
+/**
+ * Ringkasan akrual Biaya Layanan yang belum ditagih per pemilik tagihan
+ * (Admin): Lapak `qris_pribadi`, atau EO untuk gabungan Gerai Titipannya.
+ */
 export type MerchantAccrualView = {
-  merchantId: string;
-  stallName: string;
+  /** Kunci unik baris: `m:<merchantId>` atau `eo:<organizerId>`. */
+  ownerKey: string;
+  /** Nama Lapak, atau "EO · <nama EO> (Gerai Titipan)". */
+  ownerName: string;
   unbilledAmount: number;
   latestInvoiceStatus: ServiceFeeInvoiceStatus | null;
   locked: boolean;
 };
 
-/** Riwayat tagihan lintas-Lapak (Admin). */
+/** Riwayat tagihan lintas-Lapak & EO (Admin). */
 export type AdminServiceFeeInvoiceView = {
   id: string;
-  merchantId: string;
-  stallName: string;
+  /** Nama Lapak, atau "EO · <nama EO> (Gerai Titipan)" untuk tagihan EO. */
+  ownerName: string;
   periodStart: Date;
   periodEnd: Date;
   amount: number;

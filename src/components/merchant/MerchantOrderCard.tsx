@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { OrderItemSubstitutionNote } from "@/components/OrderItemSubstitutionNote";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -14,25 +15,32 @@ import {
   nextMerchantStatus,
   ORDER_STATUS_LABEL_ID,
 } from "@/lib/utils/order-status";
+import { SUBSTITUTABLE_ORDER_STATUSES } from "@/lib/utils/order-substitution";
 import { formatIndonesianPhone } from "@/lib/utils/phone";
 import { markQrisPribadiOrderPaid, updateOrderStatus } from "@/server/orders";
 import type { MerchantOrderListItem } from "@/types/order";
 import { DeliveryFailedButton } from "./DeliveryFailedButton";
 import { DeliveryInfo } from "./DeliveryInfo";
+import { ItemSubstitutionButton } from "./ItemSubstitutionButton";
 import { ReceiptButton } from "./ReceiptButton";
 
 export function MerchantOrderCard({
   order,
   onUpdated,
+  isProxyStall = false,
 }: {
   order: MerchantOrderListItem;
   onUpdated: () => void;
+  /** Gerai Titipan: Item yang habis bisa ditandai diganti/tidak tersedia. */
+  isProxyStall?: boolean;
 }) {
   const { showToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const upcoming = nextMerchantStatus(order.status, order.fulfillmentMethod);
+  const canSubstitute =
+    isProxyStall && SUBSTITUTABLE_ORDER_STATUSES.includes(order.status);
   const actionLabel = upcoming
     ? MERCHANT_ACTION_LABEL_ID[order.fulfillmentMethod][order.status]
     : null;
@@ -133,6 +141,20 @@ export function MerchantOrderCard({
                   .map((s) => `${s.groupNameSnapshot}: ${s.optionNameSnapshot}`)
                   .join(" · ")}
               </p>
+            ) : null}
+            <OrderItemSubstitutionNote
+              substitution={item.substitution}
+              audience="seller"
+            />
+            {canSubstitute ? (
+              <ItemSubstitutionButton
+                orderId={order.id}
+                item={item}
+                onDone={() => {
+                  showToast(`Pesanan ${order.orderCode} diperbarui`);
+                  onUpdated();
+                }}
+              />
             ) : null}
           </li>
         ))}

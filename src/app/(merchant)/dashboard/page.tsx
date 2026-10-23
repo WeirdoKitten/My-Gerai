@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { MerchantOrderList } from "@/components/merchant/MerchantOrderList";
 import { OpenToggle } from "@/components/merchant/OpenToggle";
+import { getMerchantSession } from "@/lib/auth/session";
 import { getMerchantOpenStatus } from "@/server/merchants";
 import { listMerchantOrders } from "@/server/orders";
 import { hasAnyProduct } from "@/server/products";
@@ -8,9 +9,10 @@ import { hasAnyProduct } from "@/server/products";
 export default async function MerchantDashboardPage() {
   if (!(await hasAnyProduct())) redirect("/dashboard/produk");
 
-  const [{ orders, totalActive }, openStatus] = await Promise.all([
+  const [{ orders, totalActive }, openStatus, session] = await Promise.all([
     listMerchantOrders(),
     getMerchantOpenStatus(),
+    getMerchantSession(),
   ]);
 
   return (
@@ -20,6 +22,7 @@ export default async function MerchantDashboardPage() {
       <MerchantOrderList
         initialOrders={orders}
         initialTotalActive={totalActive}
+        isProxyStall={!!session?.proxyOrganizerId}
       />
     </div>
   );

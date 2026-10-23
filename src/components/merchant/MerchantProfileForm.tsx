@@ -224,20 +224,28 @@ export function MerchantProfileForm({
           placeholder="Contoh: Jl. Merdeka No. 5, dekat Alfamart"
         />
       </Field>
-      <Field
-        label="Info Rekening atau E-Wallet Pencairan"
-        hint="Ke mana Admin mengirim uang saat pencairan. Opsional."
-      >
-        <Textarea
-          value={payoutAccountInfo}
-          onChange={(e) => setPayoutAccountInfo(e.target.value)}
-          maxLength={300}
-          placeholder="Contoh: BCA 1234567890 a.n. Budi, atau GoPay 0812xxxxxxx"
-        />
-      </Field>
-      <Field label="Nomor HP (untuk login)" hint="Belum bisa diubah dari sini.">
-        <Input value={profile.phone} disabled />
-      </Field>
+      {/* Gerai Titipan dibayar langsung ke QRIS EO, tanpa Pencairan. */}
+      {profile.isProxyStall ? null : (
+        <Field
+          label="Info Rekening atau E-Wallet Pencairan"
+          hint="Ke mana Admin mengirim uang saat pencairan. Opsional."
+        >
+          <Textarea
+            value={payoutAccountInfo}
+            onChange={(e) => setPayoutAccountInfo(e.target.value)}
+            maxLength={300}
+            placeholder="Contoh: BCA 1234567890 a.n. Budi, atau GoPay 0812xxxxxxx"
+          />
+        </Field>
+      )}
+      {profile.phone ? (
+        <Field
+          label="Nomor HP (untuk login)"
+          hint="Belum bisa diubah dari sini."
+        >
+          <Input value={profile.phone} disabled />
+        </Field>
+      ) : null}
       {error ? <Alert tone="error">{error}</Alert> : null}
       {message ? <Alert tone="success">{message}</Alert> : null}
       <Button

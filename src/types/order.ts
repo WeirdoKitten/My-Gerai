@@ -15,6 +15,15 @@ export type OrderItemVariantSelectionView = {
   priceDeltaSnapshot: number;
 };
 
+/**
+ * Penggantian Item di Gerai Titipan (2026-10-21). `refundAmount` hanya
+ * terisi untuk `tidak_tersedia` (= harga Item x qty) — uang yang
+ * dikembalikan EO secara manual saat serah terima, bukan refund sistem.
+ */
+export type OrderItemSubstitutionView =
+  | { kind: "diganti"; substituteName: string; refundAmount: null }
+  | { kind: "tidak_tersedia"; substituteName: null; refundAmount: number };
+
 /** Info antar yang aman ditampilkan ke Pembeli pemilik Pesanan (tanpa nomor Pedagang). */
 export type BuyerOrderDeliveryView = {
   address: string;
@@ -45,6 +54,7 @@ export type BuyerOrderItemView = {
   qty: number;
   note: string | null;
   variantSelections: OrderItemVariantSelectionView[];
+  substitution: OrderItemSubstitutionView | null;
 };
 
 /**
@@ -53,7 +63,11 @@ export type BuyerOrderItemView = {
  * docs/CODING-STYLE.md#struktur-fungsi-server-action.
  */
 /** Respons polling ringan halaman status Pembeli (lihat getOrderStatusSummary). */
-export type BuyerOrderStatusSummary = { status: Order["status"] };
+export type BuyerOrderStatusSummary = {
+  status: Order["status"];
+  /** Waktu terakhir penggantian Item diubah (Gerai Titipan), ISO. `null` = belum pernah. */
+  itemsUpdatedAt: string | null;
+};
 
 export type BuyerOrderStatusView = {
   id: string;
@@ -86,6 +100,8 @@ export type BuyerOrderStatusView = {
   expiresAt: Date;
   paidAt: Date | null;
   items: BuyerOrderItemView[];
+  /** Sama dengan `BuyerOrderStatusSummary.itemsUpdatedAt` — pemicu muat ulang saat Item diganti. */
+  itemsUpdatedAt: string | null;
   /** Hanya terisi kalau status masih `menunggu_pembayaran`. */
   qrImageUrl: string | null;
   /** `true` hanya di mode pengujian (`PAYMENT_PROVIDER=mock`) & masih menunggu pembayaran. */
@@ -110,6 +126,7 @@ export type MerchantOrderItemView = {
   qty: number;
   note: string | null;
   variantSelections: OrderItemVariantSelectionView[];
+  substitution: OrderItemSubstitutionView | null;
 };
 
 /**

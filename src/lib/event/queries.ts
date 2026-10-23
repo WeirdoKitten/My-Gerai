@@ -1,7 +1,9 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { createTtlCache, productionTtl } from "@/lib/cache/memory";
 import { db } from "@/lib/db/client";
 import { eventMerchants, events, merchants } from "@/lib/db/schema";
+import { loadPublicMerchants } from "@/lib/merchant/public-list";
+import type { PublicMerchantListItem } from "@/types/merchant";
 
 /**
  * Event publik per slug (data mentah + slug Gerai anggota berurutan), di-cache
@@ -23,8 +25,38 @@ export const publicEventCache = createTtlCache<
   CachedPublicEvent | null
 >({ ttlMs: productionTtl(15_000), maxEntries: 500 });
 
+/**
+ * Kartu Gerai anggota event (termasuk Gerai Titipan, yang sengaja tidak ada
+ * di direktori publik), di-cache 15 dtk per slug event. Badge buka/tutup
+ * paling lambat 15 dtk basi, sama seperti katalog.
+ */
+const eventMerchantsCache = createTtlCache<string, PublicMerchantListItem[]>({
+  ttlMs: productionTtl(15_000),
+  maxEntries: 500,
+});
+
 export function invalidatePublicEventCache(): void {
   publicEventCache.clear();
+  eventMerchantsCache.clear();
+}
+
+/** Gerai `approved` dari daftar slug anggota event, mengikuti urutan `slugs`. */
+export function loadEventMerchants(
+  eventSlug: string,
+  slugs: string[],
+): Promise<PublicMerchantListItem[]> {
+  return eventMerchantsCache.get(eventSlug, async () => {
+    if (slugs.length === 0) return [];
+    const rows = await loadPublicMerchants(
+      and(inArray(merchants.slug, slugs), eq(merchants.status, "approved")),
+      slugs.length,
+    );
+    const bySlug = new Map(rows.map((row) => [row.slug, row]));
+    return slugs.flatMap((slug) => {
+      const row = bySlug.get(slug);
+      return row ? [row] : [];
+    });
+  });
 }
 
 export function loadPublicEvent(

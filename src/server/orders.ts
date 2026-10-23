@@ -1,7 +1,18 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  gt,
+  inArray,
+  max,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
@@ -55,10 +66,19 @@ import {
   PAID_ORDER_STATUSES,
 } from "@/lib/utils/order-status";
 import {
+  latestSubstitutedAt,
+  SUBSTITUTABLE_ORDER_STATUSES,
+  toSubstitutionView,
+} from "@/lib/utils/order-substitution";
+import {
   type CreateOrderInput,
   createOrderSchema,
   trackOrderSchema,
 } from "@/lib/validation/checkout.schema";
+import {
+  type SetOrderItemSubstitutionInput,
+  setOrderItemSubstitutionSchema,
+} from "@/lib/validation/order-substitution.schema";
 import { getActivePlatformConfig } from "@/server/config";
 import type {
   AdminOrderListPage,
@@ -374,6 +394,15 @@ export async function createOrder(
   const eventId = checkout.eventSlug
     ? await resolveOrderEventId(checkout.eventSlug, merchant.id)
     : null;
+
+  // Gerai Titipan hanya melayani peserta event: Pesanan wajib tercatat ke
+  // event supaya masuk laporan EO pengelolanya.
+  if (merchant.managedByOrganizerId && !eventId) {
+    return {
+      ok: false,
+      message: "Gerai ini hanya bisa dipesan lewat halaman event.",
+    };
+  }
 
   // Defense-in-depth: `getStallCatalog` (halaman menu) sudah menolak Lapak
   // yang terkunci, tapi cek ulang di sini supaya menu yang ke-cache stale
@@ -818,10 +847,24 @@ export async function getOrderStatusSummary(
         payment?.provider === "qris_pribadi",
       )
     ) {
-      return { status: "dibayar" };
+      return { status: "dibayar", itemsUpdatedAt: null };
     }
   }
-  return { status: current.status };
+
+  // Penggantian Item hanya ada di Pesanan event (Gerai Titipan) yang masih
+  // bisa diubah — Pesanan lain tidak perlu query tambahan.
+  let itemsUpdatedAt: string | null = null;
+  if (
+    current.eventId &&
+    SUBSTITUTABLE_ORDER_STATUSES.includes(current.status)
+  ) {
+    const [row] = await db
+      .select({ latest: max(orderItems.substitutedAt) })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, current.id));
+    itemsUpdatedAt = row?.latest ? row.latest.toISOString() : null;
+  }
+  return { status: current.status, itemsUpdatedAt };
 }
 
 export async function getOrderStatus(
@@ -922,7 +965,9 @@ export async function getOrderStatus(
       qty: item.qty,
       note: item.note,
       variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
+      substitution: toSubstitutionView(item),
     })),
+    itemsUpdatedAt: latestSubstitutedAt(items),
     qrImageUrl,
     canSimulate:
       getPaymentProviderName() === "mock" &&
@@ -1064,6 +1109,7 @@ async function loadMerchantOrderParts(orderRows: OrderRow[]) {
       qty: item.qty,
       note: item.note,
       variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
+      substitution: toSubstitutionView(item),
     }));
   const eventName = (order: OrderRow) =>
     order.eventId ? (eventNamesById.get(order.eventId) ?? null) : null;
@@ -1335,6 +1381,7 @@ export async function getOrderReceipt(
         qty: item.qty,
         note: item.note,
         variantSelections: variantSelectionsByOrderItemId.get(item.id) ?? [],
+        substitution: toSubstitutionView(item),
       })),
       subtotal: order.subtotal,
       serviceFeePaid,
@@ -1410,6 +1457,90 @@ export async function updateOrderStatus(
       message: "Status Pesanan sudah berubah, silakan refresh.",
     };
   }
+  return { ok: true };
+}
+
+/**
+ * Tandai penggantian Item Pesanan Gerai Titipan: `diganti` (dibelikan barang
+ * serupa, seharga atau lebih mahal) atau `tidak_tersedia` (uang Item itu
+ * dikembalikan EO secara manual). Tidak mengubah uang di sistem. Hanya untuk
+ * Gerai Titipan, hanya sebelum `selesai`; kepemilikan difilter dari sesi.
+ */
+export async function setOrderItemSubstitution(
+  input: SetOrderItemSubstitutionInput,
+): Promise<UpdateOrderStatusResult> {
+  const session = await getMerchantSession();
+  if (!session) {
+    return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+  }
+  if (!session.proxyOrganizerId) {
+    return {
+      ok: false,
+      message: "Penggantian Item hanya untuk Gerai Titipan.",
+    };
+  }
+
+  const parsed = setOrderItemSubstitutionSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
+    };
+  }
+  const { orderId, orderItemId, kind, substituteName } = parsed.data;
+
+  const order = await db.query.orders.findFirst({
+    where: and(
+      eq(orders.id, orderId),
+      eq(orders.merchantId, session.merchantId),
+    ),
+    columns: { status: true },
+  });
+  if (!order) return { ok: false, message: "Pesanan tidak ditemukan." };
+  if (!SUBSTITUTABLE_ORDER_STATUSES.includes(order.status)) {
+    return {
+      ok: false,
+      message: "Pesanan ini sudah tidak bisa diubah.",
+    };
+  }
+
+  const [updated] = await db
+    .update(orderItems)
+    .set({
+      substitution: kind,
+      substituteName: kind === "diganti" ? (substituteName ?? null) : null,
+      // Diisi juga saat dibatalkan: kolom ini = "terakhir diubah", dipakai
+      // halaman status Pembeli untuk tahu kapan harus memuat ulang Item.
+      substitutedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(orderItems.id, orderItemId),
+        eq(orderItems.orderId, orderId),
+        // Cek ulang kepemilikan & status di query yang sama (cegah race
+        // dengan "Selesai" yang diklik bersamaan).
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(orders)
+            .where(
+              and(
+                eq(orders.id, orderId),
+                eq(orders.merchantId, session.merchantId),
+                inArray(orders.status, [...SUBSTITUTABLE_ORDER_STATUSES]),
+              ),
+            ),
+        ),
+      ),
+    )
+    .returning({ id: orderItems.id });
+  if (!updated) {
+    return {
+      ok: false,
+      message: "Item tidak ditemukan atau Pesanan sudah berubah.",
+    };
+  }
+
   return { ok: true };
 }
 

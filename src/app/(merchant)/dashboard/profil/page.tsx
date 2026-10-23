@@ -57,21 +57,27 @@ export default async function MerchantProfilePage() {
         icon={<ClockIcon className="size-4 text-ink-muted" />}
         label="Jadwal Operasional"
       />
-      <SettingsLinkRow
-        href="/dashboard/pembayaran"
-        icon={<WalletIcon className="size-4 text-ink-muted" />}
-        label="Metode Pembayaran"
-      />
-      <SettingsLinkRow
-        href="/dashboard/saldo"
-        icon={<WalletIcon className="size-4 text-ink-muted" />}
-        label="Saldo & Pencairan"
-      />
-      <SettingsLinkRow
-        href="/dashboard/pengantaran"
-        icon={<MapPinIcon className="size-4 text-ink-muted" />}
-        label="Pengantaran"
-      />
+      {profile.isProxyStall ? null : (
+        <SettingsLinkRow
+          href="/dashboard/pembayaran"
+          icon={<WalletIcon className="size-4 text-ink-muted" />}
+          label="Metode Pembayaran"
+        />
+      )}
+      {profile.isProxyStall ? null : (
+        <SettingsLinkRow
+          href="/dashboard/saldo"
+          icon={<WalletIcon className="size-4 text-ink-muted" />}
+          label="Saldo & Pencairan"
+        />
+      )}
+      {profile.isProxyStall ? null : (
+        <SettingsLinkRow
+          href="/dashboard/pengantaran"
+          icon={<MapPinIcon className="size-4 text-ink-muted" />}
+          label="Pengantaran"
+        />
+      )}
       <SettingsLinkRow
         href="/dashboard/ulasan"
         icon={<StarIcon className="size-4 text-ink-muted" />}

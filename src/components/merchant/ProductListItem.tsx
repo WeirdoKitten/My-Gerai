@@ -19,6 +19,8 @@ export function ProductListItem({
   onChanged: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  // Dipasang ulang tiap dibuka supaya isian selalu dari data Item terbaru.
+  const [formKey, setFormKey] = useState(0);
   const [toggling, setToggling] = useState(false);
 
   async function handleToggle() {
@@ -77,7 +79,10 @@ export function ProductListItem({
         </button>
         <button
           type="button"
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            setFormKey((key) => key + 1);
+            setEditing(true);
+          }}
           className="rounded-lg px-2.5 py-1 text-sm font-semibold text-brand-strong transition-colors hover:bg-brand-tint"
         >
           Ubah
@@ -86,6 +91,7 @@ export function ProductListItem({
 
       <Modal open={editing} onClose={() => setEditing(false)} title="Ubah Item">
         <ProductForm
+          key={formKey}
           product={product}
           onDone={() => {
             setEditing(false);

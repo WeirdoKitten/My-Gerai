@@ -1,9 +1,13 @@
 import { redirect } from "next/navigation";
 import { QrMenuCard } from "@/components/merchant/QrMenuCard";
+import { getMerchantSession } from "@/lib/auth/session";
 import { getMerchantQrMenu } from "@/server/merchants";
 import { hasAnyProduct } from "@/server/products";
 
 export default async function MerchantQrPage() {
+  // Gerai Titipan: hanya dipesan lewat QR Event, selalu bayar lewat MyGerai,
+  // dan tanpa antar — halaman ini tidak berlaku.
+  if ((await getMerchantSession())?.proxyOrganizerId) redirect("/dashboard");
   if (!(await hasAnyProduct())) redirect("/dashboard/produk");
 
   const qr = await getMerchantQrMenu();

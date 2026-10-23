@@ -78,3 +78,12 @@ export const setEventMerchantsSchema = z.object({
 });
 
 export type SetEventMerchantsInput = z.infer<typeof setEventMerchantsSchema>;
+
+/** Gerai Titipan baru, langsung ditambahkan ke event (lihat createProxyStall). */
+export const createProxyStallSchema = z.object({
+  eventId: z.uuid(),
+  stallName: z.string().trim().min(1, "Nama Gerai wajib diisi.").max(100),
+  category: z.string().trim().min(1, "Kategori wajib diisi.").max(50),
+});
+
+export type CreateProxyStallInput = z.infer<typeof createProxyStallSchema>;

@@ -102,6 +102,17 @@ export const serviceFeeInvoiceStatusEnum = pgEnum(
   ["belum_lunas", "lunas", "dibatalkan"],
 );
 
+/**
+ * Penggantian Item di Gerai Titipan (2026-10-21): `diganti` = dibelikan
+ * barang serupa (seharga atau lebih mahal, selisih ditanggung EO);
+ * `tidak_tersedia` = tidak ada pengganti, uang Item itu dikembalikan EO
+ * secara manual saat serah terima.
+ */
+export const orderItemSubstitutionEnum = pgEnum("order_item_substitution", [
+  "diganti",
+  "tidak_tersedia",
+]);
+
 /** Akun internal Aplikator. Dibuat manual, bukan self-service. */
 export const admins = pgTable("admins", {
   id: uuid().primaryKey().defaultRandom(),
@@ -111,62 +122,93 @@ export const admins = pgTable("admins", {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Pedagang/Lapak — MVP: 1 baris = 1 Pedagang = 1 Lapak. */
-export const merchants = pgTable("merchants", {
-  id: uuid().primaryKey().defaultRandom(),
-  slug: text().notNull().unique(),
-  stallName: text().notNull(),
-  ownerName: text().notNull(),
-  category: text().notNull(),
-  phone: text().notNull().unique(),
-  passwordHash: text().notNull(),
-  photoUrl: text(),
-  /**
-   * Titik GPS Lapak (opsional, diisi Pedagang lewat map picker di profil).
-   * `null` = belum pernah diisi -> dianggap "lokasi tidak diketahui", tidak
-   * ikut pengelompokan area di landing page. Dicocokkan lazy ke `serviceAreas`
-   * terdekat oleh `listApprovedMerchants` (lihat `findNearestArea` di
-   * src/lib/utils/geo.ts) -- tidak disimpan sebagai FK supaya perubahan area
-   * oleh Admin langsung berlaku tanpa migrasi data. Selalu diisi/dikosongkan
-   * BERSAMAAN (divalidasi di updateMerchantProfileSchema) -- tidak ada CHECK
-   * constraint DB terpisah, cukup app-level (skala kaki lima, KISS).
-   */
-  latitude: doublePrecision(),
-  longitude: doublePrecision(),
-  /**
-   * Alamat fisik bebas-teks (opsional), ditampilkan ke Pembeli di halaman
-   * menu supaya tidak bingung mencari lapaknya. Beda dari `latitude`/
-   * `longitude` di atas (dipakai buat peta & pengelompokan Area) -- ini
-   * murni teks yang dibaca manusia (nama jalan/patokan).
-   */
-  address: text(),
-  status: merchantStatusEnum().notNull().default("pending"),
-  payoutAccountInfo: text(),
-  /** Wajib diisi Admin saat reject — ditampilkan ke Pedagang saat mereka coba login. */
-  rejectionReason: text(),
-  /** Hanya Admin yang boleh ubah (lihat setMerchantPaymentMode) — Pedagang cuma unggah qrisPhotoUrl. */
-  paymentMode: merchantPaymentModeEnum().notNull().default("gateway"),
-  /** Foto QRIS statis milik Pedagang sendiri, dipakai saat paymentMode = "qris_pribadi". */
-  qrisPhotoUrl: text(),
-  /**
-   * Override manual status buka/tutup. `null` = tidak ada override, ikuti
-   * `merchantOperatingHours` (kalau ada) atau default buka (kalau belum ada
-   * jadwal). Aktif hanya sampai batas jadwal berikutnya berlalu — lihat
-   * getMerchantOpenState di src/lib/schedule/is-merchant-open.ts.
-   */
-  manualOverride: merchantManualOverrideEnum(),
-  manualOverrideSetAt: timestamp({ withTimezone: true }),
-  /**
-   * Pengaturan Pesanan Antar (Fase 11), diatur Pedagang sendiri. Hanya bisa
-   * diaktifkan kalau Lapak sudah punya `latitude`/`longitude` (radius dihitung
-   * dari titik itu) dan `deliveryFee` sudah diisi.
-   */
-  deliveryEnabled: boolean().notNull().default(false),
-  /** Ongkir tarif tetap per Pesanan Antar (Rupiah), 100% untuk Pedagang. */
-  deliveryFee: integer(),
-  deliveryRadiusKm: doublePrecision().notNull().default(3),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
+/**
+ * Pedagang/Lapak — MVP: 1 baris = 1 Pedagang = 1 Lapak.
+ *
+ * Gerai Titipan (2026-10-21): Lapak yang dikelola EO (`managedByOrganizerId`
+ * terisi). Tidak punya login sendiri (`phone`/`passwordHash` null), hanya
+ * tampil di halaman event, dan dibuka EO lewat portal EO. CHECK di bawah
+ * menjamin Lapak biasa tetap wajib punya nomor HP & password.
+ */
+export const merchants = pgTable(
+  "merchants",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    slug: text().notNull().unique(),
+    stallName: text().notNull(),
+    ownerName: text().notNull(),
+    category: text().notNull(),
+    /** `null` hanya untuk Gerai Titipan (tidak bisa login sendiri). */
+    phone: text().unique(),
+    /** `null` hanya untuk Gerai Titipan (tidak bisa login sendiri). */
+    passwordHash: text(),
+    /** EO pengelola Gerai Titipan. `null` = Lapak biasa milik Pedagang. */
+    managedByOrganizerId: uuid().references(() => eventOrganizers.id, {
+      onDelete: "restrict",
+    }),
+    photoUrl: text(),
+    /**
+     * Titik GPS Lapak (opsional, diisi Pedagang lewat map picker di profil).
+     * `null` = belum pernah diisi -> dianggap "lokasi tidak diketahui", tidak
+     * ikut pengelompokan area di landing page. Dicocokkan lazy ke `serviceAreas`
+     * terdekat oleh `listApprovedMerchants` (lihat `findNearestArea` di
+     * src/lib/utils/geo.ts) -- tidak disimpan sebagai FK supaya perubahan area
+     * oleh Admin langsung berlaku tanpa migrasi data. Selalu diisi/dikosongkan
+     * BERSAMAAN (divalidasi di updateMerchantProfileSchema) -- tidak ada CHECK
+     * constraint DB terpisah, cukup app-level (skala kaki lima, KISS).
+     */
+    latitude: doublePrecision(),
+    longitude: doublePrecision(),
+    /**
+     * Alamat fisik bebas-teks (opsional), ditampilkan ke Pembeli di halaman
+     * menu supaya tidak bingung mencari lapaknya. Beda dari `latitude`/
+     * `longitude` di atas (dipakai buat peta & pengelompokan Area) -- ini
+     * murni teks yang dibaca manusia (nama jalan/patokan).
+     */
+    address: text(),
+    status: merchantStatusEnum().notNull().default("pending"),
+    payoutAccountInfo: text(),
+    /** Wajib diisi Admin saat reject — ditampilkan ke Pedagang saat mereka coba login. */
+    rejectionReason: text(),
+    /** Hanya Admin yang boleh ubah (lihat setMerchantPaymentMode) — Pedagang cuma unggah qrisPhotoUrl. */
+    paymentMode: merchantPaymentModeEnum().notNull().default("gateway"),
+    /** Foto QRIS statis milik Pedagang sendiri, dipakai saat paymentMode = "qris_pribadi". */
+    qrisPhotoUrl: text(),
+    /**
+     * Override manual status buka/tutup. `null` = tidak ada override, ikuti
+     * `merchantOperatingHours` (kalau ada) atau default buka (kalau belum ada
+     * jadwal). Aktif hanya sampai batas jadwal berikutnya berlalu — lihat
+     * getMerchantOpenState di src/lib/schedule/is-merchant-open.ts.
+     */
+    manualOverride: merchantManualOverrideEnum(),
+    manualOverrideSetAt: timestamp({ withTimezone: true }),
+    /**
+     * Pengaturan Pesanan Antar (Fase 11), diatur Pedagang sendiri. Hanya bisa
+     * diaktifkan kalau Lapak sudah punya `latitude`/`longitude` (radius dihitung
+     * dari titik itu) dan `deliveryFee` sudah diisi.
+     */
+    deliveryEnabled: boolean().notNull().default(false),
+    /** Ongkir tarif tetap per Pesanan Antar (Rupiah), 100% untuk Pedagang. */
+    deliveryFee: integer(),
+    deliveryRadiusKm: doublePrecision().notNull().default(3),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("merchants_managed_by_organizer_id_idx").on(
+      table.managedByOrganizerId,
+    ),
+    check(
+      "merchants_login_or_proxy",
+      sql`(${table.managedByOrganizerId} is null) = (${table.phone} is not null and ${table.passwordHash} is not null)`,
+    ),
+    // Gerai Titipan selalu dibayar ke QRIS Pribadi EO (2026-10-23), dan
+    // selama aktif wajib punya foto QRIS-nya.
+    check(
+      "merchants_proxy_qris",
+      sql`${table.managedByOrganizerId} is null or (${table.paymentMode} = 'qris_pribadi' and (${table.qrisPhotoUrl} is not null or ${table.status} <> 'approved'))`,
+    ),
+  ],
+);
 
 /**
  * Jam operasional mingguan Lapak (opsional). Tidak ada baris untuk suatu
@@ -279,6 +321,12 @@ export const eventOrganizers = pgTable("event_organizers", {
   status: merchantStatusEnum().notNull().default("pending"),
   /** Wajib diisi Admin saat reject — ditampilkan ke EO saat mencoba login. */
   rejectionReason: text(),
+  /**
+   * Foto QRIS "uang jasa titipan" milik EO (2026-10-23). Disalin ke
+   * `merchants.qrisPhotoUrl` semua Gerai Titipan EO ini; Pembeli membayar
+   * langsung ke QRIS ini. `null` = EO belum bisa membuat Gerai Titipan.
+   */
+  qrisPhotoUrl: text(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -418,6 +466,12 @@ export const orderItems = pgTable(
     costPriceSnapshot: integer(),
     qty: integer().notNull(),
     note: text(),
+    /** Penggantian Item oleh EO (khusus Gerai Titipan). `null` = sesuai pesanan. */
+    substitution: orderItemSubstitutionEnum(),
+    /** Nama barang pengganti, wajib kalau `substitution = diganti`. */
+    substituteName: text(),
+    /** Terakhir penandaan penggantian diubah (diisi juga saat dibatalkan) — pemicu muat ulang halaman status Pembeli. */
+    substitutedAt: timestamp({ withTimezone: true }),
   },
   (table) => [
     index("order_items_order_id_idx").on(table.orderId),
@@ -531,9 +585,10 @@ export const serviceFeeInvoices = pgTable(
   "service_fee_invoices",
   {
     id: uuid().primaryKey().defaultRandom(),
-    merchantId: uuid()
-      .notNull()
-      .references(() => merchants.id),
+    /** Pemilik tagihan: Lapak biasa (`qris_pribadi`). `null` kalau tagihan milik EO. */
+    merchantId: uuid().references(() => merchants.id),
+    /** Pemilik tagihan: EO, gabungan semua Gerai Titipannya (2026-10-23). */
+    organizerId: uuid().references(() => eventOrganizers.id),
     periodStart: timestamp({ withTimezone: true }).notNull(),
     periodEnd: timestamp({ withTimezone: true }).notNull(),
     /** SUM(orders.platformFeeSnapshot) Pesanan qris_pribadi yang lunas dalam periode ini. */
@@ -556,6 +611,14 @@ export const serviceFeeInvoices = pgTable(
     uniqueIndex("service_fee_invoices_merchant_period_idx").on(
       table.merchantId,
       table.periodStart,
+    ),
+    uniqueIndex("service_fee_invoices_organizer_period_idx").on(
+      table.organizerId,
+      table.periodStart,
+    ),
+    check(
+      "service_fee_invoices_one_owner",
+      sql`(${table.merchantId} is null) <> (${table.organizerId} is null)`,
     ),
   ],
 );

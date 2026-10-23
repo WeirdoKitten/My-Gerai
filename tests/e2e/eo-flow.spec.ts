@@ -180,7 +180,12 @@ test.describe
       await expect(
         page.getByText(paidOrderCode, { exact: true }),
       ).toBeVisible();
-      await expect(page.getByText("1 Pesanan")).toBeVisible();
+      await expect(
+        page
+          .getByRole("heading", { name: "Pesanan peserta" })
+          .locator("xpath=..")
+          .getByText("1 Pesanan"),
+      ).toBeVisible();
 
       await context.addCookies([await merchantSessionCookie("bakso-pak-budi")]);
       await page.goto("/dashboard");

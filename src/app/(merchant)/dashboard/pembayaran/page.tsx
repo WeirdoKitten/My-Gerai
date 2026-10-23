@@ -2,11 +2,15 @@ import { redirect } from "next/navigation";
 import { PaymentModeSection } from "@/components/merchant/PaymentModeSection";
 import { ServiceFeeInvoiceList } from "@/components/merchant/ServiceFeeInvoiceList";
 import { Alert } from "@/components/ui/Alert";
+import { getMerchantSession } from "@/lib/auth/session";
 import { getMerchantPaymentSettings } from "@/server/merchants";
 import { hasAnyProduct } from "@/server/products";
 import { listMerchantServiceFeeInvoices } from "@/server/service-fee-invoices";
 
 export default async function MerchantPaymentPage() {
+  // Gerai Titipan: hanya dipesan lewat QR Event, selalu bayar lewat MyGerai,
+  // dan tanpa antar — halaman ini tidak berlaku.
+  if ((await getMerchantSession())?.proxyOrganizerId) redirect("/dashboard");
   if (!(await hasAnyProduct())) redirect("/dashboard/produk");
 
   const [settings, invoices] = await Promise.all([

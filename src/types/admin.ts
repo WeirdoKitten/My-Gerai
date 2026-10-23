@@ -7,14 +7,18 @@ export type AdminMerchantView = {
   stallName: string;
   ownerName: string;
   category: string;
-  phone: string;
+  /** `null` untuk Gerai Titipan (tanpa login sendiri). */
+  phone: string | null;
   status: "pending" | "approved" | "rejected" | "suspended";
   rejectionReason: string | null;
   createdAt: Date;
   paymentMode: "gateway" | "qris_pribadi";
   qrisPhotoUrl: string | null;
+  /** Nama EO pengelola kalau ini Gerai Titipan, `null` untuk Lapak biasa. */
+  proxyOrganizerName: string | null;
 };
 
 export type ApproveMerchantResult = { ok: boolean; message?: string };
 export type RejectMerchantResult = { ok: boolean; message?: string };
 export type SetMerchantPaymentModeResult = { ok: boolean; message?: string };
+export type SetProxyStallActiveResult = { ok: boolean; message?: string };

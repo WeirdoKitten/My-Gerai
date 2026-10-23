@@ -152,7 +152,7 @@ export function ServiceFeeInvoiceHistoryList({
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">
-                {invoice.stallName}
+                {invoice.ownerName}
               </p>
               <p className="text-sm text-ink-muted">
                 {formatDateTime(invoice.periodStart)} sampai{" "}

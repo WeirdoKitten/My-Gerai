@@ -32,9 +32,14 @@ export function MerchantBalanceTable({
       {balances.map((row) => (
         <Card key={row.merchantId}>
           <div className="flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate font-semibold text-ink">
-              {row.stallName}
-            </p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-ink">{row.stallName}</p>
+              {row.proxyOrganizerName ? (
+                <p className="text-xs text-ink-muted">
+                  Gerai Titipan · {row.proxyOrganizerName} (dibayar ke QRIS EO)
+                </p>
+              ) : null}
+            </div>
             <span className="shrink-0 font-bold tabular-nums text-ink">
               {formatRupiah(row.balance)}
             </span>

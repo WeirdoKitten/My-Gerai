@@ -1,10 +1,16 @@
 "use server";
 
-import { and, desc, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notExists, sql } from "drizzle-orm";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { getMerchantSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
-import { merchants, orders, payments, payouts } from "@/lib/db/schema";
+import {
+  eventOrganizers,
+  merchants,
+  orders,
+  payments,
+  payouts,
+} from "@/lib/db/schema";
 import { formatRupiah } from "@/lib/utils/money";
 import { PAID_ORDER_STATUSES } from "@/lib/utils/order-status";
 import {
@@ -82,9 +88,18 @@ export async function listMerchantBalances(): Promise<MerchantBalanceView[]> {
   const session = await getAdminSession();
   if (!session) return [];
 
-  const merchantRows = await db.query.merchants.findMany({
-    orderBy: (row, { asc }) => [asc(row.stallName)],
-  });
+  const merchantRows = await db
+    .select({
+      id: merchants.id,
+      stallName: merchants.stallName,
+      proxyOrganizerName: eventOrganizers.organizationName,
+    })
+    .from(merchants)
+    .leftJoin(
+      eventOrganizers,
+      eq(eventOrganizers.id, merchants.managedByOrganizerId),
+    )
+    .orderBy(asc(merchants.stallName));
 
   const orderSums = await db
     .select({
@@ -116,6 +131,7 @@ export async function listMerchantBalances(): Promise<MerchantBalanceView[]> {
   return merchantRows.map((merchant) => ({
     merchantId: merchant.id,
     stallName: merchant.stallName,
+    proxyOrganizerName: merchant.proxyOrganizerName,
     balance:
       (orderTotalById.get(merchant.id) ?? 0) -
       (payoutTotalById.get(merchant.id) ?? 0),

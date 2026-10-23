@@ -13,11 +13,17 @@ import { ProductListItem } from "./ProductListItem";
 
 export function ProductManager({
   initialProducts,
+  isProxyStall = false,
 }: {
   initialProducts: MerchantProductView[];
+  /** Gerai Titipan: tanpa QR Menu, dipesan peserta lewat QR Event. */
+  isProxyStall?: boolean;
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [showForm, setShowForm] = useState(false);
+  // Form dipasang ulang tiap dibuka: Modal tidak meng-unmount isinya, jadi
+  // tanpa ini isian & status "Menyimpan..." Item sebelumnya ikut terbawa.
+  const [formKey, setFormKey] = useState(0);
   const [justAddedFirstProduct, setJustAddedFirstProduct] = useState(false);
 
   async function refresh() {
@@ -30,7 +36,10 @@ export function ProductManager({
         type="button"
         variant="secondary"
         className="sm:self-start"
-        onClick={() => setShowForm(true)}
+        onClick={() => {
+          setFormKey((key) => key + 1);
+          setShowForm(true);
+        }}
       >
         <PlusIcon className="size-4" />
         Tambah Item
@@ -60,6 +69,7 @@ export function ProductManager({
         title="Tambah Item"
       >
         <ProductForm
+          key={formKey}
           onDone={async () => {
             const wasFirstProduct = products.length === 0;
             setShowForm(false);
@@ -77,12 +87,13 @@ export function ProductManager({
       >
         <div className="flex flex-col gap-4">
           <p className="text-sm text-ink-muted">
-            Lapak kamu sekarang bisa menerima Pesanan. Cetak atau bagikan QR
-            Menu supaya Pembeli bisa mulai memesan.
+            {isProxyStall
+              ? "Gerai Titipan ini sekarang bisa dipesan peserta lewat QR Event."
+              : "Lapak kamu sekarang bisa menerima Pesanan. Cetak atau bagikan QR Menu supaya Pembeli bisa mulai memesan."}
           </p>
           <div className="flex gap-2">
-            <ButtonLink href="/dashboard/qr" fullWidth>
-              Lihat QR Menu
+            <ButtonLink href={isProxyStall ? "/eo" : "/dashboard/qr"} fullWidth>
+              {isProxyStall ? "Kembali ke Portal EO" : "Lihat QR Menu"}
             </ButtonLink>
             <Button
               type="button"

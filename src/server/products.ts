@@ -116,11 +116,16 @@ async function fetchVariantGroupsByProductId(
  */
 export async function getStallCatalog(
   slug: string,
+  options: { viaEvent: boolean } = { viaEvent: false },
 ): Promise<StallCatalogResult> {
   const content = await stallCatalogCache.get(slug, () =>
     loadStallCatalogContent(slug),
   );
   if (!content) return { ok: false, reason: "not_found" };
+  // Gerai Titipan hanya melayani peserta event (bukan lewat `/menu/<slug>`).
+  if (content.isProxy && !options.viaEvent) {
+    return { ok: false, reason: "not_found" };
+  }
 
   const { serviceFeeGracePeriodDays } = await getActivePlatformConfig();
   if (
@@ -138,6 +143,7 @@ export async function getStallCatalog(
     catalog: {
       merchant: {
         ...content.merchant,
+        substitutesSoldOutItems: content.isProxy,
         isOpen,
         reopensAt: reopensAt ? reopensAt.toISOString() : null,
       },
@@ -173,6 +179,7 @@ async function loadStallCatalogContent(
 
   return {
     merchantId: merchant.id,
+    isProxy: merchant.managedByOrganizerId !== null,
     merchant: {
       slug: merchant.slug,
       stallName: merchant.stallName,

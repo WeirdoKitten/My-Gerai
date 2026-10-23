@@ -103,6 +103,16 @@ export type SetMerchantPaymentModeInput = z.infer<
   typeof setMerchantPaymentModeSchema
 >;
 
+/** Hanya Admin — lihat setProxyStallActive di server/merchants.ts. */
+export const setProxyStallActiveSchema = z.object({
+  merchantId: z.uuid(),
+  active: z.boolean(),
+});
+
+export type SetProxyStallActiveInput = z.infer<
+  typeof setProxyStallActiveSchema
+>;
+
 export const approveMerchantSchema = z.object({
   merchantId: z.uuid(),
 });

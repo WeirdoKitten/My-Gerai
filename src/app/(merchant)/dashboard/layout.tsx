@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { NavItem } from "@/components/DashboardNav";
 import { DashboardShell } from "@/components/DashboardShell";
 import { HEADER_ICON_CLASS } from "@/components/merchant/header-icon-class";
-import { QrIcon, UserIcon } from "@/components/ui/icons";
+import { CalendarIcon, QrIcon, UserIcon } from "@/components/ui/icons";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { getMerchantSession } from "@/lib/auth/session";
@@ -37,13 +37,24 @@ export default async function DashboardLayout({
           logoutAction={logoutMerchant}
           headerAction={
             <>
-              <Link
-                href="/dashboard/qr"
-                aria-label="QR Menu"
-                className={HEADER_ICON_CLASS}
-              >
-                <QrIcon className="size-4" />
-              </Link>
+              {session.proxyOrganizerId ? (
+                // Gerai Titipan tidak punya QR Menu: kembali ke portal EO.
+                <Link
+                  href="/eo"
+                  aria-label="Portal EO"
+                  className={HEADER_ICON_CLASS}
+                >
+                  <CalendarIcon className="size-4" />
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard/qr"
+                  aria-label="QR Menu"
+                  className={HEADER_ICON_CLASS}
+                >
+                  <QrIcon className="size-4" />
+                </Link>
+              )}
               <Link
                 href="/dashboard/profil"
                 aria-label="Profil Lapak"

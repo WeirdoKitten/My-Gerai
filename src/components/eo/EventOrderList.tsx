@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { OrderItemSubstitutionNote } from "@/components/OrderItemSubstitutionNote";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ReceiptIcon } from "@/components/ui/icons";
@@ -114,6 +115,10 @@ export function EventOrderList({
                     {item.variants.length > 0
                       ? ` (${item.variants.join(", ")})`
                       : ""}
+                    <OrderItemSubstitutionNote
+                      substitution={item.substitution}
+                      audience="seller"
+                    />
                   </li>
                 ))}
               </ul>

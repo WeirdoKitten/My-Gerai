@@ -1,3 +1,4 @@
+import { OrderItemSubstitutionNote } from "@/components/OrderItemSubstitutionNote";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HistoryIcon } from "@/components/ui/icons";
@@ -87,6 +88,10 @@ function MerchantOrderHistoryCard({
                   .join(" · ")}
               </p>
             ) : null}
+            <OrderItemSubstitutionNote
+              substitution={item.substitution}
+              audience="seller"
+            />
           </li>
         ))}
       </ul>

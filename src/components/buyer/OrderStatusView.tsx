@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { OrderReviewSection } from "@/components/buyer/OrderReviewSection";
+import { OrderItemSubstitutionNote } from "@/components/OrderItemSubstitutionNote";
 import { Alert } from "@/components/ui/Alert";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -66,15 +67,22 @@ export function OrderStatusView({
 
     // Poll versi ringan (status saja); data lengkap + QR diambil ulang hanya
     // saat status berubah — lihat docs/STRESS-TEST.md P1-4.
+    // Item yang diganti EO (Gerai Titipan) juga memicu muat ulang.
     const interval = window.setInterval(async () => {
       const summary = await getOrderStatusSummary(orderIdRef.current);
-      if (!summary || summary.status === order.status) return;
+      if (
+        !summary ||
+        (summary.status === order.status &&
+          summary.itemsUpdatedAt === order.itemsUpdatedAt)
+      ) {
+        return;
+      }
       const latest = await getOrderStatus(orderIdRef.current);
       if (latest) setOrder(latest);
     }, POLL_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [order.status]);
+  }, [order.status, order.itemsUpdatedAt]);
 
   async function handleSimulate() {
     setSimulating(true);
@@ -273,6 +281,10 @@ export function OrderStatusView({
                     .join(" · ")}
                 </p>
               ) : null}
+              <OrderItemSubstitutionNote
+                substitution={item.substitution}
+                audience="buyer"
+              />
             </li>
           ))}
         </ul>

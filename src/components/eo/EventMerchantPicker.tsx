@@ -3,30 +3,36 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { PlusIcon, SearchIcon, XIcon } from "@/components/ui/icons";
 import { useToast } from "@/components/ui/Toast";
 import { MAX_EVENT_MERCHANTS } from "@/lib/validation/event.schema";
-import { setEventMerchants } from "@/server/events";
+import { openProxyStallDashboard, setEventMerchants } from "@/server/events";
 import type { EventMerchantOption } from "@/types/event";
+import { CreateProxyStallButton } from "./CreateProxyStallButton";
 
 const SEARCH_RESULT_LIMIT = 8;
 
 /**
  * Pilih Gerai untuk event: cari dari semua Gerai aktif, tambah, hapus, atur
  * urutan. Urutan di sini = urutan tampil ke peserta. Disimpan sekaligus
- * (replace-all) lewat tombol "Simpan Gerai".
+ * (replace-all) lewat tombol "Simpan Gerai". Gerai Titipan milik EO diberi
+ * badge dan tombol "Kelola" (membuka dashboard Gerai itu).
  */
 export function EventMerchantPicker({
   eventId,
   initialSelected,
   options,
+  hasQris,
 }: {
   eventId: string;
   initialSelected: EventMerchantOption[];
   options: EventMerchantOption[];
+  /** EO sudah punya QRIS "uang jasa titipan" (syarat membuat Gerai Titipan). */
+  hasQris: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -34,6 +40,7 @@ export function EventMerchantPicker({
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   const selectedIds = useMemo(
     () => new Set(selected.map((merchant) => merchant.id)),
@@ -72,6 +79,26 @@ export function EventMerchantPicker({
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+  }
+
+  async function handleManage(merchantId: string) {
+    if (dirty) {
+      setError("Simpan daftar Gerai dulu sebelum mengelola Gerai Titipan.");
+      return;
+    }
+    setOpeningId(merchantId);
+    setError(null);
+    // Berhasil = redirect ke /dashboard; yang kembali ke sini hanya gagal.
+    const result = await openProxyStallDashboard(merchantId);
+    setOpeningId(null);
+    if (!result.ok) setError(result.message ?? "Gagal membuka Gerai.");
+  }
+
+  function handleProxyCreated(merchant: EventMerchantOption) {
+    // Sudah tersimpan di server (ditambahkan di akhir daftar event).
+    setSelected((list) => [...list, merchant]);
+    showToast(`Gerai Titipan ${merchant.stallName} dibuat`);
+    router.refresh();
   }
 
   async function handleSave() {
@@ -115,8 +142,11 @@ export function EventMerchantPicker({
                     className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-bg"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold text-ink">
-                        {option.stallName}
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate font-semibold text-ink">
+                          {option.stallName}
+                        </span>
+                        {option.isProxy ? <Badge>Titipan</Badge> : null}
                       </span>
                       <span className="block text-xs text-ink-muted">
                         {option.category}
@@ -133,6 +163,13 @@ export function EventMerchantPicker({
         )
       ) : null}
 
+      <CreateProxyStallButton
+        hasQris={hasQris}
+        eventId={eventId}
+        disabled={selected.length >= MAX_EVENT_MERCHANTS}
+        onCreated={handleProxyCreated}
+      />
+
       {selected.length === 0 ? (
         <p className="text-sm text-ink-muted">
           Belum ada Gerai. Cari lalu ketuk Gerai untuk menambahkannya.
@@ -146,12 +183,27 @@ export function EventMerchantPicker({
                 className="flex items-center justify-between gap-2 p-3"
               >
                 <span className="min-w-0">
-                  <span className="block truncate font-semibold text-ink">
-                    {index + 1}. {merchant.stallName}
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate font-semibold text-ink">
+                      {index + 1}. {merchant.stallName}
+                    </span>
+                    {merchant.isProxy ? <Badge>Titipan</Badge> : null}
                   </span>
                   <span className="block text-xs text-ink-muted">
                     {merchant.category}
                   </span>
+                  {merchant.isProxy ? (
+                    <button
+                      type="button"
+                      onClick={() => handleManage(merchant.id)}
+                      disabled={openingId !== null}
+                      className="mt-1 text-xs font-semibold text-brand-strong disabled:opacity-60"
+                    >
+                      {openingId === merchant.id
+                        ? "Membuka..."
+                        : "Kelola Item & Pesanan →"}
+                    </button>
+                  ) : null}
                 </span>
                 <span className="flex shrink-0 items-center gap-1">
                   <button

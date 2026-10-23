@@ -25,6 +25,7 @@ const baseReceipt: OrderReceiptView = {
       priceSnapshot: 15000,
       qty: 2,
       note: null,
+      substitution: null,
       variantSelections: [
         {
           groupNameSnapshot: "Level",
@@ -39,6 +40,7 @@ const baseReceipt: OrderReceiptView = {
       priceSnapshot: 5000,
       qty: 1,
       note: null,
+      substitution: null,
       variantSelections: [],
     },
   ],

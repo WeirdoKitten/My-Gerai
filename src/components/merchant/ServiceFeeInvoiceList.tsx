@@ -7,7 +7,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ReceiptIcon } from "@/components/ui/icons";
 import { formatDateTime } from "@/lib/utils/datetime";
 import { formatRupiah } from "@/lib/utils/money";
-import { listMerchantServiceFeeInvoices } from "@/server/service-fee-invoices";
+import {
+  listMerchantServiceFeeInvoices,
+  listMyEventOrganizerServiceFeeInvoices,
+} from "@/server/service-fee-invoices";
 import type {
   MerchantServiceFeeInvoiceView,
   ServiceFeeInvoiceStatus,
@@ -27,10 +30,20 @@ const STATUS_TONE: Record<ServiceFeeInvoiceStatus, BadgeTone> = {
   dibatalkan: "neutral",
 };
 
+/** Muat ulang tagihan sesuai pemiliknya: Lapak sendiri, atau EO (Gerai Titipan). */
+async function loadInvoices(
+  owner: "merchant" | "eo",
+): Promise<MerchantServiceFeeInvoiceView[]> {
+  if (owner === "merchant") return listMerchantServiceFeeInvoices();
+  return (await listMyEventOrganizerServiceFeeInvoices())?.invoices ?? [];
+}
+
 export function ServiceFeeInvoiceList({
   initialInvoices,
+  owner = "merchant",
 }: {
   initialInvoices: MerchantServiceFeeInvoiceView[];
+  owner?: "merchant" | "eo";
 }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const hasUnpaid = invoices.some(
@@ -43,17 +56,21 @@ export function ServiceFeeInvoiceList({
   useEffect(() => {
     if (!hasUnpaid) return;
     const interval = window.setInterval(async () => {
-      setInvoices(await listMerchantServiceFeeInvoices());
+      setInvoices(await loadInvoices(owner));
     }, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
-  }, [hasUnpaid]);
+  }, [hasUnpaid, owner]);
 
   if (invoices.length === 0) {
     return (
       <EmptyState
         icon={<ReceiptIcon className="size-10" />}
         title="Belum ada tagihan"
-        description="Tagihan Biaya Layanan mingguan muncul di sini kalau Lapak memakai QRIS pribadi."
+        description={
+          owner === "eo"
+            ? "Tagihan Biaya Layanan mingguan untuk Pesanan Gerai Titipan muncul di sini."
+            : "Tagihan Biaya Layanan mingguan muncul di sini kalau Lapak memakai QRIS pribadi."
+        }
       />
     );
   }

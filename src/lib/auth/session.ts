@@ -7,7 +7,7 @@ import {
   renewedMobileExpiry,
 } from "@/lib/auth/bearer";
 import { db } from "@/lib/db/client";
-import { merchants, sessions } from "@/lib/db/schema";
+import { eventOrganizers, merchants, sessions } from "@/lib/db/schema";
 
 export const SESSION_COOKIE_NAME = "mygerai_session";
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 hari
@@ -18,6 +18,8 @@ export type MerchantSession = {
   stallName: string;
   sessionId: string;
   client: "web" | "mobile";
+  /** EO pengelola kalau ini Gerai Titipan, `null` untuk Lapak biasa. */
+  proxyOrganizerId: string | null;
 };
 
 function hashToken(token: string): string {
@@ -76,6 +78,15 @@ export async function resolveMerchantSessionByToken(
   // sesi lama otomatis invalid tanpa perlu proses cabut-sesi eksplisit.
   if (!merchant || merchant.status !== "approved") return null;
 
+  // Gerai Titipan: sesi hanya sah selama EO pengelolanya masih disetujui.
+  if (merchant.managedByOrganizerId) {
+    const organizer = await db.query.eventOrganizers.findFirst({
+      where: eq(eventOrganizers.id, merchant.managedByOrganizerId),
+      columns: { status: true },
+    });
+    if (organizer?.status !== "approved") return null;
+  }
+
   if (session.client === "mobile") {
     const renewed = renewedMobileExpiry(session.expiresAt, now);
     if (renewed) {
@@ -92,6 +103,7 @@ export async function resolveMerchantSessionByToken(
     stallName: merchant.stallName,
     sessionId: session.id,
     client: session.client,
+    proxyOrganizerId: merchant.managedByOrganizerId,
   };
 }
 

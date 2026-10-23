@@ -16,9 +16,11 @@ const POLL_INTERVAL_MS = 5000;
 export function MerchantOrderList({
   initialOrders,
   initialTotalActive,
+  isProxyStall = false,
 }: {
   initialOrders: MerchantOrderListItem[];
   initialTotalActive: number;
+  isProxyStall?: boolean;
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const [totalActive, setTotalActive] = useState(initialTotalActive);
@@ -88,7 +90,12 @@ export function MerchantOrderList({
         </h2>
       ) : null}
       {nowOrders.map((order) => (
-        <MerchantOrderCard key={order.id} order={order} onUpdated={refresh} />
+        <MerchantOrderCard
+          key={order.id}
+          order={order}
+          onUpdated={refresh}
+          isProxyStall={isProxyStall}
+        />
       ))}
       {preOrderGroups.length > 0 ? (
         <h2 className="mt-2 text-sm font-semibold text-ink-muted">
@@ -105,6 +112,7 @@ export function MerchantOrderList({
               key={order.id}
               order={order}
               onUpdated={refresh}
+              isProxyStall={isProxyStall}
             />
           ))}
         </div>

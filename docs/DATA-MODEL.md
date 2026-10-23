@@ -11,6 +11,7 @@ erDiagram
     MERCHANTS ||--o{ ORDERS : "menerima"
     MERCHANTS ||--o{ PAYOUTS : "menerima pencairan"
     MERCHANTS ||--o{ SERVICE_FEE_INVOICES : "ditagih (qris_pribadi)"
+    EVENT_ORGANIZERS ||--o{ SERVICE_FEE_INVOICES : "ditagih (Gerai Titipan, 2026-10-23)"
     MERCHANTS ||--o{ MERCHANT_OPERATING_HOURS : "jadwal buka"
     MERCHANTS ||--o{ MERCHANT_REVIEWS : "diulas"
     ORDERS ||--o| MERCHANT_REVIEWS : "diulas (maks 1)"
@@ -28,6 +29,7 @@ erDiagram
     EVENT_ORGANIZERS ||--o{ EO_SESSIONS : "login"
     EVENTS ||--o{ EVENT_MERCHANTS : "berisi Gerai"
     MERCHANTS ||--o{ EVENT_MERCHANTS : "ikut event"
+    EVENT_ORGANIZERS ||--o{ MERCHANTS : "mengelola Gerai Titipan"
     EVENTS |o--o{ ORDERS : "asal Pesanan"
 
     MERCHANTS {
@@ -36,8 +38,9 @@ erDiagram
         string stall_name "Nama Lapak"
         string owner_name "Nama Pedagang"
         string category
-        string phone
-        string password_hash
+        string phone "nullable hanya untuk Gerai Titipan (2026-10-21)"
+        string password_hash "nullable hanya untuk Gerai Titipan"
+        uuid managed_by_organizer_id FK "nullable; EO pengelola Gerai Titipan (2026-10-21)"
         string photo_url
         string status "pending|approved|rejected|suspended"
         string rejection_reason "alasan Admin saat status=rejected, nullable"
@@ -142,6 +145,9 @@ erDiagram
         int cost_price_snapshot "nullable; snapshot products.cost_price saat Pesanan dibuat (2026-09-14) — konsisten dengan price_snapshot, supaya Keuntungan Pesanan lama tidak berubah retroaktif kalau harga modal Item diedit"
         int qty
         text note
+        string substitution "nullable; diganti|tidak_tersedia (Gerai Titipan, 2026-10-21)"
+        text substitute_name "nullable; wajib kalau diganti"
+        timestamptz substituted_at "nullable; terakhir penandaan diubah"
     }
 
     ORDER_ITEM_VARIANT_SELECTIONS {
@@ -186,7 +192,8 @@ erDiagram
 
     SERVICE_FEE_INVOICES {
         uuid id PK
-        uuid merchant_id FK
+        uuid merchant_id FK "nullable sejak 2026-10-23; tepat satu dari merchant_id/organizer_id terisi"
+        uuid organizer_id FK "nullable; tagihan EO gabungan semua Gerai Titipannya (2026-10-23)"
         timestamp period_start
         timestamp period_end
         int amount "SUM(orders.platform_fee_snapshot) Pesanan qris_pribadi lunas dalam periode ini"
@@ -250,6 +257,7 @@ erDiagram
 - `qris_photo_url` (nullable, Fase 7): foto QRIS statis Pedagang, path `/uploads/qris/<uuid>.<ext>` (pola sama upload foto Item/Lapak — volume Docker, magic-bytes validation). Dipakai sebagai gambar QR di halaman status Pesanan Pembeli saat `payment_mode = qris_pribadi`.
 - `manual_override` / `manual_override_set_at` (nullable, 2026-09-14): override manual status buka/tutup Lapak, diisi Pedagang lewat toggle di header dashboard. Dihitung lazy bareng `merchant_operating_hours` oleh `getMerchantOpenState` (`src/lib/schedule/is-merchant-open.ts`) — **tanpa keduanya** (belum pernah toggle, belum ada jadwal) Lapak dianggap **selalu buka** (default aman, tidak meregresi Lapak lama). Override cuma berlaku selama segmen jadwal yang sama saat dipasang — begitu lewat batas jadwal berikutnya, otomatis basi & kembali murni ikut jadwal (atau Pedagang bisa hapus manual lewat "Ikuti Jadwal Lagi" di `/dashboard/jadwal`).
 - `latitude` / `longitude` (nullable, `double precision`, Fase 8 — 2026-09-17): titik GPS Lapak, diisi opsional oleh Pedagang lewat map picker di `/dashboard/profil` (`LocationMapPicker`: cari alamat, geser peta dengan pin di tengah, atau tombol "pakai lokasi saya sekarang"; Google Maps atau Leaflet/OSM, lihat ADR 2026-10-06). `null` = belum pernah diisi, dianggap "lokasi tidak diketahui" — Lapak tetap tampil normal di semua tempat, cuma tidak ikut pengelompokan Area di landing page. Dicocokkan **lazy** ke `service_areas` terdekat oleh `listApprovedMerchants` lewat `findNearestArea` (`src/lib/utils/geo.ts`, Fase 9) — tidak disimpan sebagai FK, supaya perubahan Area oleh Admin langsung berlaku tanpa migrasi data. Selalu diisi/dikosongkan bersamaan (divalidasi di `updateMerchantProfileSchema`, bukan CHECK constraint DB — skala kaki lima, KISS).
+- **Gerai Titipan** (2026-10-21, migrasi `0022_proxy_stalls.sql`, [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-10-21): `managed_by_organizer_id` (nullable, FK `event_organizers` `ON DELETE RESTRICT`, index) terisi = Lapak dikelola EO untuk toko yang belum terdaftar. Gerai ini **tanpa login sendiri**: `phone` & `password_hash` `NULL`. CHECK `merchants_login_or_proxy`: `(managed_by_organizer_id IS NULL) = (phone IS NOT NULL AND password_hash IS NOT NULL)`, jadi Lapak biasa tetap wajib punya keduanya. Dibuat `createProxyStall` dengan `status = approved`, `payment_mode = gateway`, `owner_name` = nama EO. Admin hanya bisa `approved ↔ suspended` lewat `setProxyStallActive`. Disaring dari daftar Gerai publik (`loadApprovedMerchants`); anggota halaman event dimuat lewat `loadEventMerchants` (`src/lib/event/queries.ts`). Katalog `/menu/<slug>` menolaknya (`getStallCatalog(slug, { viaEvent })`), dan `createOrder` menolak Pesanannya kalau `event_id` tidak terselesaikan. EO lain tidak bisa memilihnya (`selectableBy`). **Pembayaran (2026-10-23, migrasi `0023_proxy_stall_qris.sql`)**: Gerai Titipan selalu `payment_mode = qris_pribadi` dengan `qris_photo_url` = salinan `event_organizers.qris_photo_url` (disalin ke semua Gerai Titipan EO setiap kali EO mengunggah/mengganti QRIS, `uploadEventOrganizerQris`). CHECK `merchants_proxy_qris`: `managed_by_organizer_id IS NULL OR (payment_mode = 'qris_pribadi' AND (qris_photo_url IS NOT NULL OR status <> 'approved'))`. `createProxyStall` menolak EO tanpa QRIS; `setMerchantPaymentMode` menolak semua perubahan untuk Gerai Titipan; `setProxyStallActive` menolak mengaktifkan Gerai tanpa QRIS. Migrasi `0023` memindahkan Gerai Titipan lama ke `qris_pribadi` dan menonaktifkan yang EO-nya belum punya QRIS.
 - `address` (nullable, `text`, 2026-09-21): alamat fisik bebas-teks, diisi opsional oleh Pedagang di `/dashboard/profil` (field "Alamat Lapak"). Nilai awal diisi **otomatis** dari reverse-geocode `latitude`/`longitude` (Nominatim, `src/server/geocoding.ts`) begitu Pedagang taruh/geser pin di map picker — supaya alamat & titik GPS selalu sinkron ke lokasi yang sama, bukan dua input independen yang bisa divergen — tapi tetap **bisa ditimpa manual** (mis. tambah patokan "dekat Alfamart" kalau hasil otomatis kurang jelas). Ditampilkan ke Pembeli di halaman menu (`getStallCatalog`) supaya tidak bingung mencari lapaknya saat ambil pesanan; berdampingan dengan tombol "Buka di Peta" (dibangun dari `latitude`/`longitude` kalau ada, link Google Maps mode navigasi `dir/?api=1&destination=lat,lng`, bukan komponen peta baru).
 
 ### `merchant_operating_hours` (Jadwal Operasional — 2026-09-14)
@@ -292,6 +300,7 @@ erDiagram
 ### `order_items`
 - Menyimpan `product_name_snapshot` & `price_snapshot` supaya kalau Pedagang mengubah harga/nama Item di kemudian hari, histori Pesanan lama tidak ikut berubah.
 - `cost_price_snapshot` (nullable, 2026-09-14): sama prinsipnya dengan `price_snapshot` — diisi dari `products.cost_price` **saat Pesanan dibuat** (`createOrder`), bukan dihitung ulang belakangan, supaya Keuntungan Pesanan lama tidak berubah retroaktif kalau Pedagang mengedit harga modal Item. `NULL` kalau Item belum punya harga modal saat Pesanan itu dibuat.
+- **Penggantian Item** (Gerai Titipan, 2026-10-21): `substitution` (enum `order_item_substitution`: `diganti` | `tidak_tersedia`, nullable = sesuai pesanan), `substitute_name` (wajib kalau `diganti`, maks 100), `substituted_at` = **terakhir penandaan diubah** (diisi juga saat dibatalkan, supaya polling ringan halaman status Pembeli `getOrderStatusSummary.itemsUpdatedAt` tahu kapan memuat ulang Item). Diubah `setOrderItemSubstitution` (sesi Pedagang Gerai Titipan, status `dibayar`/`diproses`/`siap_diambil`, kepemilikan & status dicek di WHERE yang sama). **Tidak mengubah uang** (`subtotal`, `total_for_merchant`, Saldo). Uang kembali Item `tidak_tersedia` = `price_snapshot × qty`, dihitung saat dibaca (`toSubstitutionView`), dikembalikan EO secara manual.
 - `price_snapshot` (2026-09-16): kalau Item yang dipesan punya varian, nilainya sudah **harga efektif** (`products.price` + jumlah `price_delta` opsi yang dipilih Pembeli) — bukan `products.price` polos. `calculateOrderTotals`/laporan penjualan tidak perlu tahu soal varian sama sekali karena angka ini sudah final per unit.
 
 ### `order_item_variant_selections` (Varian Item — 2026-09-16)
@@ -316,6 +325,7 @@ erDiagram
 
 ### `service_fee_invoices` (Tagihan Biaya Layanan — Fase 7)
 - Tagihan **pascabayar mingguan** untuk Lapak `qris_pribadi`: uang Pesanan langsung ke Pedagang, jadi Biaya Layanan tidak bisa dipotong otomatis seperti model Agregator — ditagih belakangan lewat sini. Dibuat oleh job `POST /api/cron/bill-service-fee` (`src/lib/billing/service-fee.ts`), **bukan** dicatat manual Admin (walau Admin bisa override, lihat di bawah).
+- **Pemilik tagihan (2026-10-23)**: `merchant_id` (Lapak biasa) **atau** `organizer_id` (EO, gabungan Biaya Layanan semua Gerai Titipannya), dijaga CHECK `service_fee_invoices_one_owner`. Cron mengelompokkan akrual lewat `groupAccrualsByBillingOwner` (`src/lib/billing/owner.ts`); Pesanan dianggap sudah tertagih kalau tagihan Lapak-nya **atau** tagihan EO pengelolanya mencakup `paid_at`. Tagihan EO yang menunggak melewati masa tenggang mengunci **semua** Gerai Titipan EO itu (`isMerchantOrderingLocked` memeriksa keduanya; `isOrganizerBillingLocked` untuk portal EO/Admin). Dibayar EO di `/eo`; webhook `svcfee-<id>` dan override Admin tidak berubah. `UNIQUE(organizer_id, period_start)` untuk idempotensi tagihan EO.
 - `UNIQUE(merchant_id, period_start)` — pengaman idempotensi, sama pola dengan `payouts.UNIQUE(merchant_id, period_date)`: aman kalau cron ke-trigger dua kali untuk periode yang sama.
 - `amount` = `SUM(orders.platform_fee_snapshot)` Pesanan `qris_pribadi` (`payments.provider = "qris_pribadi"`, difilter dari `payments` milik Pesanan itu sendiri — BUKAN `merchants.payment_mode` saat ini, supaya Pesanan lama tetap tertagih meski Lapak-nya sudah dipindah Admin balik ke `gateway`) yang `paid_at`-nya jatuh dalam `[period_start, period_end)`. **Tidak ada kolom link** (`orders.service_fee_invoice_id`) — akrual selalu dihitung dari rentang waktu, bukan penandaan per-baris.
 - `due_at` = **saat tagihan terbit** (revisi 2026-09-30, sebelumnya `period_end`). Untuk job yang jalan tepat waktu (Senin ±01:00 WIB) hasilnya praktis sama dengan keputusan awal User "jatuh tempo langsung saat periode tutup, tanpa buffer". Bedanya hanya untuk **tagihan susulan** periode lama: kalau tetap `period_end`, tagihan itu langsung lewat masa tenggang dan Lapak terkunci seketika tanpa sempat membayar. Kalau `belum_lunas` dan `due_at` sudah lewat `platform_config.service_fee_grace_period_days` hari → Lapak **dikunci** dari Pesanan baru (kecuali tagihan contoh seeder demo dengan `reference_id` berawalan `SEED-DEMO-`, 2026-09-30) (`isMerchantOrderingLocked`, dihitung **lazy**, bukan kolom flag — lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md#kedaluwarsa-pesanan)).
@@ -351,11 +361,13 @@ erDiagram
 
 ### `event_organizers`, `eo_sessions`, `events`, `event_merchants` (Portal EO — 2026-10-06)
 - Migrasi `0020_events.sql`. Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-10-06 (Portal EO).
+- `event_organizers.qris_photo_url` (nullable, 2026-10-23): foto QRIS "uang jasa titipan" EO, path `/uploads/qris/<uuid>.<ext>` (pola & validasi sama dengan QRIS Pedagang). Diunggah EO di portal setelah login, langsung aktif tanpa pemeriksaan Admin (keputusan User), disalin ke semua Gerai Titipannya.
 - `event_organizers`: akun EO terpisah dari `merchants`/`admins` (pola yang sama). `phone` unik (format `08…`, sama seperti Pedagang), `status` memakai ulang enum `merchant_status` (`pending` saat daftar → `approved`/`rejected` oleh Admin; `suspended` disiapkan), `rejection_reason` ditampilkan saat EO mencoba login.
 - `eo_sessions`: identik `sessions`/`admin_sessions` (token acak di-hash SHA-256, cookie `HttpOnly` terpisah `mygerai_eo_session`). `getEventOrganizerSession` mengecek ulang `status = approved` tiap request, jadi EO yang dinonaktifkan langsung kehilangan sesi.
 - `events`: milik satu EO (`organizer_id`, index). `slug` unik (dari nama + suffix acak kalau bentrok) jadi URL QR Event `/e/<slug>`. `description` & `location` teks bebas. `is_active` (default `true`) = satu-satunya pengatur waktu: tanpa tanggal mulai/selesai (keputusan User). **Tidak pernah dihapus** — Pesanan mereferensikannya.
 - `event_merchants`: PK `(event_id, merchant_id)`, `sort_order` = urutan tampil ke peserta, index `merchant_id`. Pola **replace-all** (`setEventMerchants`) seperti `merchant_operating_hours`; maks 100 Gerai per event (validasi app). Hanya Lapak `approved` yang boleh dimasukkan; Lapak yang belakangan tidak `approved` otomatis tidak tampil di halaman event (disaring lewat daftar Gerai publik). FK `ON DELETE CASCADE` dari kedua sisi.
 - Isolasi: setiap Server Action EO memfilter `events.organizer_id = sesi EO` (`findOwnEvent`). EO hanya membaca Pesanan event miliknya, status `dibayar` ke atas, **tanpa** No. HP/alamat Pembeli.
+- Ringkasan penjualan event (`getEventSalesSummary`, 2026-10-21): jumlah Pesanan (`PAID_ORDER_STATUSES`) per Gerai; untuk Gerai Titipan milik EO itu sendiri ditambah penjualan (`subtotal`), modal (`cost_price_snapshot × qty`, Item `tidak_tersedia` dikecualikan), uang dikembalikan, dan keuntungan. Perhitungan murni di `src/lib/event/sales-summary.ts`. Omzet Gerai asli tidak pernah dikirim ke EO.
 
 ### `map_api_usage` (Penghitung pemakaian Google Maps — 2026-10-06)
 - Satu baris per bulan (UTC, `YYYY-MM`) per SKU Google yang ditagih: `map_load`, `autocomplete`, `place_details`. PK komposit `(month, sku)`, migrasi `0019_map_api_usage.sql`. Tanpa relasi ke tabel lain.

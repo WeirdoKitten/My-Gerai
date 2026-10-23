@@ -6,15 +6,20 @@ import { getAdminSession } from "@/lib/auth/admin-session";
 import {
   createEventOrganizerSession,
   destroyEventOrganizerSession,
+  getEventOrganizerSession,
 } from "@/lib/auth/eo-session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { destroyMerchantSession, getMerchantSession } from "@/lib/auth/session";
+import { invalidateStallCatalogCache } from "@/lib/cache/stall-catalog";
 import { db } from "@/lib/db/client";
-import { eventOrganizers, events } from "@/lib/db/schema";
+import { eventOrganizers, events, merchants } from "@/lib/db/schema";
+import { invalidatePublicEventCache } from "@/lib/event/queries";
 import {
   checkRateLimit,
   getClientIp,
   RATE_LIMIT_MESSAGE,
 } from "@/lib/rate-limit/limiter";
+import { detectImage, saveQrisPhoto } from "@/lib/upload/storage";
 import {
   approveEventOrganizerSchema,
   type LoginEventOrganizerInput,
@@ -26,9 +31,13 @@ import {
 import type {
   AdminEventOrganizerView,
   EventOrganizerActionResult,
+  EventOrganizerQrisView,
   LoginEventOrganizerResult,
   RegisterEventOrganizerResult,
+  UploadEventOrganizerQrisResult,
 } from "@/types/event";
+
+const MAX_QRIS_PHOTO_BYTES = 3 * 1024 * 1024;
 
 // Sama seperti loginMerchant: waktu verifikasi tetap konsisten walau nomor
 // HP tidak terdaftar (cegah timing side-channel).
@@ -137,6 +146,19 @@ export async function loginEventOrganizer(
 }
 
 export async function logoutEventOrganizer(): Promise<void> {
+  // Sesi "Kelola" Gerai Titipan milik EO ini (cookie Pedagang) ikut dicabut,
+  // supaya orang berikutnya di browser yang sama tidak bisa membuka
+  // dashboard Gerai itu (mis. mengubah rekening pencairan).
+  const [eoSession, merchantSession] = await Promise.all([
+    getEventOrganizerSession(),
+    getMerchantSession(),
+  ]);
+  if (
+    eoSession &&
+    merchantSession?.proxyOrganizerId === eoSession.organizerId
+  ) {
+    await destroyMerchantSession();
+  }
   await destroyEventOrganizerSession();
   redirect("/eo/login");
 }
@@ -239,4 +261,67 @@ export async function rejectEventOrganizer(input: {
     };
   }
   return { ok: true };
+}
+
+/** QRIS "uang jasa titipan" EO sendiri (portal EO) — identitas dari sesi. */
+export async function getMyEventOrganizerQris(): Promise<EventOrganizerQrisView | null> {
+  const session = await getEventOrganizerSession();
+  if (!session) return null;
+
+  const organizer = await db.query.eventOrganizers.findFirst({
+    where: eq(eventOrganizers.id, session.organizerId),
+    columns: { qrisPhotoUrl: true },
+  });
+  return { qrisPhotoUrl: organizer?.qrisPhotoUrl ?? null };
+}
+
+/**
+ * Unggah/ganti foto QRIS "uang jasa titipan" EO (2026-10-23). Langsung aktif
+ * tanpa pemeriksaan Admin (keputusan User) dan disalin ke semua Gerai Titipan
+ * EO ini dalam satu transaksi — Pembeli Gerai Titipan membayar langsung ke
+ * QRIS ini (`payment_mode = qris_pribadi`).
+ */
+export async function uploadEventOrganizerQris(
+  formData: FormData,
+): Promise<UploadEventOrganizerQrisResult> {
+  const session = await getEventOrganizerSession();
+  if (!session) {
+    return { ok: false, message: "Sesi EO berakhir, silakan login kembali." };
+  }
+
+  if (
+    !checkRateLimit(`upload-eo-qris:${session.organizerId}`, 10, 10 * 60_000)
+  ) {
+    return { ok: false, message: RATE_LIMIT_MESSAGE };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof Blob) || file.size === 0) {
+    return { ok: false, message: "Tidak ada file foto." };
+  }
+  if (file.size > MAX_QRIS_PHOTO_BYTES) {
+    return { ok: false, message: "Ukuran foto maksimal 3 MB." };
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const ext = detectImage(bytes);
+  if (!ext) {
+    return { ok: false, message: "Format foto harus JPG, PNG, atau WebP." };
+  }
+
+  const url = await saveQrisPhoto(bytes, ext);
+  await db.transaction(async (tx) => {
+    await tx
+      .update(eventOrganizers)
+      .set({ qrisPhotoUrl: url })
+      .where(eq(eventOrganizers.id, session.organizerId));
+    await tx
+      .update(merchants)
+      .set({ qrisPhotoUrl: url, paymentMode: "qris_pribadi" })
+      .where(eq(merchants.managedByOrganizerId, session.organizerId));
+  });
+
+  invalidateStallCatalogCache();
+  invalidatePublicEventCache();
+  return { ok: true, url };
 }

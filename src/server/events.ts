@@ -1,8 +1,19 @@
 "use server";
 
-import { and, asc, count, desc, eq, inArray, notInArray } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  notInArray,
+  or,
+} from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { getEventOrganizerSession } from "@/lib/auth/eo-session";
-import { getMerchantSession } from "@/lib/auth/session";
+import { createMerchantSession, getMerchantSession } from "@/lib/auth/session";
 import { db } from "@/lib/db/client";
 import {
   eventMerchants,
@@ -15,26 +26,35 @@ import {
 } from "@/lib/db/schema";
 import {
   invalidatePublicEventCache,
+  loadEventMerchants,
   loadPublicEvent,
 } from "@/lib/event/queries";
+import { summarizeEventSales } from "@/lib/event/sales-summary";
+import { generateUniqueMerchantSlug } from "@/lib/merchant/slug";
+import { PAID_ORDER_STATUSES } from "@/lib/utils/order-status";
+import { toSubstitutionView } from "@/lib/utils/order-substitution";
 import { buildEventQrPoster } from "@/lib/utils/qr-poster";
 import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
 import {
+  type CreateProxyStallInput,
+  createProxyStallSchema,
   type EventFieldsInput,
   eventFieldsSchema,
+  MAX_EVENT_MERCHANTS,
   type SetEventMerchantsInput,
   setEventMerchantsSchema,
   type UpdateEventInput,
   updateEventSchema,
 } from "@/lib/validation/event.schema";
-import { listAllApprovedMerchants } from "@/server/merchants";
 import type {
   CreateEventResult,
+  CreateProxyStallResult,
   EventActionResult,
   EventDetailView,
   EventListItem,
   EventMerchantOption,
   EventOrderView,
+  EventSalesSummary,
   MerchantEventInfo,
   PublicEventView,
 } from "@/types/event";
@@ -46,6 +66,8 @@ const SELECTABLE_MERCHANT_LIMIT = 500;
 
 const SESSION_EXPIRED = "Sesi EO berakhir, silakan login kembali.";
 const EVENT_NOT_FOUND = "Event tidak ditemukan.";
+const PROXY_QRIS_REQUIRED =
+  "Unggah QRIS uang jasa titipan dulu sebelum membuat Gerai Titipan.";
 
 async function generateUniqueEventSlug(name: string): Promise<string> {
   const base = slugify(name) || "event";
@@ -135,6 +157,7 @@ export async function getEventDetail(
       slug: merchants.slug,
       stallName: merchants.stallName,
       category: merchants.category,
+      managedByOrganizerId: merchants.managedByOrganizerId,
     })
     .from(eventMerchants)
     .innerJoin(merchants, eq(merchants.id, eventMerchants.merchantId))
@@ -153,7 +176,10 @@ export async function getEventDetail(
     isActive: event.isActive,
     url,
     qrImageUrl: await buildEventQrPoster(url, event.name),
-    merchants: members,
+    merchants: members.map(({ managedByOrganizerId, ...member }) => ({
+      ...member,
+      isProxy: managedByOrganizerId === session.organizerId,
+    })),
   };
 }
 
@@ -192,24 +218,159 @@ export async function updateEvent(
   return { ok: true };
 }
 
-/** Gerai `approved` yang bisa dipilih EO. */
+/** Syarat Gerai yang boleh dipilih EO: `approved`, dan kalau Gerai Titipan, harus miliknya sendiri. */
+function selectableBy(organizerId: string) {
+  return and(
+    eq(merchants.status, "approved"),
+    or(
+      isNull(merchants.managedByOrganizerId),
+      eq(merchants.managedByOrganizerId, organizerId),
+    ),
+  );
+}
+
+/** Gerai `approved` yang bisa dipilih EO, termasuk Gerai Titipan miliknya. */
 export async function listSelectableMerchants(): Promise<
   EventMerchantOption[]
 > {
   const session = await getEventOrganizerSession();
   if (!session) return [];
 
-  return db
+  const rows = await db
     .select({
       id: merchants.id,
       slug: merchants.slug,
       stallName: merchants.stallName,
       category: merchants.category,
+      managedByOrganizerId: merchants.managedByOrganizerId,
     })
     .from(merchants)
-    .where(eq(merchants.status, "approved"))
+    .where(selectableBy(session.organizerId))
     .orderBy(asc(merchants.stallName))
     .limit(SELECTABLE_MERCHANT_LIMIT);
+  return rows.map(({ managedByOrganizerId, ...row }) => ({
+    ...row,
+    isProxy: managedByOrganizerId !== null,
+  }));
+}
+
+/**
+ * Buat Gerai Titipan (jastip oleh EO): Lapak baru tanpa login sendiri yang
+ * langsung aktif, lalu ditambahkan ke akhir daftar Gerai event. Menu & Item
+ * diisi EO lewat "Kelola" (openProxyStallDashboard).
+ */
+export async function createProxyStall(
+  input: CreateProxyStallInput,
+): Promise<CreateProxyStallResult> {
+  const session = await getEventOrganizerSession();
+  if (!session) return { ok: false, message: SESSION_EXPIRED };
+
+  const parsed = createProxyStallSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Data tidak valid.",
+    };
+  }
+  const { eventId, stallName, category } = parsed.data;
+
+  const event = await findOwnEvent(eventId, session.organizerId);
+  if (!event) return { ok: false, message: EVENT_NOT_FOUND };
+
+  // Gerai Titipan wajib dibayar ke QRIS "uang jasa titipan" EO (2026-10-23).
+  const organizer = await db.query.eventOrganizers.findFirst({
+    where: eq(eventOrganizers.id, session.organizerId),
+    columns: { qrisPhotoUrl: true },
+  });
+  if (!organizer?.qrisPhotoUrl) {
+    return { ok: false, message: PROXY_QRIS_REQUIRED, needsQris: true };
+  }
+
+  const slug = await generateUniqueMerchantSlug(stallName);
+  const created = await db.transaction(async (tx) => {
+    // Baca ulang QRIS EO dengan kunci baris, supaya ganti QRIS yang berjalan
+    // bersamaan (uploadEventOrganizerQris) tidak meninggalkan Gerai baru
+    // dengan QRIS lama.
+    const [lockedOrganizer] = await tx
+      .select({ qrisPhotoUrl: eventOrganizers.qrisPhotoUrl })
+      .from(eventOrganizers)
+      .where(eq(eventOrganizers.id, session.organizerId))
+      .for("update");
+    const qrisPhotoUrl =
+      lockedOrganizer?.qrisPhotoUrl ?? organizer.qrisPhotoUrl;
+
+    const [{ memberCount }] = await tx
+      .select({ memberCount: count() })
+      .from(eventMerchants)
+      .where(eq(eventMerchants.eventId, eventId));
+    if (memberCount >= MAX_EVENT_MERCHANTS) return null;
+
+    const [merchant] = await tx
+      .insert(merchants)
+      .values({
+        slug,
+        stallName,
+        ownerName: session.organizationName,
+        category,
+        status: "approved",
+        paymentMode: "qris_pribadi",
+        qrisPhotoUrl,
+        managedByOrganizerId: session.organizerId,
+      })
+      .returning({
+        id: merchants.id,
+        slug: merchants.slug,
+        stallName: merchants.stallName,
+        category: merchants.category,
+      });
+    await tx
+      .insert(eventMerchants)
+      .values({ eventId, merchantId: merchant.id, sortOrder: memberCount });
+    return merchant;
+  });
+  if (!created) {
+    return {
+      ok: false,
+      message: `Maksimal ${MAX_EVENT_MERCHANTS} Gerai per event.`,
+    };
+  }
+
+  invalidatePublicEventCache();
+  return { ok: true, merchant: { ...created, isProxy: true } };
+}
+
+/**
+ * "Kelola" Gerai Titipan: buka dashboard Pedagang untuk Gerai itu. Hanya EO
+ * pengelolanya (dicek dari sesi EO di WHERE), dan hanya kalau Gerai masih
+ * aktif. Sesi Pedagang yang dibuat ikut gugur kalau EO dinonaktifkan Admin
+ * (lihat resolveMerchantSessionByToken).
+ */
+export async function openProxyStallDashboard(
+  merchantId: string,
+): Promise<EventActionResult> {
+  const session = await getEventOrganizerSession();
+  if (!session) return { ok: false, message: SESSION_EXPIRED };
+  if (!/^[0-9a-f-]{36}$/i.test(merchantId)) {
+    return { ok: false, message: "Gerai tidak ditemukan." };
+  }
+
+  const merchant = await db.query.merchants.findFirst({
+    where: and(
+      eq(merchants.id, merchantId),
+      eq(merchants.managedByOrganizerId, session.organizerId),
+      eq(merchants.status, "approved"),
+    ),
+    columns: { id: true },
+  });
+  if (!merchant) {
+    return {
+      ok: false,
+      message: "Gerai tidak ditemukan atau sedang dinonaktifkan Admin.",
+    };
+  }
+
+  await createMerchantSession(merchant.id);
+  redirect("/dashboard");
 }
 
 /** Ganti seluruh daftar Gerai event (urutan = urutan tampil ke Pembeli). */
@@ -238,7 +399,7 @@ export async function setEventMerchants(
       .where(
         and(
           inArray(merchants.id, merchantIds),
-          eq(merchants.status, "approved"),
+          selectableBy(session.organizerId),
         ),
       );
     if (approved.length !== merchantIds.length) {
@@ -309,6 +470,9 @@ export async function listEventOrders(
       orderId: orderItems.orderId,
       name: orderItems.productNameSnapshot,
       qty: orderItems.qty,
+      priceSnapshot: orderItems.priceSnapshot,
+      substitution: orderItems.substitution,
+      substituteName: orderItems.substituteName,
     })
     .from(orderItems)
     .where(
@@ -347,6 +511,7 @@ export async function listEventOrders(
       name: item.name,
       qty: item.qty,
       variants: variantsByItem.get(item.id) ?? [],
+      substitution: toSubstitutionView(item),
     });
     itemsByOrder.set(item.orderId, list);
   }
@@ -366,19 +531,15 @@ export async function getPublicEvent(
   const event = await loadPublicEvent(slug);
   if (!event) return null;
 
-  const allMerchants = event.isActive ? await listAllApprovedMerchants() : [];
-  const bySlug = new Map(allMerchants.map((m) => [m.slug, m]));
-
   return {
     slug: event.slug,
     name: event.name,
     description: event.description,
     location: event.location,
     isActive: event.isActive,
-    merchants: event.merchantSlugs.flatMap((merchantSlug) => {
-      const merchant = bySlug.get(merchantSlug);
-      return merchant ? [merchant] : [];
-    }),
+    merchants: event.isActive
+      ? await loadEventMerchants(event.slug, event.merchantSlugs)
+      : [],
   };
 }
 
@@ -399,4 +560,85 @@ export async function getMyMerchantEvents(): Promise<MerchantEventInfo[]> {
     .innerJoin(eventOrganizers, eq(eventOrganizers.id, events.organizerId))
     .where(eq(eventMerchants.merchantId, session.merchantId))
     .orderBy(desc(events.isActive), desc(events.createdAt));
+}
+
+/**
+ * Ringkasan penjualan event untuk EO pemilik: jumlah Pesanan per Gerai, plus
+ * omzet/modal/dikembalikan/keuntungan untuk Gerai Titipan miliknya sendiri.
+ * Gerai asli hanya jumlah Pesanan — omzetnya data Pedagang (keputusan User).
+ */
+export async function getEventSalesSummary(
+  eventId: string,
+): Promise<EventSalesSummary | null> {
+  const session = await getEventOrganizerSession();
+  if (!session) return null;
+  if (!/^[0-9a-f-]{36}$/i.test(eventId)) return null;
+
+  const event = await findOwnEvent(eventId, session.organizerId);
+  if (!event) return null;
+
+  const [members, paidOrders] = await Promise.all([
+    db
+      .select({
+        merchantId: merchants.id,
+        stallName: merchants.stallName,
+        managedByOrganizerId: merchants.managedByOrganizerId,
+      })
+      .from(eventMerchants)
+      .innerJoin(merchants, eq(merchants.id, eventMerchants.merchantId))
+      .where(eq(eventMerchants.eventId, event.id))
+      .orderBy(asc(eventMerchants.sortOrder)),
+    db
+      .select({
+        id: orders.id,
+        merchantId: orders.merchantId,
+        subtotal: orders.subtotal,
+        stallName: merchants.stallName,
+        managedByOrganizerId: merchants.managedByOrganizerId,
+      })
+      .from(orders)
+      .innerJoin(merchants, eq(merchants.id, orders.merchantId))
+      .where(
+        and(
+          eq(orders.eventId, event.id),
+          inArray(orders.status, [...PAID_ORDER_STATUSES]),
+        ),
+      ),
+  ]);
+
+  const isOwnProxy = (row: { managedByOrganizerId: string | null }) =>
+    row.managedByOrganizerId === session.organizerId;
+  const summaryOrders = paidOrders.map((order) => ({
+    id: order.id,
+    merchantId: order.merchantId,
+    stallName: order.stallName,
+    isProxy: isOwnProxy(order),
+    subtotal: order.subtotal,
+  }));
+  const proxyOrderIds = summaryOrders
+    .filter((order) => order.isProxy)
+    .map((order) => order.id);
+  const proxyItems =
+    proxyOrderIds.length === 0
+      ? []
+      : await db
+          .select({
+            orderId: orderItems.orderId,
+            priceSnapshot: orderItems.priceSnapshot,
+            costPriceSnapshot: orderItems.costPriceSnapshot,
+            qty: orderItems.qty,
+            substitution: orderItems.substitution,
+          })
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, proxyOrderIds));
+
+  return summarizeEventSales(
+    members.map((member) => ({
+      merchantId: member.merchantId,
+      stallName: member.stallName,
+      isProxy: isOwnProxy(member),
+    })),
+    summaryOrders,
+    proxyItems,
+  );
 }

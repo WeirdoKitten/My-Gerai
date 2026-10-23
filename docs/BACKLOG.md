@@ -551,6 +551,29 @@ Tindak lanjut — dikerjakan di branch `perf/optimasi` (2026-10-05, detail & ang
 - [x] Seed EO + event demo (`083333333333`, `/e/wisata-kuliner-bandung`). Unit `tests/unit/event.test.ts` (11 test, total 227/227). E2E `tests/e2e/eo-flow.spec.ts` (6 test: daftar → disetujui Admin → buat event + pilih Gerai → peserta pesan dari 2 Gerai di lebar HP, Diantar tidak muncul → EO lihat Pesanan, badge di dashboard Pedagang → nonaktifkan event); suite E2E 23/23. `tsc`/Biome/`build` lulus. Cek visual screenshot 390px. `/security-review`: tidak ada temuan.
 - [ ] Uji manual User.
 
+## Gerai Titipan (jastip oleh EO) + Ringkasan Penjualan Event (2026-10-21, branch `feat/gerai-titipan`)
+
+> Permintaan User: tidak semua toko di area event mau mendaftar di MyGerai, sehingga peserta yang ingin membeli di "Toko A" tidak terlayani. Solusi pilihan User: EO membuat **Gerai Titipan** berisi menu Toko A; peserta memesan dan membayar seperti biasa, lalu EO membelikan barangnya dan menyerahkannya. Keputusan User (AskUserQuestion 2026-10-21): uang masuk ke **EO** (Saldo → Pencairan seperti Pedagang); **Biaya Layanan tetap berlaku** dan EO **boleh markup**; barang habis diganti **otomatis** dengan barang serupa (seperti GrabMart) yang **seharga atau lebih mahal**, selisih ditanggung EO; kalau tidak ada barang serupa, EO **mengembalikan uang Item itu secara manual** saat serah terima (sistem hanya mencatat, tanpa refund otomatis); nama Gerai **persis nama toko aslinya** tanpa label titipan; Gerai Titipan **langsung aktif** dan **hanya tampil di halaman event**, Admin tetap bisa menonaktifkan; laporan EO untuk Gerai asli cukup **jumlah Pesanan**. Plan: `~/.claude/plans/synchronous-roaming-llama.md`.
+
+- [x] Data model: `merchants.managed_by_organizer_id`, `phone`/`password_hash` nullable + CHECK, `order_items.substitution`/`substitute_name`/`substituted_at` + migrasi `0022_proxy_stalls.sql`.
+- [x] Sesi: tombol "Kelola" di portal EO membuat sesi Pedagang untuk Gerai Titipan milik EO itu; sesi gugur kalau EO tidak lagi disetujui. Dashboard menyembunyikan QR Menu, Pembayaran, Pengantaran, dan Nomor HP (dijaga juga di server).
+- [x] Portal EO: buat Gerai Titipan dari halaman event, badge "Titipan", pilih hanya Gerai Titipan milik sendiri.
+- [x] Tampil hanya di event: tidak muncul di landing/`/gerai`, `/menu/<slug>` 404, `createOrder` menolak tanpa event. Info penggantian Item sebelum bayar.
+- [x] Penggantian Item: "Diganti dengan …" / "Tidak tersedia" per Item di antrean; tampil di status Pesanan Pembeli, struk, dan daftar Pesanan EO.
+- [x] Ringkasan penjualan event untuk EO: jumlah Pesanan per Gerai; omzet, modal, dikembalikan, dan keuntungan untuk Gerai Titipan.
+- [x] Admin: label "Gerai Titipan · <EO>", nonaktifkan/aktifkan lagi.
+- [x] Ground truth (PRD, DATA-MODEL, ADR, GLOSSARY, API-MOBILE, CHANGELOG), seed demo, unit + E2E, `/security-review` (tanpa temuan; saran penguatan "logout EO mencabut sesi Kelola" diterapkan).
+- [ ] Uji manual User.
+
+### Gerai Titipan wajib QRIS Pribadi EO + tagihan per EO (2026-10-23)
+
+> Permintaan User: uang Pembeli langsung masuk ke QRIS EO (dipakai langsung untuk belanja di toko asli), tanpa Midtrans dan Pencairan. Keputusan User (AskUserQuestion 2026-10-23): **wajib** untuk semua Gerai Titipan, satu QRIS per EO; aktif langsung tanpa cek Admin; diunggah **setelah login** (pengingat di portal + pop-up wajib saat pertama membuat Gerai Titipan); Biaya Layanan ditagih **mingguan per EO**, telat → semua Gerai Titipan EO terkunci. Plan: `~/.claude/plans/synchronous-roaming-llama.md`.
+
+- [x] Migrasi `0023`: `event_organizers.qris_photo_url`, CHECK Gerai Titipan selalu QRIS Pribadi, `service_fee_invoices.organizer_id`.
+- [x] Unggah/ganti QRIS EO di portal (disalin ke semua Gerai Titipan), pop-up wajib di "Buat Gerai Titipan".
+- [x] Tagihan Biaya Layanan per EO: cron, kunci Gerai Titipan, daftar tagihan di portal EO, tampilan Admin.
+- [x] Seed, unit + E2E, dokumen, `/security-review` (tanpa temuan; dua catatan kecil dirapikan).
+
 ## Fase 12 — Aplikasi Android Pedagang (2026-10-07, branch `feat/api-mobile` + repo [My-Gerai-Mobile](https://github.com/WeirdoKitten/My-Gerai-Mobile))
 
 > Permintaan User: aplikasi Android khusus Pedagang di Play Store, supaya Pedagang lebih percaya, notifikasi Pesanan tetap masuk saat HP terkunci, dan struk bisa dicetak ke printer Bluetooth. Claude mengusulkan PWA + TWA atau Capacitor sebagai alternatif yang lebih murah. User memilih **aplikasi native** (AskUserQuestion 2026-10-07): **React Native + Expo**, **repo terpisah**, cakupan v1 **setara dashboard web Pedagang**, dan **daftar + login di aplikasi**. Ground truth tetap di `docs/` repo ini; repo mobile hanya merujuk. Lihat ADR 2026-10-07 di [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md).

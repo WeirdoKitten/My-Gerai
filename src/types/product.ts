@@ -46,6 +46,11 @@ export type StallCatalogView = {
     /** Titik GPS Lapak, opsional — null = belum diisi. Dipakai tombol "Buka di Peta". */
     latitude: number | null;
     longitude: number | null;
+    /**
+     * Item yang habis diganti barang serupa (Gerai Titipan, 2026-10-21).
+     * Sengaja tidak menyebut "titipan" — nama Gerai tampil apa adanya.
+     */
+    substitutesSoldOutItems: boolean;
   };
   products: BuyerProductView[];
   /** Rating & Ulasan Gerai — ringkasan + ulasan terbaru (nama Pembeli disamarkan). */

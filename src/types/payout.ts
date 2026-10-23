@@ -1,6 +1,8 @@
 export type MerchantBalanceView = {
   merchantId: string;
   stallName: string;
+  /** Nama EO kalau ini Gerai Titipan — uangnya dicairkan ke EO, bukan ke toko asli. */
+  proxyOrganizerName: string | null;
   balance: number;
 };
 

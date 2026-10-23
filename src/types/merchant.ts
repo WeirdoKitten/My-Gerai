@@ -18,8 +18,10 @@ export type MerchantProfileView = {
   stallName: string;
   ownerName: string;
   category: string;
-  /** Read-only di form profil (mengubah nomor HP = urusan auth, terpisah). */
-  phone: string;
+  /** Read-only di form profil (mengubah nomor HP = urusan auth, terpisah). `null` untuk Gerai Titipan. */
+  phone: string | null;
+  /** Gerai Titipan yang dikelola EO (tanpa login sendiri). */
+  isProxyStall: boolean;
   /** null = belum ada foto sampul Lapak -> kartu Gerai publik tampil placeholder. */
   photoUrl: string | null;
   payoutAccountInfo: string | null;

@@ -7,6 +7,7 @@ import {
   StallRatingSummary,
   StallReviewList,
 } from "@/components/buyer/StallReviews";
+import { Alert } from "@/components/ui/Alert";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -31,7 +32,7 @@ export async function StallMenu({
   stallSlug: string;
   event?: { slug: string; name: string } | null;
 }) {
-  const result = await getStallCatalog(stallSlug);
+  const result = await getStallCatalog(stallSlug, { viaEvent: !!event });
 
   if (!result.ok && result.reason === "not_found") notFound();
   if (!result.ok) {
@@ -98,6 +99,14 @@ export async function StallMenu({
           Lacak Pesanan
         </Link>
       </p>
+
+      {catalog.merchant.substitutesSoldOutItems ? (
+        <Alert tone="info">
+          Kalau ada Item yang habis, kami ganti dengan barang serupa yang
+          seharga atau lebih mahal, tanpa biaya tambahan. Kalau tidak ada
+          penggantinya, uang Item itu dikembalikan saat serah terima.
+        </Alert>
+      ) : null}
 
       {!catalog.merchant.isOpen ? (
         <ClosedStallNotice

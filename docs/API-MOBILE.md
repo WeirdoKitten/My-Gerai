@@ -79,6 +79,8 @@ Tipe `data` merujuk ke tipe TypeScript di `src/types/` (sumber kebenaran bentuk 
 
 Struk: aplikasi menyusun baris dan byte ESC/POS sendiri dari `receipt`, **harus identik** dengan `buildReceiptLines`/`encodeEscPos` di `src/lib/utils/receipt.ts`.
 
+**Penggantian Item (2026-10-21, tambahan, tidak memutus kontrak):** setiap Item di `MerchantOrderListItem.items`, `MerchantOrderHistoryItem.items`, dan `OrderReceiptView.items` membawa field `substitution`: `null` (sesuai pesanan), `{ kind: "diganti", substituteName, refundAmount: null }`, atau `{ kind: "tidak_tersedia", substituteName: null, refundAmount }`. Nilainya hanya terisi untuk **Gerai Titipan** (dikelola EO lewat web, tanpa login aplikasi), jadi untuk Pedagang di aplikasi selalu `null`. Kalau terisi, struk menambah baris detail di bawah Item: `Diganti: <nama>` atau `Tidak tersedia, kembalikan <nominal>` (lihat `buildReceiptLines`).
+
 ### Item & Lapak
 
 | Metode & path | Body | `data` |

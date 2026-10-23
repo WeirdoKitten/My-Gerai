@@ -209,6 +209,8 @@ async function main() {
       phone: "083333333333",
       passwordHash,
       status: "approved",
+      // QRIS "uang jasa titipan" (contoh memakai gambar QRIS demo yang sama).
+      qrisPhotoUrl: await seedQrisPhoto("nasi-goreng-raja-rasa.jpg"),
     })
     .returning();
   const [demoEvent] = await db
@@ -222,9 +224,40 @@ async function main() {
         "Pesan oleh-oleh sambil di perjalanan. Ambil di Gerai masing-masing saat sesi oleh-oleh pukul 15.00.",
     })
     .returning();
+  // Gerai Titipan: toko yang belum terdaftar, dibelikan EO (tanpa login sendiri).
+  const [proxyStall] = await db
+    .insert(merchants)
+    .values({
+      slug: "toko-oleh-oleh-bu-ani",
+      stallName: "Toko Oleh-oleh Bu Ani",
+      ownerName: organizer.organizationName,
+      category: "Oleh-oleh",
+      status: "approved",
+      paymentMode: "qris_pribadi",
+      qrisPhotoUrl: organizer.qrisPhotoUrl,
+      managedByOrganizerId: organizer.id,
+    })
+    .returning();
+  await db.insert(products).values([
+    {
+      merchantId: proxyStall.id,
+      name: "Keripik Tempe Pedas 250 g",
+      price: 25000,
+      costPrice: 20000,
+      status: "available",
+    },
+    {
+      merchantId: proxyStall.id,
+      name: "Dodol Nanas",
+      price: 30000,
+      costPrice: 24000,
+      status: "available",
+    },
+  ]);
   await db.insert(eventMerchants).values([
     { eventId: demoEvent.id, merchantId: merchant.id, sortOrder: 0 },
     { eventId: demoEvent.id, merchantId: merchantRajaRasa.id, sortOrder: 1 },
+    { eventId: demoEvent.id, merchantId: proxyStall.id, sortOrder: 2 },
   ]);
 
   console.log("Selesai. Coba buka: http://localhost:3000/menu/bakso-pak-budi");
@@ -241,6 +274,9 @@ async function main() {
   console.log("Kredensial uji EO (login di /eo/login):");
   console.log(
     `  083333333333 / ${SEED_PASSWORD} -> Jelajah Nusantara Tour (event: /e/wisata-kuliner-bandung)`,
+  );
+  console.log(
+    "  Gerai Titipan contoh: Toko Oleh-oleh Bu Ani (Kelola dari halaman event di portal EO)",
   );
 }
 

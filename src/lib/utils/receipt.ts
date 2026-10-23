@@ -154,6 +154,14 @@ export function buildReceiptLines(
         (s) => `${s.groupNameSnapshot}: ${s.optionNameSnapshot}`,
       ),
       ...(item.note ? [`Catatan: ${item.note}`] : []),
+      ...(item.substitution?.kind === "diganti"
+        ? [`Diganti: ${item.substitution.substituteName}`]
+        : []),
+      ...(item.substitution?.kind === "tidak_tersedia"
+        ? [
+            `Tidak tersedia, kembalikan ${formatAmount(item.substitution.refundAmount)}`,
+          ]
+        : []),
     ];
     for (const detail of details) {
       plain(wrapText(ascii(detail), width - 3).map((line) => `   ${line}`));

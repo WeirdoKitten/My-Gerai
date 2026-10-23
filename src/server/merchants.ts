@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/admin-session";
 import { authenticateMerchant } from "@/lib/auth/merchant-login";
@@ -14,26 +14,26 @@ import { isMerchantOrderingLocked } from "@/lib/billing/service-fee";
 import { createTtlCache, productionTtl } from "@/lib/cache/memory";
 import { invalidateStallCatalogCache } from "@/lib/cache/stall-catalog";
 import { db } from "@/lib/db/client";
-import { merchantOperatingHours, merchants } from "@/lib/db/schema";
+import {
+  eventOrganizers,
+  merchantOperatingHours,
+  merchants,
+} from "@/lib/db/schema";
+import { invalidatePublicEventCache } from "@/lib/event/queries";
+import { loadPublicMerchants } from "@/lib/merchant/public-list";
+import { generateUniqueMerchantSlug } from "@/lib/merchant/slug";
 import {
   checkRateLimit,
   getClientIp,
   RATE_LIMIT_MESSAGE,
 } from "@/lib/rate-limit/limiter";
-import { fetchRatingSummaries } from "@/lib/review/queries";
-import {
-  evaluateSchedule,
-  type OperatingHoursRow,
-} from "@/lib/schedule/evaluate";
 import { getMerchantOpenState } from "@/lib/schedule/is-merchant-open";
 import {
   detectImage,
   saveMerchantPhoto,
   saveQrisPhoto,
 } from "@/lib/upload/storage";
-import { findNearestArea } from "@/lib/utils/geo";
 import { buildMenuQrPoster } from "@/lib/utils/qr-poster";
-import { randomSlugSuffix, slugify } from "@/lib/utils/slug";
 import {
   type ApproveMerchantInput,
   approveMerchantSchema,
@@ -43,7 +43,9 @@ import {
   registerMerchantSchema,
   rejectMerchantSchema,
   type SetMerchantPaymentModeInput,
+  type SetProxyStallActiveInput,
   setMerchantPaymentModeSchema,
+  setProxyStallActiveSchema,
   type UpdateMerchantDeliverySettingsInput,
   type UpdateMerchantProfileInput,
   updateMerchantDeliverySettingsSchema,
@@ -54,12 +56,12 @@ import {
   setOperatingHoursSchema,
 } from "@/lib/validation/merchant-hours.schema";
 import { getActivePlatformConfig } from "@/server/config";
-import { listServiceAreas } from "@/server/service-areas";
 import type {
   AdminMerchantView,
   ApproveMerchantResult,
   RejectMerchantResult,
   SetMerchantPaymentModeResult,
+  SetProxyStallActiveResult,
 } from "@/types/admin";
 import type {
   LoginMerchantResult,
@@ -79,25 +81,13 @@ import type {
 } from "@/types/merchant";
 
 const MAX_QRIS_PHOTO_BYTES = 3 * 1024 * 1024;
+const PROXY_STALL_UNSUPPORTED = "Fitur ini tidak tersedia untuk Gerai Titipan.";
 const MAX_MERCHANT_PHOTO_BYTES = 3 * 1024 * 1024;
 
 /** Batas jumlah Lapak ditampilkan di showcase landing page (skala kaki lima — KISS). */
 const PUBLIC_SHOWCASE_LIMIT = 12;
 /** Batas aman query direktori "Semua Gerai" (`/gerai`) — bukan pagination, cuma jaga-jaga (skala kaki lima). */
 const PUBLIC_DIRECTORY_LIMIT = 500;
-
-async function generateUniqueSlug(stallName: string): Promise<string> {
-  const base = slugify(stallName) || "lapak";
-
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const candidate = attempt === 0 ? base : `${base}-${randomSlugSuffix(4)}`;
-    const existing = await db.query.merchants.findFirst({
-      where: eq(merchants.slug, candidate),
-    });
-    if (!existing) return candidate;
-  }
-  return `${base}-${randomSlugSuffix(6)}`;
-}
 
 export async function registerMerchant(
   input: RegisterMerchantInput,
@@ -124,7 +114,7 @@ export async function registerMerchant(
   }
 
   const passwordHash = await hashPassword(password);
-  const slug = await generateUniqueSlug(stallName);
+  const slug = await generateUniqueMerchantSlug(stallName);
 
   await db.insert(merchants).values({
     slug,
@@ -154,8 +144,10 @@ export async function loginMerchant(
 }
 
 export async function logoutMerchant(): Promise<void> {
+  // Gerai Titipan dibuka dari portal EO, jadi keluar kembali ke sana.
+  const isProxyStall = !!(await getMerchantSession())?.proxyOrganizerId;
   await destroyMerchantSession();
-  redirect("/login");
+  redirect(isProxyStall ? "/eo" : "/login");
 }
 
 export async function getMerchantProfile(): Promise<MerchantProfileView | null> {
@@ -172,6 +164,7 @@ export async function getMerchantProfile(): Promise<MerchantProfileView | null> 
     ownerName: merchant.ownerName,
     category: merchant.category,
     phone: merchant.phone,
+    isProxyStall: merchant.managedByOrganizerId !== null,
     photoUrl: merchant.photoUrl,
     payoutAccountInfo: merchant.payoutAccountInfo,
     address: merchant.address,
@@ -246,6 +239,10 @@ export async function updateMerchantDeliverySettings(
   const session = await getMerchantSession();
   if (!session)
     return { ok: false, message: "Sesi berakhir, silakan login kembali." };
+
+  if (session.proxyOrganizerId) {
+    return { ok: false, message: PROXY_STALL_UNSUPPORTED };
+  }
 
   const parsed = updateMerchantDeliverySettingsSchema.safeParse(input);
   if (!parsed.success) {
@@ -447,6 +444,10 @@ export async function uploadQrisPhoto(
   if (!session)
     return { ok: false, message: "Sesi berakhir, silakan login kembali." };
 
+  if (session.proxyOrganizerId) {
+    return { ok: false, message: PROXY_STALL_UNSUPPORTED };
+  }
+
   if (!checkRateLimit(`upload-qris:${session.merchantId}`, 30, 10 * 60_000)) {
     return { ok: false, message: RATE_LIMIT_MESSAGE };
   }
@@ -476,7 +477,8 @@ export async function uploadQrisPhoto(
 
 export async function getMerchantQrMenu(): Promise<QrMenuView | null> {
   const session = await getMerchantSession();
-  if (!session) return null;
+  // Gerai Titipan tidak punya QR Menu sendiri: hanya bisa dipesan lewat QR Event.
+  if (!session || session.proxyOrganizerId) return null;
 
   const appUrl = process.env.APP_URL || "http://localhost:3000";
   const url = `${appUrl}/menu/${session.slug}`;
@@ -506,78 +508,17 @@ function queryApprovedMerchants(
   return approvedMerchantsCache.get(limit, () => loadApprovedMerchants(limit));
 }
 
-async function loadApprovedMerchants(
+/** Gerai Titipan (dikelola EO) tidak ikut daftar publik — hanya tampil di halaman event. */
+function loadApprovedMerchants(
   limit: number,
 ): Promise<PublicMerchantListItem[]> {
-  const [rows, areas] = await Promise.all([
-    db.query.merchants.findMany({
-      where: eq(merchants.status, "approved"),
-      orderBy: (row, { desc }) => [desc(row.createdAt)],
-      limit,
-    }),
-    listServiceAreas(),
-  ]);
-
-  const merchantIds = rows.map((row) => row.id);
-  const [hoursRows, ratingByMerchant] = await Promise.all([
-    merchantIds.length > 0
-      ? db.query.merchantOperatingHours.findMany({
-          where: inArray(merchantOperatingHours.merchantId, merchantIds),
-          columns: {
-            merchantId: true,
-            dayOfWeek: true,
-            openTime: true,
-            closeTime: true,
-          },
-        })
-      : [],
-    fetchRatingSummaries(merchantIds),
-  ]);
-  const hoursByMerchant = new Map<string, OperatingHoursRow[]>();
-  for (const hour of hoursRows) {
-    const list = hoursByMerchant.get(hour.merchantId) ?? [];
-    list.push(hour);
-    hoursByMerchant.set(hour.merchantId, list);
-  }
-
-  const now = new Date();
-
-  return rows.map((row) => {
-    const area =
-      row.latitude != null && row.longitude != null
-        ? findNearestArea(
-            { latitude: row.latitude, longitude: row.longitude },
-            areas,
-          )
-        : null;
-
-    // Sama seperti getMerchantOpenState (src/lib/schedule/is-merchant-open.ts),
-    // tapi dibatch di sini biar tidak query per-Lapak di daftar publik.
-    const { isOpenBySchedule, segmentStart } = evaluateSchedule(
-      hoursByMerchant.get(row.id) ?? [],
-      now,
-    );
-    const overrideActive =
-      !!row.manualOverride &&
-      !!row.manualOverrideSetAt &&
-      row.manualOverrideSetAt >= segmentStart;
-    const isOpen = overrideActive
-      ? row.manualOverride === "open"
-      : isOpenBySchedule;
-
-    return {
-      slug: row.slug,
-      stallName: row.stallName,
-      category: row.category,
-      photoUrl: row.photoUrl,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      areaId: area?.id ?? null,
-      areaName: area?.name ?? null,
-      isOpen,
-      rating: ratingByMerchant.get(row.id) ?? { average: null, count: 0 },
-    };
-  });
+  return loadPublicMerchants(
+    and(
+      eq(merchants.status, "approved"),
+      isNull(merchants.managedByOrganizerId),
+    ),
+    limit,
+  );
 }
 
 /** Showcase ringkas di landing page, dibatasi {@link PUBLIC_SHOWCASE_LIMIT}. */
@@ -599,23 +540,27 @@ export async function listMerchantsForAdmin(): Promise<AdminMerchantView[]> {
   const session = await getAdminSession();
   if (!session) return [];
 
-  const rows = await db.query.merchants.findMany({
-    orderBy: (row, { desc }) => [desc(row.createdAt)],
-  });
-
-  return rows.map((row) => ({
-    id: row.id,
-    slug: row.slug,
-    stallName: row.stallName,
-    ownerName: row.ownerName,
-    category: row.category,
-    phone: row.phone,
-    status: row.status,
-    rejectionReason: row.rejectionReason,
-    createdAt: row.createdAt,
-    paymentMode: row.paymentMode,
-    qrisPhotoUrl: row.qrisPhotoUrl,
-  }));
+  return db
+    .select({
+      id: merchants.id,
+      slug: merchants.slug,
+      stallName: merchants.stallName,
+      ownerName: merchants.ownerName,
+      category: merchants.category,
+      phone: merchants.phone,
+      status: merchants.status,
+      rejectionReason: merchants.rejectionReason,
+      createdAt: merchants.createdAt,
+      paymentMode: merchants.paymentMode,
+      qrisPhotoUrl: merchants.qrisPhotoUrl,
+      proxyOrganizerName: eventOrganizers.organizationName,
+    })
+    .from(merchants)
+    .leftJoin(
+      eventOrganizers,
+      eq(eventOrganizers.id, merchants.managedByOrganizerId),
+    )
+    .orderBy(desc(merchants.createdAt));
 }
 
 /**
@@ -643,6 +588,13 @@ export async function setMerchantPaymentMode(
   });
   if (!merchant) {
     return { ok: false, message: "Pedagang tidak ditemukan." };
+  }
+  if (merchant.managedByOrganizerId) {
+    return {
+      ok: false,
+      message:
+        "Gerai Titipan selalu dibayar ke QRIS EO dan tidak bisa diubah di sini.",
+    };
   }
   if (parsed.data.paymentMode === "qris_pribadi" && !merchant.qrisPhotoUrl) {
     return {
@@ -731,5 +683,62 @@ export async function rejectMerchant(
     };
   }
   invalidateStallCatalogCache();
+  return { ok: true };
+}
+
+/**
+ * Nonaktifkan/aktifkan lagi Gerai Titipan (Admin). Lapak biasa tidak lewat
+ * sini — alurnya tetap approve/reject. `suspended` langsung menutup katalog,
+ * checkout, dan sesi dashboard Gerai itu (semuanya mensyaratkan `approved`).
+ */
+export async function setProxyStallActive(
+  input: SetProxyStallActiveInput,
+): Promise<SetProxyStallActiveResult> {
+  const parsed = setProxyStallActiveSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: "Data tidak valid." };
+  }
+  const session = await getAdminSession();
+  if (!session) {
+    return {
+      ok: false,
+      message: "Sesi Admin berakhir, silakan login kembali.",
+    };
+  }
+
+  const merchant = await db.query.merchants.findFirst({
+    where: and(
+      eq(merchants.id, parsed.data.merchantId),
+      isNotNull(merchants.managedByOrganizerId),
+    ),
+    columns: { qrisPhotoUrl: true },
+  });
+  if (!merchant)
+    return { ok: false, message: "Gerai Titipan tidak ditemukan." };
+  // Gerai Titipan aktif wajib punya QRIS EO (CHECK merchants_proxy_qris).
+  if (parsed.data.active && !merchant.qrisPhotoUrl) {
+    return {
+      ok: false,
+      message: "EO belum mengunggah QRIS, Gerai belum bisa diaktifkan.",
+    };
+  }
+
+  const [updated] = await db
+    .update(merchants)
+    .set({ status: parsed.data.active ? "approved" : "suspended" })
+    .where(
+      and(
+        eq(merchants.id, parsed.data.merchantId),
+        isNotNull(merchants.managedByOrganizerId),
+        eq(merchants.status, parsed.data.active ? "suspended" : "approved"),
+      ),
+    )
+    .returning({ id: merchants.id });
+
+  if (!updated) {
+    return { ok: false, message: "Status Gerai Titipan sudah berubah." };
+  }
+  invalidateStallCatalogCache();
+  invalidatePublicEventCache();
   return { ok: true };
 }

@@ -2,13 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EventMerchantPicker } from "@/components/eo/EventMerchantPicker";
 import { EventOrderList } from "@/components/eo/EventOrderList";
+import { EventSalesSummaryCard } from "@/components/eo/EventSalesSummaryCard";
 import { EventSettingsForm } from "@/components/eo/EventSettingsForm";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { DownloadQrPosterButton } from "@/components/ui/DownloadQrPosterButton";
+import { getMyEventOrganizerQris } from "@/server/event-organizers";
 import {
   getEventDetail,
+  getEventSalesSummary,
   listEventOrders,
   listSelectableMerchants,
 } from "@/server/events";
@@ -17,12 +20,14 @@ export default async function EventDetailPage(
   props: PageProps<"/eo/event/[eventId]">,
 ) {
   const { eventId } = await props.params;
-  const [event, options, orders] = await Promise.all([
+  const [event, options, orders, salesSummary, qris] = await Promise.all([
     getEventDetail(eventId),
     listSelectableMerchants(),
     listEventOrders(eventId),
+    getEventSalesSummary(eventId),
+    getMyEventOrganizerQris(),
   ]);
-  if (!event || !orders) notFound();
+  if (!event || !orders || !salesSummary || !qris) notFound();
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,14 +79,21 @@ export default async function EventDetailPage(
         <div className="flex flex-col gap-0.5">
           <h2 className="font-semibold text-ink">Gerai di event ini</h2>
           <p className="text-sm text-ink-muted">
-            Peserta hanya bisa memesan dari Gerai yang sedang buka.
+            Peserta hanya bisa memesan dari Gerai yang sedang buka. Toko yang
+            belum terdaftar bisa kamu tambahkan sebagai Gerai Titipan.
           </p>
         </div>
         <EventMerchantPicker
           eventId={event.id}
           initialSelected={event.merchants}
           options={options}
+          hasQris={!!qris.qrisPhotoUrl}
         />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold text-ink">Ringkasan penjualan</h2>
+        <EventSalesSummaryCard summary={salesSummary} />
       </section>
 
       <section className="flex flex-col gap-3">

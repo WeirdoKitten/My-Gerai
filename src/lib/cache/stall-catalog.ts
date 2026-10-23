@@ -11,7 +11,12 @@ import type { StallCatalogView } from "@/types/product";
  */
 export type CachedStallCatalog = {
   merchantId: string;
-  merchant: Omit<StallCatalogView["merchant"], "isOpen" | "reopensAt">;
+  /** Gerai Titipan (dikelola EO) — hanya boleh dibuka lewat halaman event. */
+  isProxy: boolean;
+  merchant: Omit<
+    StallCatalogView["merchant"],
+    "isOpen" | "reopensAt" | "substitutesSoldOutItems"
+  >;
   products: StallCatalogView["products"];
   reviews: StallCatalogView["reviews"];
 };

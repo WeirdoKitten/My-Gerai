@@ -9,6 +9,7 @@ import type { AdminMerchantView } from "@/types/admin";
 import { MerchantApprovalRow } from "./MerchantApprovalRow";
 import { MerchantPaymentModeControl } from "./MerchantPaymentModeControl";
 import { MerchantStatusBadge } from "./MerchantStatusBadge";
+import { ProxyStallActiveControl } from "./ProxyStallActiveControl";
 
 export function MerchantApprovalList({
   initialMerchants,
@@ -64,7 +65,9 @@ export function MerchantApprovalList({
                       {merchant.stallName}
                     </p>
                     <p className="text-sm text-ink-muted">
-                      {merchant.phone}
+                      {merchant.proxyOrganizerName
+                        ? `Gerai Titipan · ${merchant.proxyOrganizerName}`
+                        : merchant.phone}
                       {merchant.status === "rejected" &&
                       merchant.rejectionReason
                         ? `: ${merchant.rejectionReason}`
@@ -73,7 +76,12 @@ export function MerchantApprovalList({
                   </div>
                   <MerchantStatusBadge status={merchant.status} />
                 </div>
-                {merchant.status === "approved" ? (
+                {merchant.proxyOrganizerName ? (
+                  <ProxyStallActiveControl
+                    merchant={merchant}
+                    onChanged={refresh}
+                  />
+                ) : merchant.status === "approved" ? (
                   <MerchantPaymentModeControl
                     merchant={merchant}
                     onChanged={refresh}

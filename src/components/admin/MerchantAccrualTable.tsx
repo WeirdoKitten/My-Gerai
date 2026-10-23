@@ -40,12 +40,12 @@ export function MerchantAccrualTable({
     <div className="flex flex-col gap-2">
       {accruals.map((row) => (
         <Card
-          key={row.merchantId}
+          key={row.ownerKey}
           pad="sm"
           className="flex items-center justify-between gap-3"
         >
           <div className="min-w-0">
-            <p className="truncate font-semibold text-ink">{row.stallName}</p>
+            <p className="truncate font-semibold text-ink">{row.ownerName}</p>
             <p className="text-sm text-ink-muted">
               Belum ditagih: {formatRupiah(row.unbilledAmount)}
             </p>
