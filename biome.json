@@ -13,7 +13,8 @@
       "!.next",
       "!dist",
       "!build",
-      "!drizzle/meta"
+      "!drizzle/meta",
+      "!tests/stress/results"
     ]
   },
   "formatter": {

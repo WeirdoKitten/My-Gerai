@@ -18,9 +18,7 @@ export function AmbientBlobs() {
             "radial-gradient(circle, var(--color-brand-tint) 0%, transparent 70%)",
         }}
         animate={
-          prefersReducedMotion
-            ? undefined
-            : { x: [0, 30, 0], y: [0, 20, 0] }
+          prefersReducedMotion ? undefined : { x: [0, 30, 0], y: [0, 20, 0] }
         }
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -31,9 +29,7 @@ export function AmbientBlobs() {
             "radial-gradient(circle, var(--color-brand-tint) 0%, transparent 70%)",
         }}
         animate={
-          prefersReducedMotion
-            ? undefined
-            : { x: [0, -25, 0], y: [0, -30, 0] }
+          prefersReducedMotion ? undefined : { x: [0, -25, 0], y: [0, -30, 0] }
         }
         transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
       />
