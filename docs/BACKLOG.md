@@ -608,6 +608,20 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [ ] Tahap 5: rilis Play Store (uji tertutup dulu).
 - [ ] **User:** akun Google Play Console (US$25 sekali bayar), project Firebase untuk FCM, halaman kebijakan privasi.
 
+## Pindah Server ke Beelink + CI/CD (2026-11-07, langsung di `main`)
+
+> Server Garuda tidak bisa diakses lagi. Data hanya dummy, jadi tidak dipulihkan. Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-11-07 dan [TEKNOLOGI.md §Deploy & CI/CD](TEKNOLOGI.md#deploy--cicd-2026-11-07).
+
+- [x] Dokploy di server Beelink: PostgreSQL 17 `mygerai-db`, aplikasi (Dockerfile, port 3000, volume `mygerai-uploads` di `/app/uploads`, domain `mygerai.myplaza.web.id` HTTPS off), route tunnel `myplaza-beelink`.
+- [x] Schedule `bill-service-fee` (cron `0 18 * * 0`, shell `sh`, `http://127.0.0.1:3000`). Run manual: `{"ok":true,...}`.
+- [x] Verifikasi dari luar: `/` 200, `http://` → 301 HTTPS, `/api/mobile/v1/meta` 200, `/api/mobile/v1/me` tanpa token 401, cron tanpa secret 401, foto upload tetap 200 setelah redeploy.
+- [x] `.github/workflows/ci-cd.yml`: job test (`biome check`, `vitest run`) + job deploy ke Dokploy (secret GitHub + service token Cloudflare Access). Run push dan manual hijau; deploy lewat CI terkirim (2xx).
+- [x] Biome bersih di checkout LF: format 3 file, `tests/stress/results` dikecualikan.
+- [x] Semua branch fitur di-merge ke `main` lalu dihapus (lokal dan remote).
+- [x] Teks "server Garuda" diperbarui (Dockerfile, `.env.example`, `docker-compose.dev.yml`, `seed.ts`, docs). `SEED_DEMO_PASSWORD` dicatat di `.env.example`.
+- [x] **User:** Autodeploy aplikasi `mygerai` di Dokploy dimatikan (deploy hanya lewat CI).
+- [ ] Opsional: buat akun Admin pribadi lewat `create-admin.mjs` (staging sekarang memakai Admin demo dengan password bawaan `password`).
+
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
 - [ ] Integrasi notifikasi pembayaran otomatis untuk QRIS pribadi via API merchant bank/e-wallet tertentu (mis. GoPay Merchant/DANA Bisnis) — ditolak utk Fase 7 (terlalu fragile/berisiko utk notification-scraping, dan API resmi butuh integrasi per-provider), didiskusikan lagi kalau User sudah putuskan provider mana yang mau didukung.

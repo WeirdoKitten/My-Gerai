@@ -38,7 +38,7 @@ Uji coba menambah 5 index database saja (tanpa mengubah kode) sudah menaikkan th
 
 **Batasan yang perlu diingat saat membaca angka:**
 
-- Pembangkit beban, server, dan Postgres berjalan di **satu laptop**. Server Node hanya memakai ±1,3 core dari 16, jadi persaingan CPU kecil, tetapi angka absolut di server Garuda bisa berbeda. **Rasio dan bottleneck-nya yang penting**, bukan angka mutlaknya.
+- Pembangkit beban, server, dan Postgres berjalan di **satu laptop**. Server Node hanya memakai ±1,3 core dari 16, jadi persaingan CPU kecil, tetapi angka absolut di server produksi (Beelink) bisa berbeda. **Rasio dan bottleneck-nya yang penting**, bukan angka mutlaknya.
 - Payment memakai Mock. Midtrans sungguhan menambah 1 panggilan jaringan keluar per Pesanan (latensi tambahan, bukan beban CPU).
 - Tanpa Cloudflare Tunnel. Error `ECONNREFUSED` di Windows terjadi saat antrean koneksi masuk (*listen backlog*) penuh. Di produksi, gejala yang sama kemungkinan muncul sebagai error 502/524 dari Cloudflare.
 
@@ -195,7 +195,7 @@ Bukti untuk setiap poin ada di §3. Lokasi kode mengacu ke kondisi `main` @ `13a
 
 **P2-8. Rate-limit per IP vs CGNAT (keputusan produk).** Batas 20 Pesanan/10 menit per IP bekerja sesuai rancangan. Namun operator seluler sering menempatkan banyak pelanggan di belakang satu IP publik (CGNAT). Di pasar yang ramai, Pembeli sah bisa ikut tertolak. Perlu dipantau di produksi sebelum diubah.
 
-**P2-9. Konfigurasi Postgres.** Uji memakai konfigurasi bawaan (`shared_buffers` 128 MB). Cek konfigurasi Postgres di server Garuda. Aktifkan `pg_stat_statements` agar query lambat di produksi terlihat.
+**P2-9. Konfigurasi Postgres.** Uji memakai konfigurasi bawaan (`shared_buffers` 128 MB). Cek konfigurasi Postgres di server produksi (Beelink). Aktifkan `pg_stat_statements` agar query lambat di produksi terlihat.
 
 ## 5. Eksperimen: Dampak Index Saja
 
@@ -213,7 +213,7 @@ Index adalah langkah pertama paling murah. Sisa bottleneck setelah index: render
 
 ## 6. Yang Belum Diuji
 
-- Server produksi Garuda + Cloudflare Tunnel (hardware, latensi, batas koneksi Cloudflare).
+- Server produksi (Beelink) + Cloudflare Tunnel (hardware, latensi, batas koneksi Cloudflare).
 - Midtrans sungguhan: latensi `createPayment`, lonjakan webhook, `getTransactionStatus` dari polling (dipanggil tiap poll untuk Pesanan berumur >10 dtk yang belum lunas — di produksi berarti **1 panggilan HTTP ke Midtrans per poll**, perlu diukur dan kemungkinan dibatasi).
 - Unggah & sajikan foto (`/uploads/...`).
 - Performa render di HP (sudah diaudit terpisah dengan Lighthouse, lihat [BACKLOG.md](BACKLOG.md) Fase 5).
@@ -321,5 +321,5 @@ Di atas ±2.500 Pembeli bersamaan, laptop uji kehabisan port lokal (`EADDRINUSE`
 - **Landing statis** — butuh `APP_URL` tersedia saat build (build arg Dokploy), karena QR pendaftaran dibuat dari `APP_URL`. Butuh keputusan User.
 - **Halaman menu** masih dirender penuh per request (±170 rps, batas CPU satu proses). Langkah berikutnya: full-route cache/ISR dengan revalidasi tag.
 - **Multi-instance** — melipatgandakan kapasitas CPU, tetapi rate-limiter & cache in-memory harus pindah ke store bersama (mis. Redis). Keputusan infra User.
-- **Produksi** — cek konfigurasi Postgres, aktifkan `pg_stat_statements`, ukur ulang di server Garuda dengan Midtrans & Cloudflare.
+- **Produksi** — cek konfigurasi Postgres, aktifkan `pg_stat_statements`, ukur ulang di server produksi (Beelink) dengan Midtrans & Cloudflare.
 

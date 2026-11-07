@@ -8,11 +8,11 @@
 |---|---|---|
 | Bahasa | **TypeScript** (strict mode) | Type-safety mengurangi bug, membantu Claude menulis kode benar sejak awal. |
 | Framework Full-stack | **Next.js (App Router)** | Satu framework untuk halaman Pembeli, dashboard Pedagang, dan panel Admin — tidak perlu backend terpisah. React Server Components membuat halaman Pembeli ringan (minim JS terkirim ke browser). |
-| Database | **PostgreSQL self-hosted** (server Garuda milik User) | Sesuai infrastruktur yang sudah dipakai & terbukti jalan untuk proyek lain User (MyPlaza) — konsisten satu pola ops, tanpa biaya cloud DB tambahan. Diakses **hanya** lewat kode server (Server Action/Route Handler), tidak pernah langsung dari browser. |
+| Database | **PostgreSQL self-hosted** (server Beelink milik User) | Sesuai infrastruktur yang sudah dipakai & terbukti jalan untuk proyek lain User (MyPlaza) — konsisten satu pola ops, tanpa biaya cloud DB tambahan. Diakses **hanya** lewat kode server (Server Action/Route Handler), tidak pernah langsung dari browser. |
 | ORM | **Drizzle ORM** | Lebih ringan & cepat dibanding Prisma (query SQL yang dihasilkan minim overhead), tetap type-safe. |
 | Realtime notifikasi Pedagang | **Polling** client-side tiap beberapa detik (Server Action dipanggil ulang) | Tanpa Supabase Realtime — untuk skala pedagang kaki lima, polling berkala sudah cukup terbukti (dipakai di halaman status Pesanan Pembeli & dashboard Pedagang sejak Fase 2-3). SSE/`LISTEN-NOTIFY` Postgres jadi opsi upgrade kalau nanti butuh update lebih instan, belum dibutuhkan sekarang. |
 | Autentikasi Pedagang/Admin | **Custom** — hash password `scrypt` bawaan Node + sesi DB-backed (tabel `sessions`) | Tanpa Supabase Auth, tanpa library baru. Lihat [§Autentikasi](#autentikasi) di bawah untuk detail final. |
-| Storage foto Item/Lapak | **Volume Docker persisten** di server Garuda (`UPLOADS_DIR`, default `/app/uploads`) | Diputuskan User 2026-09-08 (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR). Paling sederhana — tanpa akun/API/service baru. Disajikan lewat Route Handler `src/app/uploads/[...path]/route.ts` (path-sanitized). Foto di-resize di klien (`src/lib/upload/resize-image.ts`, tanpa `sharp`). Trade-off: container tidak lagi stateless (perlu named volume dimount di Dokploy), backup manual. Cloudflare R2 dipertimbangkan & ditolak untuk sekarang (kesederhanaan menang; bisa dipindah nanti kalau butuh multi-instance/CDN). |
+| Storage foto Item/Lapak | **Volume Docker persisten** di server Beelink (`UPLOADS_DIR`, default `/app/uploads`) | Diputuskan User 2026-09-08 (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR). Paling sederhana — tanpa akun/API/service baru. Disajikan lewat Route Handler `src/app/uploads/[...path]/route.ts` (path-sanitized). Foto di-resize di klien (`src/lib/upload/resize-image.ts`, tanpa `sharp`). Trade-off: container tidak lagi stateless (perlu named volume dimount di Dokploy), backup manual. Cloudflare R2 dipertimbangkan & ditolak untuk sekarang (kesederhanaan menang; bisa dipindah nanti kalau butuh multi-instance/CDN). |
 | Styling | **Tailwind CSS v4** (config via `@theme` di `globals.css`) | Utility-first, CSS hasil build kecil (hanya class yang dipakai). Token desain (warna/tipografi/radius/shadow) didefinisikan sekali di `@theme` — lihat [DESAIN-SISTEM.md](DESAIN-SISTEM.md). |
 | Font | **Plus Jakarta Sans** (via `next/font/google`) | Dibuat untuk konteks Indonesia, hangat & modern. Satu family (tanpa mono — angka pakai `tabular-nums`). |
 | Komponen UI dasar | **Primitif buatan sendiri** di `src/components/ui/` (Button, Input, Field, Card, Badge, Alert, dst) | Tanpa library UI/ikon eksternal (shadcn/Radix tidak jadi dipakai) — komponen proyek ini sederhana, sedikit, dan sepenuhnya dikontrol; ikon = inline SVG (`ui/icons.tsx`). Hindari beban bundle di halaman Pembeli. |
@@ -20,7 +20,7 @@
 | Payment Gateway (produksi, Fase 6) | **Midtrans** — Core API (`payment_type: "qris"`) untuk QRIS dinamis | Dipilih User (2026-09-08) menggantikan Tripay: satu ekosistem dengan **Iris** (disbursement) untuk Pencairan otomatis "Model B", sandbox lengkap, dokumentasi & SDK matang. Mendukung QRIS. Lihat [Payment Provider Abstraction](#payment-provider-abstraction) & [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08. **Catatan**: fitur split/marketplace Midtrans kemungkinan butuh badan usaha — Model B **tidak** memakainya (cukup akun standar), perlu diverifikasi User sebelum go-live. |
 | Disbursement (Pencairan otomatis, Fase 6) | **Midtrans Iris** (`/api/v1/payouts`) | Transfer **Saldo Pedagang** otomatis ke rekening/e-wallet tiap Lapak (batch harian). Diakses lewat abstraksi `DisbursementProvider` (mirror `PaymentProvider`). Biaya transfer per payout ditanggung Pedagang (dipotong dari Pencairan). |
 | Payment Gateway (dev/unit/E2E test) | **MockPaymentProvider** + **MockDisbursementProvider** (buatan sendiri) | Dipilih lewat env `PAYMENT_PROVIDER=mock` / `DISBURSEMENT_PROVIDER=mock`. Tombol "Simulasikan Pembayaran Berhasil" tetap ada untuk uji alur tanpa Midtrans. Lihat [Payment Provider Abstraction](#payment-provider-abstraction). |
-| Hosting app & database | **Server sendiri (Garuda)** via **Dokploy** + **Cloudflare Tunnel** | Sama seperti proyek User yang lain (MyPlaza) — pola ops yang sudah dikenal, tanpa akun cloud baru, tanpa biaya hosting tambahan. Cloudflare Tunnel menghindari perlu buka port publik/IP statis. Migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); deploy = set env var di Dokploy lalu klik Deploy. |
+| Hosting app & database | **Server sendiri (Beelink)** via **Dokploy** + **Cloudflare Tunnel** | Sama seperti proyek User yang lain (MyPlaza) — pola ops yang sudah dikenal, tanpa akun cloud baru, tanpa biaya hosting tambahan. Cloudflare Tunnel menghindari perlu buka port publik/IP statis. Migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); deploy otomatis lewat CI/CD GitHub Actions tiap push ke `main` (lihat [§Deploy & CI/CD](#deploy--cicd-2026-11-07)). |
 | Package manager | **pnpm** | Lebih hemat disk & lebih cepat install dibanding npm/yarn. |
 | Lint & Format | **Biome** | Satu tool cepat (berbasis Rust) untuk lint+format, menggantikan kombinasi ESLint+Prettier yang lebih berat & butuh konfigurasi ganda. |
 | Bundler skrip DB (build-time) | **esbuild** | Hanya dipakai di stage `builder` Dockerfile untuk mem-*bundle* `src/lib/db/{migrate,seed-demo,create-admin}.ts` jadi file `.mjs` mandiri (drizzle-orm + postgres di-inline) — supaya image runner minimal tidak perlu `drizzle-kit`/devDependencies. Sudah jadi dependency transitif (via Next/Tailwind), cuma dinaikkan jadi devDependency eksplisit. |
@@ -92,7 +92,9 @@ CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse
 **Scheduled Job tagihan Biaya Layanan (wajib di produksi, 2026-09-30).** Tanpa job ini tagihan QRIS pribadi tidak pernah terbit. Dokploy → aplikasi MyGerai → **Schedules**:
 
 - Cron `0 18 * * 0` (Minggu 18:00 UTC = **Senin 01:00 WIB**, ±1 jam setelah periode Senin 00:00 WIB tutup).
-- Perintah (di dalam container): `wget -qO- --post-data="" --header="Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/bill-service-fee`
+- Shell Type `sh` (image alpine tidak punya bash). Perintah (di dalam container): `wget -qO- --post-data="" --header="Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/bill-service-fee`
+- Tulis `$CRON_SECRET` apa adanya (dibaca dari env container, jangan ditempel nilainya). Pakai `127.0.0.1`, bukan `localhost`: di alpine `localhost` bisa mengarah ke `::1`, sedangkan Next.js hanya listen IPv4 → "Connection refused" (ditemukan 2026-11-07).
+- Hasil sukses: `{"ok":true,"invoicesCreated":…,"chargesCreated":…}`. `401 unauthorized` = `CRON_SECRET` kosong/beda.
 - Kalau job sempat terlewat, run berikutnya otomatis menagih periode yang bolong (tagihan susulan).
 
 `MIDTRANS_CLIENT_KEY` boleh terekspos ke klien (dipakai Snap.js kalau nanti perlu); **Server Key & Iris API Key TIDAK PERNAH** ke klien — hanya dipakai di Server Action/Route Handler.
@@ -101,7 +103,7 @@ CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse
 
 1. Daftar akun di `dashboard.sandbox.midtrans.com` (gratis, tanpa verifikasi bisnis untuk sandbox).
 2. **Settings → Access Keys**: salin `Server Key` + `Client Key` sandbox → isi `.env`.
-3. **Settings → Configuration → Payment Notification URL**: `https://<domain-tunnel>/api/webhooks/payment` (butuh URL publik — pakai Cloudflare Tunnel yang sudah ada, atau `cloudflared tunnel` sementara untuk dev).
+3. **Settings → Configuration → Payment Notification URL**: `https://<domain-tunnel>/api/webhooks/payment` (butuh URL publik — pakai Cloudflare Tunnel yang sudah ada, atau `cloudflared tunnel` sementara untuk dev). Satu akun Midtrans hanya punya **satu** Notification URL: akun sandbox yang dipakai MyPlaza sudah berisi URL MyPlaza, jadi MyGerai butuh akun sandbox sendiri (`https://mygerai.myplaza.web.id/api/webhooks/payment`) atau tetap `PAYMENT_PROVIDER=mock`. Tanpa webhook, Pesanan masih bisa lunas lewat cek status ke gateway selama halaman status Pembeli terbuka, tapi Tagihan Biaya Layanan sepenuhnya bergantung pada webhook.
 4. **Iris (menu terpisah di dashboard)**: aktifkan, buat/ambil `Creator` API key sandbox, set callback URL `https://<domain>/api/webhooks/payout`. Sandbox Iris memberi saldo virtual + daftar rekening dummy untuk uji payout.
 5. Uji bayar: buat Pesanan → buka `simulator.sandbox.midtrans.com` (QRIS) → tandai "Paid" → webhook masuk → status jadi `dibayar`.
 
@@ -154,14 +156,40 @@ Browser key dikirim lewat Server Action saat runtime (bukan `NEXT_PUBLIC_*` yang
 2. **APIs & Services → Library**: aktifkan **Maps JavaScript API** dan **Places API (New)**.
 3. **Credentials → Create API key** dua kali:
    - *Browser key*: Application restriction = **Websites** (`https://<domain-produksi>/*`, plus `http://localhost:3000/*` kalau mau uji lokal); API restriction = **Maps JavaScript API** saja.
-   - *Server key*: API restriction = **Places API (New)** saja (opsional: IP restriction ke IP keluar server Garuda).
+   - *Server key*: API restriction = **Places API (New)** saja (opsional: IP restriction ke IP keluar server Beelink).
 4. **Quotas** (per API): set batas harian, mis. ±300 request/hari per SKU (≈ 9.000/bulan), supaya tidak pernah melewati kuota gratis bulanan.
 5. Cek halaman harga Google Maps Platform yang berlaku saat setup (kuota gratis per SKU bisa berubah), sesuaikan `GOOGLE_MAPS_MONTHLY_LIMIT`.
 6. Isi env di Dokploy (`MAPS_PROVIDER=google` + kedua key), redeploy. Opsional: pasang *budget alert* di Billing.
 
+## Deploy & CI/CD (2026-11-07)
+
+Server: mini PC **Beelink** (Ubuntu Server 24.04, Dokploy v0.30), sama dengan MyPlaza. Cloudflare Tunnel `myplaza-beelink` meneruskan hostname ke `http://localhost:80` (Traefik bawaan Dokploy). Domain staging: `mygerai.myplaza.web.id`. Pindah dari server Garuda pada 2026-11-07, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-11-07.
+
+**Setup Dokploy (sekali):**
+
+- Database PostgreSQL 17 `mygerai-db`. Host di `DATABASE_URL` = *Internal Host* database, port 5432.
+- Application dari repo ini: branch `main`, Build Type **Dockerfile**, satu replica (lihat ADR 2026-09-07). Volume Mount `mygerai-uploads` → `/app/uploads`. Domain: container port `3000`, HTTPS **off** (TLS ditangani Cloudflare). **Autodeploy off**, deploy hanya lewat CI.
+- Repo harus masuk instalasi GitHub App Dokploy (GitHub → Settings → Applications → Installed GitHub Apps → Configure).
+- Env: ikuti `.env.example`. Schedule tagihan Biaya Layanan: lihat [§Environment variables (Fase 6)](#environment-variables-fase-6).
+- Route tunnel `mygerai.myplaza.web.id` → `http://localhost:80`. Aplikasi Access Cloudflare hanya melindungi `dokploy.myplaza.web.id`; jangan pakai pola wildcard `*.myplaza.web.id` karena halaman Pembeli ikut terkunci.
+- Akun Admin: Terminal container (shell `sh`) → `node /app/scripts/create-admin.mjs "<nama>" "<nomor HP>" "<password>"`. Login Admin mencocokkan nomor HP persis seperti saat dibuat.
+
+**CI/CD** ([.github/workflows/ci-cd.yml](../.github/workflows/ci-cd.yml), pola sama dengan MyPlaza):
+
+- Job **test** (push dan PR ke `main`): `pnpm install --frozen-lockfile`, `biome check`, `vitest run`. Playwright tidak dijalankan karena butuh Postgres dan server berjalan.
+- Job **deploy** (hanya push atau jalan manual di `main`, hanya di repo `WeirdoKitten/My-Gerai`, setelah test lulus): `POST {DOKPLOY_URL}/api/application.deploy` dengan header `x-api-key` dan service token Cloudflare Access (dashboard Dokploy ada di balik Access). Respons non-2xx, termasuk 302 dari Access, menggagalkan job.
+- GitHub Secrets (tab Secrets, bukan Variables): `DOKPLOY_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_APPLICATION_IDS` (ID aplikasi MyGerai; boleh beberapa, dipisah spasi), `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`. Kalau secret kosong, deploy dilewati dengan notice. API key Dokploy dan service token boleh sama dengan MyPlaza; aplikasi yang di-deploy ditentukan `DOKPLOY_APPLICATION_IDS` per repo.
+- CI menjalankan `biome check` di checkout LF. Di Windows (`core.autocrlf=true`) `biome check` lokal melaporkan error format untuk semua file CRLF; itu bukan error sungguhan, jadi jangan `--write` seluruh repo.
+
+**Troubleshooting:**
+
+- Aplikasi tidak bisa konek DB (`ENOTFOUND` / "could not translate host name") padahal kedua container ada di `dokploy-network`: DNS Docker Swarm gagal mendaftarkan service DB. Perbaikan: `sudo docker service update --force <service-db>`, lalu redeploy.
+- Perintah di dalam container memanggil aplikasi lewat `http://127.0.0.1:3000`, bukan `localhost` (lihat Schedule di atas).
+- Server hang atau reboot sendiri: BIOS Beelink (T202) diketahui bermasalah dengan Linux. Itu bukan bug aplikasi.
+
 ## Batasan Biaya (estimasi, untuk kesadaran User)
 
-- Hosting app & database: **tanpa biaya tambahan** — pakai server Garuda yang sudah ada, sama seperti proyek User lainnya (MyPlaza).
+- Hosting app & database: **tanpa biaya tambahan** — pakai server Beelink yang sudah ada, sama seperti proyek User lainnya (MyPlaza).
 - Midtrans: tidak ada biaya bulanan. **MDR QRIS** per transaksi sukses (~0,7% umum, bisa 0% untuk transaksi kecil skema "QRIS bebas biaya" UMI — tergantung klasifikasi akun, cek ke Midtrans) — **ditagih ke akun Aplikator**, dan **ditanggung Aplikator** (dipotong dari margin Biaya Layanan; **tidak boleh** dibebankan ke Pembeli — [PBI 23/6/PBI/2021 Ps. 52](https://peraturan.bpk.go.id/Details/207042/peraturan-bi-no-236pbi2021)). **Iris** (disbursement): biaya per transfer (~Rp2.500–5.000 bank; lebih murah/gratis e-wallet) — **ditanggung Pedagang** (dipotong dari tiap Pencairan). Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08.
 - Google Maps Platform (opsional, 2026-10-06): **Rp0 selama di bawah kuota gratis bulanan** per SKU — dijaga quota cap harian + `GOOGLE_MAPS_MONTHLY_LIMIT` (lihat [§Peta & Pencarian Alamat](#peta--pencarian-alamat-2026-10-06)). Tanpa key = OSM gratis.
 - Storage foto (kalau nanti pilih Cloudflare R2): tier gratis R2 cukup besar (10GB/bulan) untuk skala awal.

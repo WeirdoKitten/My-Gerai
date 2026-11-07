@@ -2,6 +2,19 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-11-07 — Pindah server ke Beelink + CI/CD GitHub Actions
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (gambaran umum, diagram, ADR 2026-11-07), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (§Deploy & CI/CD baru, Schedule tagihan, setup Midtrans), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/STRESS-TEST.md](docs/STRESS-TEST.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CLAUDE.md](CLAUDE.md). Kode: `.github/workflows/ci-cd.yml` (baru), `biome.json`, `.env.example`, komentar `Dockerfile`/`docker-compose.dev.yml`/`src/lib/db/seed.ts`.
+**Alasan:** Server Garuda tidak bisa diakses lagi (database dan foto ikut hilang, isinya hanya data dummy). User memindahkan MyGerai ke server pribadi Beelink yang sudah menjalankan MyPlaza, sekalian memakai pola CI/CD yang sama.
+**Ringkasan:**
+- Staging dibuat ulang dari nol di server Beelink (Dokploy v0.30): PostgreSQL 17 `mygerai-db`, volume `mygerai-uploads`, domain `mygerai.myplaza.web.id` lewat tunnel `myplaza-beelink`. Arsitektur tidak berubah.
+- CI/CD: job test (`biome check`, `vitest run`) lalu job deploy ke API Dokploy dengan service token Cloudflare Access, hanya untuk push ke `main`. Autodeploy Dokploy dimatikan.
+- Supaya CI hijau di checkout LF: tiga file diformat ulang dan `tests/stress/results` (output generator) dikecualikan dari Biome.
+- Temuan saat setup, dicatat di TEKNOLOGI.md: perintah Schedule harus memanggil `http://127.0.0.1:3000` (di alpine `localhost` bisa ke `::1`, Next.js hanya listen IPv4); DNS Docker Swarm kadang gagal mendaftarkan service DB (`docker service update --force`); satu akun Midtrans hanya punya satu Notification URL, jadi MyGerai butuh akun sandbox sendiri.
+- `SEED_DEMO_PASSWORD` dicatat di `.env.example`. Variabel ini sudah dipakai `seed-demo.ts` tapi belum terdokumentasi, sehingga staging sempat dibuat dengan password demo bawaan `password` (diterima User karena hanya staging).
+- Semua branch fitur di-merge ke `main` (Gerai Titipan fast-forward) lalu dihapus, lokal dan remote.
+- Verifikasi: run CI push dan manual hijau (deploy manual terkirim 2xx); dari luar `/` 200, `/api/mobile/v1/meta` 200, `/api/mobile/v1/me` tanpa token 401, cron tanpa secret 401, Schedule `{"ok":true}`, foto upload tetap 200 setelah deploy ulang.
+
 ## 2026-10-23 — Gerai Titipan wajib QRIS Pribadi EO + tagihan Biaya Layanan per EO
 
 **Dampak:** [docs/PRD.md](docs/PRD.md) (§4, §6.4, §7), [docs/DATA-MODEL.md](docs/DATA-MODEL.md) (ERD, `merchants`, `event_organizers`, `service_fee_invoices`), [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (ADR 2026-10-23), [docs/GLOSSARY.md](docs/GLOSSARY.md) (EO, Gerai Titipan), [docs/BACKLOG.md](docs/BACKLOG.md), [CLAUDE.md](CLAUDE.md). Migrasi `0023_proxy_stall_qris.sql`. Kode: `src/server/{event-organizers,events,merchants,service-fee-invoices}.ts`, `src/lib/billing/{service-fee,owner}.ts`, komponen baru `src/components/eo/EventOrganizerQrisUploader.tsx`, halaman `/eo`.

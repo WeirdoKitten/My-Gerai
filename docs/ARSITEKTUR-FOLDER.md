@@ -109,8 +109,9 @@
 │   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan), receipt.ts (susun + encode ESC/POS struk 58mm, 2026-09-25), phone.ts (normalisasi HP Indonesia ke 62..., Fase 11)
 │   └── types/                                 # Tipe TypeScript bersama — + service-fee-invoice.ts (Fase 7)
 ├── drizzle/                                   # File migrasi database
+├── .github/workflows/ci-cd.yml                # CI/CD (2026-11-07): biome check + vitest, lalu deploy ke Dokploy saat push ke main — lihat docs/TEKNOLOGI.md §Deploy & CI/CD
 ├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi
-├── Dockerfile                                 # Image produksi untuk deploy via Dokploy (server Garuda)
+├── Dockerfile                                 # Image produksi untuk deploy via Dokploy (server Beelink)
 ├── docker-entrypoint.sh                       # ENTRYPOINT image: migrasi (+ seed demo bila SEED_DEMO=true) lalu start server
 ├── .dockerignore
 ├── .gitattributes                             # Paksa *.sh = LF supaya entrypoint jalan di Linux (alpine)
@@ -119,7 +120,7 @@
 ├── tests/
 │   ├── unit/                                  # order-calc, order-status, money, datetime, report-insights, report-period, billing-period (Fase 7) — Vitest, `pnpm test`
 │   ├── e2e/                                   # order-flow (checkout+alur Pedagang), rate-limit, qris-pribadi (Fase 7, + fixtures/qris.png), global-setup.ts — Playwright, `pnpm test:e2e`
-│   └── stress/                                # Stress/load test manual (2026-10-05): seed.mjs, run.mjs, compare.mjs, lib.mjs, results/ — lihat docs/STRESS-TEST.md. Bukan bagian `pnpm test`
+│   └── stress/                                # Stress/load test manual (2026-10-05): seed.mjs, run.mjs, compare.mjs, lib.mjs, results/ (dikecualikan dari Biome) — lihat docs/STRESS-TEST.md. Bukan bagian `pnpm test`
 └── public/
     └── img/menu/                              # Foto demo Item (dipakai seeder) — bakso, mie-ayam, es-teh, nasi-goreng, pangsit
 ```

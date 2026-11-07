@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Dipakai Dokploy untuk build & deploy image produksi di server Garuda.
+# Dipakai Dokploy untuk build & deploy image produksi di server Beelink.
 # Untuk development lokal, pakai `pnpm dev` + docker-compose.dev.yml (Postgres saja).
 
 FROM node:24-alpine AS base

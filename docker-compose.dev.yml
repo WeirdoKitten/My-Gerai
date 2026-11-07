@@ -1,5 +1,5 @@
 # HANYA untuk development lokal (menjalankan & menguji kode di komputer developer).
-# Produksi TETAP self-hosted di server Garuda via Dokploy + Cloudflare Tunnel
+# Produksi TETAP self-hosted di server Beelink via Dokploy + Cloudflare Tunnel
 # (lihat docs/ARSITEKTUR-SISTEM.md ADR 2026-09-05) — file ini tidak dipakai di sana.
 
 services:

@@ -34,7 +34,7 @@ if (
   throw new Error(
     "Seed script hanya boleh dijalankan ke database lokal (localhost/127.0.0.1). " +
       "DATABASE_URL saat ini tidak cocok — dibatalkan demi keamanan (mencegah TRUNCATE " +
-      "tidak sengaja mengenai database produksi di server Garuda nanti).",
+      "tidak sengaja mengenai database server/produksi).",
   );
 }
 
