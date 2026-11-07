@@ -1,0 +1,98 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Satu deploy produksi dalam satu waktu; push yang lebih baru membatalkan antrean lama.
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    # Hanya jalan di repo deployment, bukan di fork/salinan repo ini.
+    if: github.repository == 'WeirdoKitten/My-Gerai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Versi Node sama dengan image produksi (Dockerfile: node:24-alpine).
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # pnpm lewat corepack, versinya dari field "packageManager" di package.json
+      # (sama seperti Dockerfile).
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Locate pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint & format (Biome)
+        run: pnpm exec biome check
+
+      # Hanya unit test (tests/unit, tanpa database). Playwright sengaja tidak
+      # dijalankan di CI karena butuh Postgres + server berjalan.
+      - name: Unit test (Vitest)
+        run: pnpm exec vitest run
+
+  deploy:
+    name: Deploy to Dokploy
+    needs: test
+    if: github.repository == 'WeirdoKitten/My-Gerai' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger Dokploy deployments
+        env:
+          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_APPLICATION_IDS: ${{ secrets.DOKPLOY_APPLICATION_IDS }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          if [ -z "$DOKPLOY_URL" ] || [ -z "$DOKPLOY_API_KEY" ] || [ -z "$DOKPLOY_APPLICATION_IDS" ]; then
+            echo "::notice::Secret Dokploy belum di-set, deploy dilewati."
+            exit 0
+          fi
+
+          # DOKPLOY_APPLICATION_IDS boleh berisi beberapa ID dipisah spasi.
+          for application_id in $DOKPLOY_APPLICATION_IDS; do
+            echo "Deploying application ${application_id}"
+            # Penolakan Cloudflare Access berupa redirect 302 ke halaman login,
+            # yang tidak dianggap error oleh curl, jadi status dicek manual.
+            status=$(curl --silent --show-error --max-time 60 \
+              -o response.txt -w "%{http_code}" \
+              -X POST "${DOKPLOY_URL%/}/api/application.deploy" \
+              -H "Content-Type: application/json" \
+              -H "x-api-key: ${DOKPLOY_API_KEY}" \
+              -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
+              -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
+              -d "{\"applicationId\":\"${application_id}\"}")
+            echo "HTTP ${status}: $(head -c 300 response.txt)"
+            if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
+              echo "::error::Deploy ${application_id} gagal dengan HTTP ${status}"
+              exit 1
+            fi
+          done
