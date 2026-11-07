@@ -12,12 +12,14 @@ concurrency:
   group: ci-cd-${{ github.ref }}
   cancel-in-progress: true
 
+# Runner dikunci ke ubuntu-24.04 (bukan ubuntu-latest) supaya migrasi otomatis
+# GitHub ke Ubuntu 26 tidak mengubah lingkungan CI tanpa disadari.
 jobs:
   test:
     name: Test
     # Hanya jalan di repo deployment, bukan di fork/salinan repo ini.
     if: github.repository == 'WeirdoKitten/My-Gerai'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
@@ -60,7 +62,7 @@ jobs:
     name: Deploy to Dokploy
     needs: test
     if: github.repository == 'WeirdoKitten/My-Gerai' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:
