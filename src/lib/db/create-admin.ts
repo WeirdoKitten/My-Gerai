@@ -7,7 +7,7 @@ import { admins } from "./schema";
  * lihat docs/TEKNOLOGI.md §Autentikasi: akun Admin sengaja tidak punya UI
  * self-service.
  *
- * Di server: buka Terminal container aplikasi di Dokploy, lalu:
+ * Di server: `docker compose -p mygerai exec web` lalu:
  *   node scripts/create-admin.mjs "Nama Admin" "081234567890" "PasswordKuat"
  *
  * Di lokal: `pnpm admin:create -- "Nama Admin" "0812..." "PasswordKuat"`

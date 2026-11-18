@@ -3,7 +3,7 @@ import { runWeeklyServiceFeeBilling } from "@/lib/billing/service-fee";
 
 /**
  * Job tagihan mingguan Biaya Layanan Lapak `qris_pribadi` — dipanggil
- * Scheduled Job Dokploy (mingguan), bukan worker/proses terpisah (konsisten
+ * service `cron` di deploy/compose.yml (mingguan), bukan worker/proses terpisah (konsisten
  * dengan asumsi single-instance yang sama dipakai migrasi otomatis &
  * rate-limiter in-memory). Lihat docs/ARSITEKTUR-SISTEM.md.
  */

@@ -2,6 +2,19 @@
 
 > Riwayat perubahan pada dokumen ground truth (`docs/*`, `CLAUDE.md`) dan fitur besar aplikasi. Format entri: lihat [docs/DOKUMENTASI.md](docs/DOKUMENTASI.md#format-entri-changelogmd). Entri terbaru di paling atas.
 
+## 2026-11-19 — Docker Compose tanpa Dokploy + self-hosted runner
+
+**Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (diagram, alur tagihan, ADR 2026-11-19, ADR 2026-11-07 ditandai digantikan sebagian), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (hosting, job tagihan, setup Midtrans, §Deploy & CI/CD ditulis ulang), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/STRESS-TEST.md](docs/STRESS-TEST.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CLAUDE.md](CLAUDE.md). Kode: `deploy/` (baru: `compose.yml`, `cron/`, `backup/`), `.github/workflows/ci-cd.yml`, `.dockerignore`, komentar `Dockerfile`/`docker-entrypoint.sh`/`docker-compose.dev.yml`/`.env.example`/`src/app/api/cron/bill-service-fee/route.ts`.
+**Alasan:** Server Beelink di-install ulang dengan Windows 11 Pro (dipakai juga untuk development dan gaming), dan User memutuskan melepas Dokploy. MyPlaza sudah pindah ke pola yang sama pada hari yang sama. Keputusan User (AskUserQuestion 2026-11-19): Midtrans dengan akun sandbox baru khusus MyGerai, data demo tetap aktif dengan password `password`, peta OSM, push `log`.
+**Ringkasan:**
+- Semua service didefinisikan di `deploy/compose.yml` (project `mygerai`, terpisah dari MyPlaza): `db` (PostgreSQL 17), `web`, `cron`, `cloudflared`, `backup`. Tidak ada port yang dibuka ke host.
+- Scheduled Job Dokploy diganti service `cron` (`deploy/cron/cron.sh`) yang memanggil `POST /api/cron/bill-service-fee` tiap Minggu 18:00 UTC. Run manual: `docker compose -p mygerai exec cron mygerai-cron once`.
+- Backup baru: `pg_dump -Fc` harian 02:00 WIB ke `C:\mygerai\backups`, simpan 7 hari, file lama dihapus hanya setelah dump berhasil.
+- Tunnel Cloudflare sendiri `mygerai-beelink` → `http://web:3000`. Tunnel MyPlaza tidak bisa dipakai bersama (service project lain tidak terjangkau lewat nama, dan dua connector di satu tunnel saling menerima request).
+- Secret di `C:\mygerai\` (`compose.env` untuk interpolasi, `app.env` untuk runtime) di luar build context. `DATABASE_URL`, `CRON_SECRET`, dan `UPLOADS_DIR` di-set compose.
+- Job deploy CI berjalan di self-hosted runner Windows (label `mygerai`): `docker compose up -d --build --remove-orphans --wait`, prune image, health check lewat Cloudflare. Langkah PowerShell 5.1 menangani stderr docker dan `$LASTEXITCODE` secara eksplisit. Deploy di `main` tidak lagi dibatalkan push baru. GitHub Secrets Dokploy tidak dipakai lagi.
+- Verifikasi di laptop: `docker compose config` lolos; `cron.sh` diuji dengan busybox (POST + Bearer terkirim, gagal koneksi exit 1, jadwal berikutnya tepat 332959 detik dari Rabu 21:30:41 UTC); backup diuji dump + retensi. Deploy pertama dan uji di server menyusul (lihat BACKLOG).
+
 ## 2026-11-07 — Pindah server ke Beelink + CI/CD GitHub Actions
 
 **Dampak:** [docs/ARSITEKTUR-SISTEM.md](docs/ARSITEKTUR-SISTEM.md) (gambaran umum, diagram, ADR 2026-11-07), [docs/TEKNOLOGI.md](docs/TEKNOLOGI.md) (§Deploy & CI/CD baru, Schedule tagihan, setup Midtrans), [docs/ARSITEKTUR-FOLDER.md](docs/ARSITEKTUR-FOLDER.md), [docs/DATA-MODEL.md](docs/DATA-MODEL.md), [docs/STRESS-TEST.md](docs/STRESS-TEST.md), [docs/BACKLOG.md](docs/BACKLOG.md), [CLAUDE.md](CLAUDE.md). Kode: `.github/workflows/ci-cd.yml` (baru), `biome.json`, `.env.example`, komentar `Dockerfile`/`docker-compose.dev.yml`/`src/lib/db/seed.ts`.

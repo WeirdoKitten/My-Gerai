@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Dipakai Dokploy untuk build & deploy image produksi di server Beelink.
+# Image server di mini PC Beelink, di-build oleh Docker Compose (deploy/compose.yml) lewat CI.
 # Untuk development lokal, pakai `pnpm dev` + docker-compose.dev.yml (Postgres saja).
 
 FROM node:24-alpine AS base
@@ -18,7 +18,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # DATABASE_URL cuma perlu placeholder valid saat build — Next.js meng-import
 # src/lib/db/client.ts saat "collecting page data", tapi tidak benar-benar
-# connect ke DB. DATABASE_URL asli di-set di runtime lewat env var Dokploy.
+# connect ke DB. DATABASE_URL asli di-set di runtime oleh deploy/compose.yml.
 ENV DATABASE_URL="postgresql://user:pass@localhost:5432/placeholder"
 RUN pnpm build
 
@@ -46,7 +46,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Direktori upload foto Item. Dimount sebagai named volume di Dokploy — volume
+# Direktori upload foto Item. Dimount sebagai named volume (deploy/compose.yml) — volume
 # kosong mewarisi ownership `nextjs:nodejs` dari sini saat pertama kali dipakai.
 ENV UPLOADS_DIR=/app/uploads
 RUN mkdir -p /app/uploads/products && chown -R nextjs:nodejs /app/uploads

@@ -51,7 +51,7 @@ export function checkRateLimit(
 }
 
 /**
- * IP klien di produksi (Cloudflare Tunnel + Dokploy, lihat
+ * IP klien di produksi (Cloudflare Tunnel + Docker Compose, lihat
  * docs/ARSITEKTUR-SISTEM.md). Prioritas `cf-connecting-ip` — header ini
  * SELALU ditimpa Cloudflare di edge dengan IP asli, tidak bisa dipalsukan
  * klien (beda dengan `x-forwarded-for`, yang di-APPEND bukan diganti, jadi

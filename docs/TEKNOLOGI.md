@@ -12,7 +12,7 @@
 | ORM | **Drizzle ORM** | Lebih ringan & cepat dibanding Prisma (query SQL yang dihasilkan minim overhead), tetap type-safe. |
 | Realtime notifikasi Pedagang | **Polling** client-side tiap beberapa detik (Server Action dipanggil ulang) | Tanpa Supabase Realtime — untuk skala pedagang kaki lima, polling berkala sudah cukup terbukti (dipakai di halaman status Pesanan Pembeli & dashboard Pedagang sejak Fase 2-3). SSE/`LISTEN-NOTIFY` Postgres jadi opsi upgrade kalau nanti butuh update lebih instan, belum dibutuhkan sekarang. |
 | Autentikasi Pedagang/Admin | **Custom** — hash password `scrypt` bawaan Node + sesi DB-backed (tabel `sessions`) | Tanpa Supabase Auth, tanpa library baru. Lihat [§Autentikasi](#autentikasi) di bawah untuk detail final. |
-| Storage foto Item/Lapak | **Volume Docker persisten** di server Beelink (`UPLOADS_DIR`, default `/app/uploads`) | Diputuskan User 2026-09-08 (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR). Paling sederhana — tanpa akun/API/service baru. Disajikan lewat Route Handler `src/app/uploads/[...path]/route.ts` (path-sanitized). Foto di-resize di klien (`src/lib/upload/resize-image.ts`, tanpa `sharp`). Trade-off: container tidak lagi stateless (perlu named volume dimount di Dokploy), backup manual. Cloudflare R2 dipertimbangkan & ditolak untuk sekarang (kesederhanaan menang; bisa dipindah nanti kalau butuh multi-instance/CDN). |
+| Storage foto Item/Lapak | **Volume Docker persisten** di server Beelink (`UPLOADS_DIR`, default `/app/uploads`) | Diputuskan User 2026-09-08 (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR). Paling sederhana — tanpa akun/API/service baru. Disajikan lewat Route Handler `src/app/uploads/[...path]/route.ts` (path-sanitized). Foto di-resize di klien (`src/lib/upload/resize-image.ts`, tanpa `sharp`). Trade-off: container tidak lagi stateless (perlu named volume, sejak 2026-11-19 di `deploy/compose.yml`), backup belum termasuk foto (backup harian hanya database). Cloudflare R2 dipertimbangkan & ditolak untuk sekarang (kesederhanaan menang; bisa dipindah nanti kalau butuh multi-instance/CDN). |
 | Styling | **Tailwind CSS v4** (config via `@theme` di `globals.css`) | Utility-first, CSS hasil build kecil (hanya class yang dipakai). Token desain (warna/tipografi/radius/shadow) didefinisikan sekali di `@theme` — lihat [DESAIN-SISTEM.md](DESAIN-SISTEM.md). |
 | Font | **Plus Jakarta Sans** (via `next/font/google`) | Dibuat untuk konteks Indonesia, hangat & modern. Satu family (tanpa mono — angka pakai `tabular-nums`). |
 | Komponen UI dasar | **Primitif buatan sendiri** di `src/components/ui/` (Button, Input, Field, Card, Badge, Alert, dst) | Tanpa library UI/ikon eksternal (shadcn/Radix tidak jadi dipakai) — komponen proyek ini sederhana, sedikit, dan sepenuhnya dikontrol; ikon = inline SVG (`ui/icons.tsx`). Hindari beban bundle di halaman Pembeli. |
@@ -20,7 +20,7 @@
 | Payment Gateway (produksi, Fase 6) | **Midtrans** — Core API (`payment_type: "qris"`) untuk QRIS dinamis | Dipilih User (2026-09-08) menggantikan Tripay: satu ekosistem dengan **Iris** (disbursement) untuk Pencairan otomatis "Model B", sandbox lengkap, dokumentasi & SDK matang. Mendukung QRIS. Lihat [Payment Provider Abstraction](#payment-provider-abstraction) & [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-08. **Catatan**: fitur split/marketplace Midtrans kemungkinan butuh badan usaha — Model B **tidak** memakainya (cukup akun standar), perlu diverifikasi User sebelum go-live. |
 | Disbursement (Pencairan otomatis, Fase 6) | **Midtrans Iris** (`/api/v1/payouts`) | Transfer **Saldo Pedagang** otomatis ke rekening/e-wallet tiap Lapak (batch harian). Diakses lewat abstraksi `DisbursementProvider` (mirror `PaymentProvider`). Biaya transfer per payout ditanggung Pedagang (dipotong dari Pencairan). |
 | Payment Gateway (dev/unit/E2E test) | **MockPaymentProvider** + **MockDisbursementProvider** (buatan sendiri) | Dipilih lewat env `PAYMENT_PROVIDER=mock` / `DISBURSEMENT_PROVIDER=mock`. Tombol "Simulasikan Pembayaran Berhasil" tetap ada untuk uji alur tanpa Midtrans. Lihat [Payment Provider Abstraction](#payment-provider-abstraction). |
-| Hosting app & database | **Server sendiri (Beelink)** via **Dokploy** + **Cloudflare Tunnel** | Sama seperti proyek User yang lain (MyPlaza) — pola ops yang sudah dikenal, tanpa akun cloud baru, tanpa biaya hosting tambahan. Cloudflare Tunnel menghindari perlu buka port publik/IP statis. Migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); deploy otomatis lewat CI/CD GitHub Actions tiap push ke `main` (lihat [§Deploy & CI/CD](#deploy--cicd-2026-11-07)). |
+| Hosting app & database | **Server sendiri (Beelink, Windows 11)** via **Docker Compose** di Docker Desktop + **Cloudflare Tunnel** | Sama seperti proyek User yang lain (MyPlaza) — pola ops yang sudah dikenal, tanpa akun cloud baru, tanpa biaya hosting tambahan. Cloudflare Tunnel menghindari perlu buka port publik/IP statis. Migrasi database jalan otomatis saat container start (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-09-07); deploy otomatis lewat CI/CD GitHub Actions (self-hosted runner) tiap push ke `main` (lihat [§Deploy & CI/CD](#deploy--cicd-2026-11-19)). Dokploy dipakai sampai 2026-11-19. |
 | Package manager | **pnpm** | Lebih hemat disk & lebih cepat install dibanding npm/yarn. |
 | Lint & Format | **Biome** | Satu tool cepat (berbasis Rust) untuk lint+format, menggantikan kombinasi ESLint+Prettier yang lebih berat & butuh konfigurasi ganda. |
 | Bundler skrip DB (build-time) | **esbuild** | Hanya dipakai di stage `builder` Dockerfile untuk mem-*bundle* `src/lib/db/{migrate,seed-demo,create-admin}.ts` jadi file `.mjs` mandiri (drizzle-orm + postgres di-inline) — supaya image runner minimal tidak perlu `drizzle-kit`/devDependencies. Sudah jadi dependency transitif (via Next/Tailwind), cuma dinaikkan jadi devDependency eksplisit. |
@@ -86,16 +86,17 @@ DISBURSEMENT_ENABLED=false       # "true" untuk mengaktifkan job Pencairan haria
 IRIS_API_KEY=                    # Iris "Creator" API key (sandbox: dashboard Iris)
 IRIS_IS_PRODUCTION=false
 
-CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse, bill-service-fee, dst — di-set di tiap Scheduled Job Dokploy)
+CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse, bill-service-fee, dst — di server diisi di C:\mygerai\compose.env)
 ```
 
-**Scheduled Job tagihan Biaya Layanan (wajib di produksi, 2026-09-30).** Tanpa job ini tagihan QRIS pribadi tidak pernah terbit. Dokploy → aplikasi MyGerai → **Schedules**:
+**Job tagihan Biaya Layanan (wajib di produksi, 2026-09-30).** Tanpa job ini tagihan QRIS pribadi tidak pernah terbit. Sejak 2026-11-19 job ini dijalankan service `cron` di [deploy/compose.yml](../deploy/compose.yml) (skrip [deploy/cron/cron.sh](../deploy/cron/cron.sh)), menggantikan Scheduled Job Dokploy:
 
-- Cron `0 18 * * 0` (Minggu 18:00 UTC = **Senin 01:00 WIB**, ±1 jam setelah periode Senin 00:00 WIB tutup).
-- Shell Type `sh` (image alpine tidak punya bash). Perintah (di dalam container): `wget -qO- --post-data="" --header="Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/bill-service-fee`
-- Tulis `$CRON_SECRET` apa adanya (dibaca dari env container, jangan ditempel nilainya). Pakai `127.0.0.1`, bukan `localhost`: di alpine `localhost` bisa mengarah ke `::1`, sedangkan Next.js hanya listen IPv4 → "Connection refused" (ditemukan 2026-11-07).
+- Jadwal Minggu 18:00 UTC (= **Senin 01:00 WIB**, ±1 jam setelah periode Senin 00:00 WIB tutup), diatur env `BILL_WEEKDAY_UTC=0` dan `BILL_HOUR_UTC=18`.
+- Service `cron` memanggil `POST http://web:3000/api/cron/bill-service-fee` dengan header `Authorization: Bearer $CRON_SECRET`. Nilai `CRON_SECRET` diteruskan compose dari `compose.env` ke `web` dan `cron`, dan tidak pernah dicetak.
+- Jalankan manual: `docker compose -p mygerai exec cron mygerai-cron once`. Log tiap run: `docker compose -p mygerai logs cron`.
 - Hasil sukses: `{"ok":true,"invoicesCreated":…,"chargesCreated":…}`. `401 unauthorized` = `CRON_SECRET` kosong/beda.
-- Kalau job sempat terlewat, run berikutnya otomatis menagih periode yang bolong (tagihan susulan).
+- Kalau job sempat terlewat (mis. server mati saat jadwal), run berikutnya otomatis menagih periode yang bolong (tagihan susulan).
+- Perintah yang dijalankan **di dalam** container `web` memanggil aplikasi lewat `http://127.0.0.1:3000`, bukan `localhost`: di alpine `localhost` bisa mengarah ke `::1`, sedangkan Next.js hanya listen IPv4 → "Connection refused" (ditemukan 2026-11-07).
 
 `MIDTRANS_CLIENT_KEY` boleh terekspos ke klien (dipakai Snap.js kalau nanti perlu); **Server Key & Iris API Key TIDAK PERNAH** ke klien — hanya dipakai di Server Action/Route Handler.
 
@@ -103,7 +104,7 @@ CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse
 
 1. Daftar akun di `dashboard.sandbox.midtrans.com` (gratis, tanpa verifikasi bisnis untuk sandbox).
 2. **Settings → Access Keys**: salin `Server Key` + `Client Key` sandbox → isi `.env`.
-3. **Settings → Configuration → Payment Notification URL**: `https://<domain-tunnel>/api/webhooks/payment` (butuh URL publik — pakai Cloudflare Tunnel yang sudah ada, atau `cloudflared tunnel` sementara untuk dev). Satu akun Midtrans hanya punya **satu** Notification URL: akun sandbox yang dipakai MyPlaza sudah berisi URL MyPlaza, jadi MyGerai butuh akun sandbox sendiri (`https://mygerai.myplaza.web.id/api/webhooks/payment`) atau tetap `PAYMENT_PROVIDER=mock`. Tanpa webhook, Pesanan masih bisa lunas lewat cek status ke gateway selama halaman status Pembeli terbuka, tapi Tagihan Biaya Layanan sepenuhnya bergantung pada webhook.
+3. **Settings → Configuration → Payment Notification URL**: `https://<domain-tunnel>/api/webhooks/payment` (butuh URL publik — pakai Cloudflare Tunnel yang sudah ada, atau `cloudflared tunnel` sementara untuk dev). Satu akun Midtrans hanya punya **satu** Notification URL: akun sandbox yang dipakai MyPlaza sudah berisi URL MyPlaza, jadi MyGerai memakai **akun sandbox sendiri** (keputusan User 2026-11-19) dengan URL `https://mygerai.myplaza.web.id/api/webhooks/payment`. Tanpa webhook, Pesanan masih bisa lunas lewat cek status ke gateway selama halaman status Pembeli terbuka, tapi Tagihan Biaya Layanan sepenuhnya bergantung pada webhook.
 4. **Iris (menu terpisah di dashboard)**: aktifkan, buat/ambil `Creator` API key sandbox, set callback URL `https://<domain>/api/webhooks/payout`. Sandbox Iris memberi saldo virtual + daftar rekening dummy untuk uji payout.
 5. Uji bayar: buat Pesanan → buka `simulator.sandbox.midtrans.com` (QRIS) → tandai "Paid" → webhook masuk → status jadi `dibayar`.
 
@@ -117,7 +118,7 @@ CRON_SECRET=                     # bearer token untuk POST /api/cron/* (disburse
 - **Akun Admin produksi**: **tidak ada UI self-service** untuk membuat akun Admin (sesuai [PRD.md](PRD.md) — Admin adalah akun internal Aplikator, bukan fitur produk). Untuk dev lokal, akun contoh dibuat lewat `src/lib/db/seed.ts`. Untuk produksi: buat lewat **insert SQL manual satu kali** ke tabel `admins` (hash password dulu pakai fungsi `hashPassword` yang sama, mis. lewat skrip Node sekali-jalan) — sengaja tidak dibangun sebagai fitur/endpoint karena frekuensinya sangat jarang (biasanya cuma 1 akun Admin) dan menambah permukaan serangan (endpoint pembuatan Admin) tanpa manfaat sepadan.
 - **Pembeli**: tidak ada autentikasi sama sekali (sesuai [PRD.md](PRD.md)).
 - **Aplikasi Android Pedagang** (Fase 12a, 2026-10-07): token di header `Authorization: Bearer`, disimpan di tabel `sessions` yang sama (`client = mobile`, 90 hari bergeser, tanpa refresh token). `getMerchantSession()` membaca Bearer dulu, lalu cookie. Login web dan aplikasi memakai `authenticateMerchant` (`src/lib/auth/merchant-login.ts`, sengaja di luar file `"use server"`), jadi rate limit dan perlindungan timing-nya sama. Detail: [API-MOBILE.md](API-MOBILE.md#2-autentikasi). Env terkait: `PUSH_PROVIDER` (`expo` | `log`, default `log`), `EXPO_ACCESS_TOKEN` (opsional), `MOBILE_MIN_APP_VERSION` (default `0.0.0`).
-- **Rate-limiting** (Fase 5, lihat [src/lib/rate-limit/limiter.ts](../src/lib/rate-limit/limiter.ts)): fixed-window counter **in-memory** (satu `Map`, tanpa dependency/infra baru — sesuai izin eksplisit [BEST-PRACTICES.md §Keamanan](BEST-PRACTICES.md#keamanan) untuk "solusi ringan dulu"). Diterapkan di 4 titik: `loginMerchant`/`loginAdmin` (5 percobaan/5 menit, dicek **dua key** — per-IP DAN per-nomor-HP, karena brute-force satu akun vs spam banyak akun dari satu sumber adalah dua ancaman berbeda), `registerMerchant` (5/60 menit per-IP), `createOrder` (20 Pesanan/10 menit per-IP, dibuat longgar karena CGNAT operator seluler Indonesia bisa membuat beberapa Pembeli sah terlihat satu IP). Pesan saat limit tercapai generik (tidak membocorkan apakah batas per-IP/per-akun, menjaga pola anti-enumeration). IP klien diambil dari header `cf-connecting-ip` (di-set Cloudflare di edge, **tidak bisa dipalsukan klien** — beda dengan `x-forwarded-for` yang cuma di-*append* jadi segmen pertamanya bisa disisipi klien untuk melompati limit; ditemukan & diperbaiki lewat `/security-review` Fase 5), fallback ke segmen terakhir `x-forwarded-for` untuk dev lokal tanpa Cloudflare. **Keterbatasan yang diketahui/diterima**: state in-memory reset saat restart proses & tidak sinkron lintas instance — aman untuk deployment single-instance Docker (Dokploy) saat ini; kalau nanti pindah ke multi-instance, ganti ke store bersama (mis. Redis).
+- **Rate-limiting** (Fase 5, lihat [src/lib/rate-limit/limiter.ts](../src/lib/rate-limit/limiter.ts)): fixed-window counter **in-memory** (satu `Map`, tanpa dependency/infra baru — sesuai izin eksplisit [BEST-PRACTICES.md §Keamanan](BEST-PRACTICES.md#keamanan) untuk "solusi ringan dulu"). Diterapkan di 4 titik: `loginMerchant`/`loginAdmin` (5 percobaan/5 menit, dicek **dua key** — per-IP DAN per-nomor-HP, karena brute-force satu akun vs spam banyak akun dari satu sumber adalah dua ancaman berbeda), `registerMerchant` (5/60 menit per-IP), `createOrder` (20 Pesanan/10 menit per-IP, dibuat longgar karena CGNAT operator seluler Indonesia bisa membuat beberapa Pembeli sah terlihat satu IP). Pesan saat limit tercapai generik (tidak membocorkan apakah batas per-IP/per-akun, menjaga pola anti-enumeration). IP klien diambil dari header `cf-connecting-ip` (di-set Cloudflare di edge, **tidak bisa dipalsukan klien** — beda dengan `x-forwarded-for` yang cuma di-*append* jadi segmen pertamanya bisa disisipi klien untuk melompati limit; ditemukan & diperbaiki lewat `/security-review` Fase 5), fallback ke segmen terakhir `x-forwarded-for` untuk dev lokal tanpa Cloudflare. **Keterbatasan yang diketahui/diterima**: state in-memory reset saat restart proses & tidak sinkron lintas instance — aman untuk deployment single-instance Docker (compose) saat ini; kalau nanti pindah ke multi-instance, ganti ke store bersama (mis. Redis).
 
 ## Performa & Cache (2026-10-05)
 
@@ -148,7 +149,7 @@ GOOGLE_MAPS_SERVER_KEY=""        # hanya server (Places API New), tidak pernah k
 GOOGLE_MAPS_MONTHLY_LIMIT=""     # default 9000 per SKU per bulan
 ```
 
-Browser key dikirim lewat Server Action saat runtime (bukan `NEXT_PUBLIC_*` yang ter-inline saat build), jadi bisa diganti/dimatikan di Dokploy tanpa rebuild.
+Browser key dikirim lewat Server Action saat runtime (bukan `NEXT_PUBLIC_*` yang ter-inline saat build), jadi bisa diganti/dimatikan di `C:\mygerai\app.env` tanpa rebuild (cukup buat ulang container, lihat [§Deploy & CI/CD](#deploy--cicd-2026-11-19)).
 
 ### Setup Google Cloud (dikerjakan User)
 
@@ -159,33 +160,44 @@ Browser key dikirim lewat Server Action saat runtime (bukan `NEXT_PUBLIC_*` yang
    - *Server key*: API restriction = **Places API (New)** saja (opsional: IP restriction ke IP keluar server Beelink).
 4. **Quotas** (per API): set batas harian, mis. ±300 request/hari per SKU (≈ 9.000/bulan), supaya tidak pernah melewati kuota gratis bulanan.
 5. Cek halaman harga Google Maps Platform yang berlaku saat setup (kuota gratis per SKU bisa berubah), sesuaikan `GOOGLE_MAPS_MONTHLY_LIMIT`.
-6. Isi env di Dokploy (`MAPS_PROVIDER=google` + kedua key), redeploy. Opsional: pasang *budget alert* di Billing.
+6. Isi env di `C:\mygerai\app.env` (`MAPS_PROVIDER=google` + kedua key), lalu buat ulang container. Opsional: pasang *budget alert* di Billing.
 
-## Deploy & CI/CD (2026-11-07)
+## Deploy & CI/CD (2026-11-19)
 
-Server: mini PC **Beelink** (Ubuntu Server 24.04, Dokploy v0.30), sama dengan MyPlaza. Cloudflare Tunnel `myplaza-beelink` meneruskan hostname ke `http://localhost:80` (Traefik bawaan Dokploy). Domain staging: `mygerai.myplaza.web.id`. Pindah dari server Garuda pada 2026-11-07, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-11-07.
+Server: mini PC **Beelink** (Windows 11 Pro, Docker Desktop backend WSL2), sama dengan MyPlaza tetapi **project compose terpisah**. Tanpa Dokploy dan tanpa Docker Swarm sejak 2026-11-19, lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-11-19. Domain staging: `mygerai.myplaza.web.id`.
 
-**Setup Dokploy (sekali):**
+**Stack** ([deploy/compose.yml](../deploy/compose.yml), project `mygerai`, volume `mygerai_pgdata` dan `mygerai_uploads`):
 
-- Database PostgreSQL 17 `mygerai-db`. Host di `DATABASE_URL` = *Internal Host* database, port 5432.
-- Application dari repo ini: branch `main`, Build Type **Dockerfile**, satu replica (lihat ADR 2026-09-07). Volume Mount `mygerai-uploads` → `/app/uploads`. Domain: container port `3000`, HTTPS **off** (TLS ditangani Cloudflare). **Autodeploy off**, deploy hanya lewat CI.
-- Repo harus masuk instalasi GitHub App Dokploy (GitHub → Settings → Applications → Installed GitHub Apps → Configure).
-- Env: ikuti `.env.example`. Schedule tagihan Biaya Layanan: lihat [§Environment variables (Fase 6)](#environment-variables-fase-6).
-- Route tunnel `mygerai.myplaza.web.id` → `http://localhost:80`. Aplikasi Access Cloudflare hanya melindungi `dokploy.myplaza.web.id`; jangan pakai pola wildcard `*.myplaza.web.id` karena halaman Pembeli ikut terkunci.
-- Akun Admin: Terminal container (shell `sh`) → `node /app/scripts/create-admin.mjs "<nama>" "<nomor HP>" "<password>"`. Login Admin mencocokkan nomor HP persis seperti saat dibuat.
+- `db` (PostgreSQL 17), `web` (image dari `Dockerfile`, port 3000, volume foto di `/app/uploads`, satu instance sesuai ADR 2026-09-07), `cron` (job tagihan Biaya Layanan, lihat [§Environment variables (Fase 6)](#environment-variables-fase-6)), `cloudflared`, dan `backup`.
+- Tidak ada port yang dibuka ke host. Tunnel Cloudflare **`mygerai-beelink`** (terpisah dari tunnel `myplaza-beelink` milik MyPlaza) meneruskan `mygerai.myplaza.web.id` → `http://web:3000`. Tunnel tidak boleh dipakai bersama: connector kedua di tunnel yang sama ikut menerima request hostname MyPlaza dan gagal melayaninya.
+- **Backup**: `pg_dump -Fc` harian jam 02:00 WIB ke `C:\mygerai\backups`, disimpan 7 hari. Jalankan manual: `docker compose -p mygerai exec backup mygerai-backup once`.
+- Nama project `mygerai` wajib tetap (nama volume diturunkan darinya). **Jangan pernah** `docker compose -p mygerai down -v`, `docker volume prune`, `docker system prune --volumes`, atau Reset/Purge data di Docker Desktop — semuanya menghapus database.
+
+**Secret di server** (di luar repo dan di luar build context, supaya tidak ikut `COPY . .`):
+
+- `C:\mygerai\compose.env`: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `CRON_SECRET`, `TUNNEL_TOKEN`. Hanya untuk interpolasi compose; `DATABASE_URL` disusun compose dari kredensial ini.
+- `C:\mygerai\app.env`: env runtime lain, ikuti `.env.example` (`APP_URL`, `SEED_DEMO`, `PAYMENT_PROVIDER`, key Midtrans, dst).
+- `C:\mygerai\docker-config\config.json` berisi `{}`: credential helper bawaan Docker Desktop gagal di luar sesi desktop (SSH/service), jadi runner memakai `DOCKER_CONFIG` ini.
+- Mengubah `app.env` cukup dengan membuat ulang container tanpa rebuild: jalankan ulang workflow CI/CD (**Run workflow** di tab Actions).
+- Akun Admin pribadi: `docker compose -p mygerai exec web node /app/scripts/create-admin.mjs "<nama>" "<nomor HP>" "<password>"`. Login Admin mencocokkan nomor HP persis seperti saat dibuat.
 
 **CI/CD** ([.github/workflows/ci-cd.yml](../.github/workflows/ci-cd.yml), pola sama dengan MyPlaza):
 
 - Job **test** (push dan PR ke `main`): `pnpm install --frozen-lockfile`, `biome check`, `vitest run`. Playwright tidak dijalankan karena butuh Postgres dan server berjalan.
-- Job **deploy** (hanya push atau jalan manual di `main`, hanya di repo `WeirdoKitten/My-Gerai`, setelah test lulus): `POST {DOKPLOY_URL}/api/application.deploy` dengan header `x-api-key` dan service token Cloudflare Access (dashboard Dokploy ada di balik Access). Respons non-2xx, termasuk 302 dari Access, menggagalkan job.
-- GitHub Secrets (tab Secrets, bukan Variables): `DOKPLOY_URL`, `DOKPLOY_API_KEY`, `DOKPLOY_APPLICATION_IDS` (ID aplikasi MyGerai; boleh beberapa, dipisah spasi), `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`. Kalau secret kosong, deploy dilewati dengan notice. API key Dokploy dan service token boleh sama dengan MyPlaza; aplikasi yang di-deploy ditentukan `DOKPLOY_APPLICATION_IDS` per repo.
+- Job **deploy** (hanya push atau jalan manual di `main`, hanya di repo `WeirdoKitten/My-Gerai`, setelah test lulus) berjalan di **self-hosted runner** `[self-hosted, windows, mygerai]` di mini PC (service Windows di `C:\actions-runner-mygerai`, akun `ikan`): `docker compose up -d --build --remove-orphans --wait`, `docker image prune -f`, lalu health check `https://mygerai.myplaza.web.id/`. Build image berjalan di mini PC. Tidak ada GitHub Secret yang dipakai.
+- Runner MyPlaza terdaftar di repo MyPlaza saja, jadi MyGerai punya runner sendiri di mesin yang sama.
+- Langkah PowerShell 5.1 di job deploy sengaja mengembalikan `$ErrorActionPreference` ke `Continue` dan mengecek `$LASTEXITCODE` setelah tiap perintah (lihat komentar di workflow).
+- Push baru ke `main` menunggu deploy yang sedang berjalan, tidak membatalkannya. PR tetap membatalkan run lamanya.
 - CI menjalankan `biome check` di checkout LF. Di Windows (`core.autocrlf=true`) `biome check` lokal melaporkan error format untuk semua file CRLF; itu bukan error sungguhan, jadi jangan `--write` seluruh repo.
+
+**Prasyarat mini PC** (sekali, juga dipakai MyPlaza): Git for Windows (tanpa git, checkout mengekstrak zip ke path yang melewati batas 260 karakter), `Set-ExecutionPolicy RemoteSigned -Scope LocalMachine` (default `Restricted` memblokir skrip step runner), Docker Desktop mulai saat sign-in dengan update manual, auto-login akun `ikan` (jangan pernah sign out; kunci layar dengan Win+L).
 
 **Troubleshooting:**
 
-- Aplikasi tidak bisa konek DB (`ENOTFOUND` / "could not translate host name") padahal kedua container ada di `dokploy-network`: DNS Docker Swarm gagal mendaftarkan service DB. Perbaikan: `sudo docker service update --force <service-db>`, lalu redeploy.
-- Perintah di dalam container memanggil aplikasi lewat `http://127.0.0.1:3000`, bukan `localhost` (lihat Schedule di atas).
-- Server hang atau reboot sendiri: BIOS Beelink (T202) diketahui bermasalah dengan Linux. Itu bukan bug aplikasi.
+- Lihat status dan log: `docker compose -p mygerai ps`, `docker compose -p mygerai logs --tail=100 web`.
+- `error getting credentials` saat pull/build lewat SSH: set `$env:DOCKER_CONFIG = "C:\mygerai\docker-config"` dulu.
+- Jangan menambah `"dns"` ke Docker Engine: jaringan server memblokir DNS ke resolver publik, dan DNS bawaan Docker Desktop sudah mengikuti DNS Windows.
+- Setelah reboot, semua container hidup lagi sendiri (`restart: unless-stopped`) begitu auto-login menyalakan Docker Desktop.
 
 ## Batasan Biaya (estimasi, untuk kesadaran User)
 

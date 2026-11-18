@@ -1,0 +1,121 @@
+# Stack server MyGerai: Docker Compose di Docker Desktop (Windows, backend WSL2) pada mini PC Beelink.
+#
+# Di-deploy oleh job self-hosted runner di .github/workflows/ci-cd.yml:
+#   docker compose -f deploy/compose.yml --env-file C:\mygerai\compose.env up -d --build --remove-orphans --wait
+#
+# Secret ada di luar repo dan di luar build context:
+#   C:\mygerai\compose.env  hanya untuk interpolasi: POSTGRES_*, CRON_SECRET, TUNNEL_TOKEN
+#   C:\mygerai\app.env      env runtime aplikasi (lihat .env.example)
+#   C:\mygerai\backups\     hasil pg_dump harian
+#
+# Tidak ada port yang dibuka ke host. Tunnel Cloudflare `mygerai-beelink` (terpisah dari tunnel MyPlaza)
+# meneruskan mygerai.myplaza.web.id ke http://web:3000.
+#
+# Nama project wajib tetap "mygerai": nama volume diturunkan darinya, jadi kalau diganti DB mulai kosong.
+# Jangan pernah menjalankan "docker compose -p mygerai down -v", "docker volume prune", atau
+# "docker system prune --volumes".
+
+name: mygerai
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB belum ada di compose.env}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER belum ada di compose.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD belum ada di compose.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *logging
+
+  # Setiap start menjalankan migrasi (dan seed demo kalau SEED_DEMO=true) lewat docker-entrypoint.sh.
+  web:
+    image: mygerai/web:latest
+    build:
+      context: ..
+    restart: unless-stopped
+    env_file:
+      - path: ${MYGERAI_HOME:-C:/mygerai}/app.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET belum ada di compose.env}
+      UPLOADS_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    # Next.js hanya listen IPv4, jadi pakai 127.0.0.1 (di alpine "localhost" bisa ke ::1).
+    # Halaman "/" membaca DB, jadi healthcheck ini ikut gagal kalau DB tidak terjangkau.
+    # Migrasi + seed demo di DB kosong butuh waktu, jadi kegagalan 5 menit pertama tidak dihitung.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5m
+      start_interval: 5s
+    logging: *logging
+
+  # Pengganti Scheduled Job Dokploy: tagihan Biaya Layanan tiap Minggu 18:00 UTC (Senin 01:00 WIB).
+  # Jalankan manual: docker compose -p mygerai exec cron mygerai-cron once
+  cron:
+    image: mygerai/cron:latest
+    build:
+      context: ./cron
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET belum ada di compose.env}
+      BILL_SERVICE_FEE_URL: http://web:3000/api/cron/bill-service-fee
+      BILL_WEEKDAY_UTC: "0"
+      BILL_HOUR_UTC: "18"
+    depends_on:
+      web:
+        condition: service_healthy
+    logging: *logging
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.11.1
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?TUNNEL_TOKEN belum ada di compose.env}
+    logging: *logging
+
+  # pg_dump -Fc harian 02:00 WIB ke C:\mygerai\backups, simpan 7 hari.
+  # Jalankan manual: docker compose -p mygerai exec backup mygerai-backup once
+  backup:
+    image: mygerai/backup:latest
+    build:
+      context: ./backup
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:?POSTGRES_DB belum ada di compose.env}
+      PGUSER: ${POSTGRES_USER:?POSTGRES_USER belum ada di compose.env}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD belum ada di compose.env}
+      BACKUP_HOUR_UTC: "19"
+      BACKUP_RETENTION_DAYS: "7"
+    volumes:
+      - ${MYGERAI_HOME:-C:/mygerai}/backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  pgdata:
+  uploads:

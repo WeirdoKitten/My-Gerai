@@ -1,5 +1,5 @@
 #!/bin/sh
-# Entrypoint image produksi (dipakai Dokploy). Urutan setiap container start:
+# Entrypoint image server (service web di deploy/compose.yml). Urutan setiap container start:
 #   1. Terapkan migrasi database (selalu, idempoten).
 #   2. Kalau SEED_DEMO=true: isi data demo (idempoten, tanpa TRUNCATE), lalu
 #      isi/segarkan riwayat Pesanan demo (30 hari terakhir, idempoten lewat

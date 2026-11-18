@@ -218,7 +218,7 @@
 - [ ] `POST /api/cron/disburse` (guard `CRON_SECRET` via `timingSafeEqual`) — batch harian: per Lapak dengan Saldo > 0 & rekening valid → transaksi (buat `payouts` + link `orders.payout_id`) → `createPayout`. Idempoten via `period_date`.
 - [ ] `POST /api/webhooks/payout` — callback status Iris → `completed`/`failed` (unlink Pesanan kalau gagal).
 - [ ] `src/server/payouts.ts`: **hapus `recordPayout`** (manual) + form/komponen Admin terkait; Saldo Pedagang pakai formula `payout_id IS NULL`. `/admin/payouts` jadi read-only (Saldo + riwayat + estimasi margin Aplikator dari `qris_mdr_bps`).
-- [ ] Scheduled Job di Dokploy memanggil `/api/cron/disburse` 1×/hari.
+- [ ] Service `cron` di `deploy/compose.yml` memanggil `/api/cron/disburse` 1×/hari (sebelum 2026-11-19 direncanakan sebagai Scheduled Job Dokploy).
 
 **Verifikasi 6b**
 - [ ] Unit test: kalkulasi batch (idempotensi, unlink saat gagal), verifikasi callback Iris.
@@ -448,7 +448,7 @@
 - [x] `due_at` = saat tagihan terbit, supaya tagihan susulan tidak langsung mengunci Lapak.
 - [x] Test: unit +4 (168 lulus); uji integrasi nyata ke DB test (periode 3 minggu lalu tertagih, periode dengan tagihan dibatalkan dilewati, periode berjalan belum ditagih, run kedua tidak membuat tagihan dobel, Lapak tidak terkunci).
 - [x] Panduan Scheduled Job Dokploy dicatat di [TEKNOLOGI.md](TEKNOLOGI.md).
-- [ ] **User:** pasang Scheduled Job di Dokploy produksi + pastikan `CRON_SECRET` terisi, lalu jalankan sekali manual.
+- [x] ~~**User:** pasang Scheduled Job di Dokploy produksi + pastikan `CRON_SECRET` terisi, lalu jalankan sekali manual.~~ — sejak 2026-11-19 diganti service `cron` di `deploy/compose.yml` (lihat seksi "Pindah ke Docker Compose" di bawah).
 - [x] Seeder contoh tagihan untuk Lapak demo `nasi-goreng-raja-rasa` (`src/lib/db/seed-demo-invoices.ts`, `pnpm db:seed:demo:invoices`, ikut jalan otomatis saat `SEED_DEMO=true`): 4 periode tertutup terakhir, 2 `lunas`, 1 `dibatalkan`, 1 `belum_lunas`. Ditandai `reference_id` berawalan `SEED-DEMO-`, idempoten, dan **dikecualikan dari penguncian Lapak** (tidak bisa dibayar sungguhan). Temuan: `seed-demo-orders.ts` membuat Pesanan tanpa baris `payments`, jadi Pesanan demo memang tidak pernah ikut tertagih oleh job asli.
 - [x] Verifikasi: seeder dijalankan 2× (tetap 4 tagihan), bundle esbuild jalan, tagihan demo lewat tenggang tidak mengunci Lapak sedangkan tagihan asli tetap mengunci, tampilan `/dashboard/pembayaran` dicek.
 
@@ -621,6 +621,22 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [x] Teks "server Garuda" diperbarui (Dockerfile, `.env.example`, `docker-compose.dev.yml`, `seed.ts`, docs). `SEED_DEMO_PASSWORD` dicatat di `.env.example`.
 - [x] **User:** Autodeploy aplikasi `mygerai` di Dokploy dimatikan (deploy hanya lewat CI).
 - [ ] Opsional: buat akun Admin pribadi lewat `create-admin.mjs` (staging sekarang memakai Admin demo dengan password bawaan `password`).
+
+## Pindah ke Docker Compose tanpa Dokploy (2026-11-19, branch `deploy/docker-compose`)
+
+> Server Beelink di-install ulang dengan Windows 11 Pro, dan User memutuskan melepas Dokploy. Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-11-19 dan [TEKNOLOGI.md §Deploy & CI/CD](TEKNOLOGI.md#deploy--cicd-2026-11-19).
+
+- [x] `deploy/compose.yml` (project `mygerai`): `db`, `web`, `cron`, `cloudflared`, `backup`, tanpa port ke host, rotasi log.
+- [x] `deploy/cron/` pengganti Scheduled Job Dokploy (`bill-service-fee` Minggu 18:00 UTC). Diuji dengan busybox: POST + Bearer terkirim, gagal koneksi = exit 1, jadwal berikutnya tepat.
+- [x] `deploy/backup/`: `pg_dump -Fc` harian 02:00 WIB, simpan 7 hari. Diuji: dump + retensi.
+- [x] Job deploy CI pindah ke self-hosted runner Windows (`[self-hosted, windows, mygerai]`); deploy di `main` tidak lagi dibatalkan push baru.
+- [x] Komentar "Dokploy" diperbarui (Dockerfile, entrypoint, `.env.example`, `docker-compose.dev.yml`, route cron, docs).
+- [ ] **User:** tunnel Cloudflare baru `mygerai-beelink` (route `mygerai.myplaza.web.id` → `http://web:3000`), hapus route `mygerai` dari tunnel `myplaza-beelink`.
+- [ ] **User:** akun sandbox Midtrans baru khusus MyGerai, Notification URL `https://mygerai.myplaza.web.id/api/webhooks/payment`.
+- [ ] **User:** folder secret `C:\mygerai\` (`app.env`, `compose.env`, `backups\`, `docker-config\`).
+- [ ] **User:** runner kedua di `C:\actions-runner-mygerai` (label `mygerai`, service akun `ikan`).
+- [ ] Deploy pertama + verifikasi: `/`, login Admin demo, bayar sandbox Midtrans, cron manual `{"ok":true}`, foto upload, backup + restore, reboot.
+- [ ] **User:** hapus GitHub Secrets Dokploy lama di repo ini, tambah monitor UptimeRobot `https://mygerai.myplaza.web.id/`.
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 

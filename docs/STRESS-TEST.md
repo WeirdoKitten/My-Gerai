@@ -189,9 +189,9 @@ Bukti untuk setiap poin ada di §3. Lokasi kode mengacu ke kondisi `main` @ `13a
 
 **P2-5. Perilaku saat overload.** Tidak ada *load shedding*: request terus diterima sampai backlog penuh, request yang ditinggal klien tetap dikerjakan, pemulihan 4–5 menit. *Saran:* `statement_timeout` (P1-3), batas antrean, dan halaman/status "sedang ramai" yang cepat. Cache Cloudflare untuk aset/halaman statis.
 
-**P2-6. Hanya 1 proses Node (±1,3 core terpakai dari 16).** Menjalankan beberapa instance (replica Dokploy atau `cluster`) melipatgandakan kapasitas CPU, **tetapi** rate-limiter in-memory ([src/lib/rate-limit/limiter.ts](../src/lib/rate-limit/limiter.ts)) dan beberapa asumsi lain dirancang single-instance (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)). Lakukan setelah P0/P1, karena P0/P1 jauh lebih murah.
+**P2-6. Hanya 1 proses Node (±1,3 core terpakai dari 16).** Menjalankan beberapa instance (replica compose atau `cluster`) melipatgandakan kapasitas CPU, **tetapi** rate-limiter in-memory ([src/lib/rate-limit/limiter.ts](../src/lib/rate-limit/limiter.ts)) dan beberapa asumsi lain dirancang single-instance (lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md)). Lakukan setelah P0/P1, karena P0/P1 jauh lebih murah.
 
-**P2-7. Memori.** RAM server naik ke 1,4–1,8 GB saat beban puncak dan tidak dikembalikan setelahnya (perilaku heap V8). Soak 5 menit stabil di ±600 MB, jadi tidak terlihat kebocoran. Map bucket rate-limiter tidak pernah dibersihkan (tumbuh per IP unik); kecil, tetapi layak diberi pembersihan berkala. Batasi heap container (`--max-old-space-size`) sesuai RAM server agar crash terjadi terkendali dan container di-restart Dokploy.
+**P2-7. Memori.** RAM server naik ke 1,4–1,8 GB saat beban puncak dan tidak dikembalikan setelahnya (perilaku heap V8). Soak 5 menit stabil di ±600 MB, jadi tidak terlihat kebocoran. Map bucket rate-limiter tidak pernah dibersihkan (tumbuh per IP unik); kecil, tetapi layak diberi pembersihan berkala. Batasi heap container (`--max-old-space-size`) sesuai RAM server agar crash terjadi terkendali dan container di-restart Docker (`restart: unless-stopped`).
 
 **P2-8. Rate-limit per IP vs CGNAT (keputusan produk).** Batas 20 Pesanan/10 menit per IP bekerja sesuai rancangan. Namun operator seluler sering menempatkan banyak pelanggan di belakang satu IP publik (CGNAT). Di pasar yang ramai, Pembeli sah bisa ikut tertolak. Perlu dipantau di produksi sebelum diubah.
 
@@ -318,7 +318,7 @@ Di atas ±2.500 Pembeli bersamaan, laptop uji kehabisan port lokal (`EADDRINUSE`
 
 ### 8.3 Sisa pekerjaan
 
-- **Landing statis** — butuh `APP_URL` tersedia saat build (build arg Dokploy), karena QR pendaftaran dibuat dari `APP_URL`. Butuh keputusan User.
+- **Landing statis** — butuh `APP_URL` tersedia saat build (build arg di `deploy/compose.yml`), karena QR pendaftaran dibuat dari `APP_URL`. Butuh keputusan User.
 - **Halaman menu** masih dirender penuh per request (±170 rps, batas CPU satu proses). Langkah berikutnya: full-route cache/ISR dengan revalidasi tag.
 - **Multi-instance** — melipatgandakan kapasitas CPU, tetapi rate-limiter & cache in-memory harus pindah ke store bersama (mis. Redis). Keputusan infra User.
 - **Produksi** — cek konfigurasi Postgres, aktifkan `pg_stat_statements`, ukur ulang di server produksi (Beelink) dengan Midtrans & Cloudflare.

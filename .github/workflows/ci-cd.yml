@@ -7,10 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Satu deploy produksi dalam satu waktu; push yang lebih baru membatalkan antrean lama.
+# Satu run per ref dalam satu waktu. PR membatalkan run lamanya, tetapi deploy di main tidak pernah
+# dibatalkan di tengah pembuatan ulang container; push yang lebih baru menunggu giliran.
 concurrency:
   group: ci-cd-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Runner dikunci ke ubuntu-24.04 (bukan ubuntu-latest) supaya migrasi otomatis
 # GitHub ke Ubuntu 26 tidak mengubah lingkungan CI tanpa disadari.
@@ -59,42 +60,61 @@ jobs:
         run: pnpm exec vitest run
 
   deploy:
-    name: Deploy to Dokploy
+    name: Deploy ke mini PC
     needs: test
     if: github.repository == 'WeirdoKitten/My-Gerai' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Service runner Windows di mini PC Beelink, berjalan sebagai user pemilik Docker Desktop.
+    runs-on: [self-hosted, windows, mygerai]
+    timeout-minutes: 45
 
+    defaults:
+      run:
+        shell: powershell
+
+    env:
+      # Credential helper "desktop" milik Docker Desktop gagal di luar sesi desktop interaktif,
+      # jadi runner memakai config polos tanpa kredensial.
+      DOCKER_CONFIG: C:\mygerai\docker-config
+      COMPOSE_ENV_FILE: C:\mygerai\compose.env
+      BUILDKIT_PROGRESS: plain
+
+    # Catatan Windows PowerShell 5.1 untuk semua step di bawah:
+    # - Runner menambahkan $ErrorActionPreference = 'stop' di awal, yang mengubah baris stderr pertama
+    #   perintah native (docker menulis progres ke sana) jadi error fatal. Tiap step mengembalikannya.
+    # - "2>&1 | ForEach-Object { "$_" }" mencetak stderr sebagai teks biasa, bukan error record merah.
+    # - Perintah native yang gagal tidak menggagalkan step, jadi $LASTEXITCODE dicek setelah tiap perintah.
     steps:
-      - name: Trigger Dokploy deployments
-        env:
-          DOKPLOY_URL: ${{ secrets.DOKPLOY_URL }}
-          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
-          DOKPLOY_APPLICATION_IDS: ${{ secrets.DOKPLOY_APPLICATION_IDS }}
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-        run: |
-          if [ -z "$DOKPLOY_URL" ] || [ -z "$DOKPLOY_API_KEY" ] || [ -z "$DOKPLOY_APPLICATION_IDS" ]; then
-            echo "::notice::Secret Dokploy belum di-set, deploy dilewati."
-            exit 0
-          fi
+      - uses: actions/checkout@v4
 
-          # DOKPLOY_APPLICATION_IDS boleh berisi beberapa ID dipisah spasi.
-          for application_id in $DOKPLOY_APPLICATION_IDS; do
-            echo "Deploying application ${application_id}"
-            # Penolakan Cloudflare Access berupa redirect 302 ke halaman login,
-            # yang tidak dianggap error oleh curl, jadi status dicek manual.
-            status=$(curl --silent --show-error --max-time 60 \
-              -o response.txt -w "%{http_code}" \
-              -X POST "${DOKPLOY_URL%/}/api/application.deploy" \
-              -H "Content-Type: application/json" \
-              -H "x-api-key: ${DOKPLOY_API_KEY}" \
-              -H "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" \
-              -H "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" \
-              -d "{\"applicationId\":\"${application_id}\"}")
-            echo "HTTP ${status}: $(head -c 300 response.txt)"
-            if [ "${status}" -lt 200 ] || [ "${status}" -ge 300 ]; then
-              echo "::error::Deploy ${application_id} gagal dengan HTTP ${status}"
-              exit 1
-            fi
-          done
+      - name: Build dan jalankan stack
+        run: |
+          $ErrorActionPreference = 'Continue'
+          docker compose -f deploy/compose.yml --env-file $env:COMPOSE_ENV_FILE up -d --build --remove-orphans --wait --wait-timeout 600 2>&1 | ForEach-Object { "$_" }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Status service
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Continue'
+          docker compose -f deploy/compose.yml --env-file $env:COMPOSE_ENV_FILE ps 2>&1 | ForEach-Object { "$_" }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Log terakhir
+        if: failure()
+        run: |
+          $ErrorActionPreference = 'Continue'
+          docker compose -f deploy/compose.yml --env-file $env:COMPOSE_ENV_FILE logs --tail=100 --no-color 2>&1 | ForEach-Object { "$_" }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Hapus image dangling
+        run: |
+          $ErrorActionPreference = 'Continue'
+          docker image prune -f 2>&1 | ForEach-Object { "$_" }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Health check lewat Cloudflare
+        run: |
+          $ErrorActionPreference = 'Continue'
+          curl.exe -fsS -o NUL --retry 10 --retry-delay 6 --retry-all-errors https://mygerai.myplaza.web.id/ 2>&1 | ForEach-Object { "$_" }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Output 'https://mygerai.myplaza.web.id/ sehat'

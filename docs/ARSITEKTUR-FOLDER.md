@@ -109,9 +109,10 @@
 │   │   └── utils/                             # order-calc.ts (Fase 5), money.ts, datetime.ts (format tanggal+jam WIB), order-status.ts, slug.ts, cn.ts (gabung className, Fase Tampilan), receipt.ts (susun + encode ESC/POS struk 58mm, 2026-09-25), phone.ts (normalisasi HP Indonesia ke 62..., Fase 11)
 │   └── types/                                 # Tipe TypeScript bersama — + service-fee-invoice.ts (Fase 7)
 ├── drizzle/                                   # File migrasi database
-├── .github/workflows/ci-cd.yml                # CI/CD (2026-11-07): biome check + vitest, lalu deploy ke Dokploy saat push ke main — lihat docs/TEKNOLOGI.md §Deploy & CI/CD
+├── .github/workflows/ci-cd.yml                # CI/CD: biome check + vitest, lalu deploy lewat self-hosted runner di mini PC saat push ke main (2026-11-19) — lihat docs/TEKNOLOGI.md §Deploy & CI/CD
+├── deploy/                                    # Stack server (2026-11-19): compose.yml (db, web, cron, cloudflared, backup), backup/ (pg_dump harian), cron/ (pemanggil /api/cron/*)
 ├── docker-compose.dev.yml                     # Postgres LOKAL untuk dev — bukan produksi
-├── Dockerfile                                 # Image produksi untuk deploy via Dokploy (server Beelink)
+├── Dockerfile                                 # Image server, di-build oleh deploy/compose.yml (mini PC Beelink)
 ├── docker-entrypoint.sh                       # ENTRYPOINT image: migrasi (+ seed demo bila SEED_DEMO=true) lalu start server
 ├── .dockerignore
 ├── .gitattributes                             # Paksa *.sh = LF supaya entrypoint jalan di Linux (alpine)

@@ -20,3 +20,6 @@ coverage
 
 # CATATAN: folder `drizzle/` (migrasi) SENGAJA tidak di-ignore — dibutuhkan
 # Dockerfile untuk di-COPY ke image & dipakai saat migrasi otomatis.
+
+# File deploy dipakai Docker Compose di host, tidak dibutuhkan di dalam image.
+deploy

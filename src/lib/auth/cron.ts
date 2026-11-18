@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 /**
  * Verifikasi header `Authorization: Bearer $CRON_SECRET` untuk Route Handler
- * `src/app/api/cron/*` (dipanggil Scheduled Job Dokploy, bukan lewat sesi
+ * `src/app/api/cron/*` (dipanggil service `cron` di deploy/compose.yml, bukan lewat sesi
  * cookie). `timingSafeEqual` mencegah timing attack menebak secret — pola
  * sama seperti `safeEqualHex` di `src/lib/payment/midtrans-provider.ts`.
  */

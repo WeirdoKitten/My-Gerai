@@ -5,7 +5,7 @@ import path from "node:path";
 /**
  * Direktori penyimpanan file yang diunggah Pedagang. Di produksi = volume
  * Docker persisten (`ENV UPLOADS_DIR=/app/uploads` di Dockerfile, dimount
- * lewat Dokploy). Di dev = `.uploads/` di root repo (di-gitignore).
+ * lewat deploy/compose.yml). Di dev = `.uploads/` di root repo (di-gitignore).
  * Lihat docs/ARSITEKTUR-SISTEM.md ADR 2026-09-08 (upload foto).
  */
 export const UPLOADS_DIR =
