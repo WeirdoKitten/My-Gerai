@@ -13,7 +13,8 @@
 - Tunnel Cloudflare sendiri `mygerai-beelink` → `http://web:3000`. Tunnel MyPlaza tidak bisa dipakai bersama (service project lain tidak terjangkau lewat nama, dan dua connector di satu tunnel saling menerima request).
 - Secret di `C:\mygerai\` (`compose.env` untuk interpolasi, `app.env` untuk runtime) di luar build context. `DATABASE_URL`, `CRON_SECRET`, dan `UPLOADS_DIR` di-set compose.
 - Job deploy CI berjalan di self-hosted runner Windows (label `mygerai`): `docker compose up -d --build --remove-orphans --wait`, prune image, health check lewat Cloudflare. Langkah PowerShell 5.1 menangani stderr docker dan `$LASTEXITCODE` secara eksplisit. Deploy di `main` tidak lagi dibatalkan push baru. GitHub Secrets Dokploy tidak dipakai lagi.
-- Verifikasi di laptop: `docker compose config` lolos; `cron.sh` diuji dengan busybox (POST + Bearer terkirim, gagal koneksi exit 1, jadwal berikutnya tepat 332959 detik dari Rabu 21:30:41 UTC); backup diuji dump + retensi. Deploy pertama dan uji di server menyusul (lihat BACKLOG).
+- Verifikasi di laptop: `docker compose config` lolos; `cron.sh` diuji dengan busybox (POST + Bearer terkirim, gagal koneksi exit 1, jadwal berikutnya tepat 332959 detik dari Rabu 21:30:41 UTC); backup diuji dump + retensi.
+- Verifikasi di server (setelah deploy pertama lewat runner): semua service Up; endpoint publik sesuai harapan (`/` 200, `/api/mobile/v1/me` tanpa token 401, cron tanpa secret 401, webhook tanpa signature 403); cron manual `{"ok":true}`; backup + restore ke DB percobaan (316 = 316 Pesanan); login Admin demo, upload foto, dan bayar sandbox Midtrans (webhook ke akun baru → `dibayar`) berhasil; reboot tanpa disentuh pulih sendiri dan foto tetap ada. Secret GitHub Dokploy dihapus, monitor UptimeRobot ditambahkan.
 
 ## 2026-11-07 — Pindah server ke Beelink + CI/CD GitHub Actions
 

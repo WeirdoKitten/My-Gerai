@@ -622,7 +622,7 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [x] **User:** Autodeploy aplikasi `mygerai` di Dokploy dimatikan (deploy hanya lewat CI).
 - [ ] Opsional: buat akun Admin pribadi lewat `create-admin.mjs` (staging sekarang memakai Admin demo dengan password bawaan `password`).
 
-## Pindah ke Docker Compose tanpa Dokploy (2026-11-19, branch `deploy/docker-compose`)
+## Pindah ke Docker Compose tanpa Dokploy (2026-11-19, di-merge ke `main`)
 
 > Server Beelink di-install ulang dengan Windows 11 Pro, dan User memutuskan melepas Dokploy. Lihat [ARSITEKTUR-SISTEM.md](ARSITEKTUR-SISTEM.md) ADR 2026-11-19 dan [TEKNOLOGI.md §Deploy & CI/CD](TEKNOLOGI.md#deploy--cicd-2026-11-19).
 
@@ -631,12 +631,12 @@ Keputusan User di Plan mode (AskUserQuestion 2026-10-07): token sesi di DB 90 ha
 - [x] `deploy/backup/`: `pg_dump -Fc` harian 02:00 WIB, simpan 7 hari. Diuji: dump + retensi.
 - [x] Job deploy CI pindah ke self-hosted runner Windows (`[self-hosted, windows, mygerai]`); deploy di `main` tidak lagi dibatalkan push baru.
 - [x] Komentar "Dokploy" diperbarui (Dockerfile, entrypoint, `.env.example`, `docker-compose.dev.yml`, route cron, docs).
-- [ ] **User:** tunnel Cloudflare baru `mygerai-beelink` (route `mygerai.myplaza.web.id` → `http://web:3000`), hapus route `mygerai` dari tunnel `myplaza-beelink`.
-- [ ] **User:** akun sandbox Midtrans baru khusus MyGerai, Notification URL `https://mygerai.myplaza.web.id/api/webhooks/payment`.
-- [ ] **User:** folder secret `C:\mygerai\` (`app.env`, `compose.env`, `backups\`, `docker-config\`).
-- [ ] **User:** runner kedua di `C:\actions-runner-mygerai` (label `mygerai`, service akun `ikan`).
-- [ ] Deploy pertama + verifikasi: `/`, login Admin demo, bayar sandbox Midtrans, cron manual `{"ok":true}`, foto upload, backup + restore, reboot.
-- [ ] **User:** hapus GitHub Secrets Dokploy lama di repo ini, tambah monitor UptimeRobot `https://mygerai.myplaza.web.id/`.
+- [x] **User:** tunnel Cloudflare baru `mygerai-beelink` (route `mygerai.myplaza.web.id` → `http://web:3000`), hapus route `mygerai` dari tunnel `myplaza-beelink`. Wizard tunnel baru tidak bisa lanjut sebelum connector online, jadi route ditambahkan dari halaman tunnel.
+- [x] **User:** akun sandbox Midtrans baru khusus MyGerai, Notification URL `https://mygerai.myplaza.web.id/api/webhooks/payment`.
+- [x] **User:** folder secret `C:\mygerai\` (`app.env`, `compose.env`, `backups\`, `docker-config\`).
+- [x] **User:** runner kedua di `C:\actions-runner-mygerai` (label `mygerai`, service akun `ikan`).
+- [x] Deploy pertama + verifikasi (2026-11-19): semua service Up (`db`, `web` healthy); dari luar `/`, `/admin/login`, `/api/mobile/v1/meta` 200, `/api/mobile/v1/me` tanpa token 401, cron tanpa secret 401, webhook tanpa signature 403, `http://` → 301; cron manual `{"ok":true}`; backup + restore ke DB percobaan (316 = 316 Pesanan); login Admin demo, upload foto, bayar sandbox Midtrans (webhook → `dibayar`); reboot tanpa disentuh pulih sendiri dan foto tetap ada.
+- [x] **User:** hapus GitHub Secrets Dokploy lama di repo ini, tambah monitor UptimeRobot `https://mygerai.myplaza.web.id/`.
 
 ## Backlog Ide Masa Depan (belum dijadwalkan, lihat [PRD.md §5](PRD.md#5-di-luar-lingkup-mvp-out-of-scope--dicatat-sebagai-ide-masa-depan-di-backlogmd))
 
